@@ -247,7 +247,7 @@ Tool descriptions are kept short; the conventions (refs, colours, coordinates) l
 
 | Layer | How | When |
 |-------|-----|------|
-| TypeScript (schemas, queue, protocol, PDF boxes) | `vitest` unit tests, no Illustrator needed | Every commit (CI on GitHub Actions; macOS + Windows matrix planned in phase 7) |
+| TypeScript (schemas, queue, protocol, PDF boxes) | `vitest` unit tests, no Illustrator needed | Every commit (CI on GitHub Actions, macOS runner — the package is macOS-only; Windows added in phase 7) |
 | Runtime pure helpers (colour parse, coords, SVG `d` parser, JSON) | Load `src/runtime/*.jsx` in Node with a tiny shim and test functions | Every commit |
 | ES3 compatibility of the runtime | Lint rule set that forbids ES5+ (`let`, arrows, `Array#map`, `JSON`, trailing commas) | Every commit |
 | Live integration | `npm run test:live` creates **scratch documents**, runs every tool, checks results, closes without saving; a guard aborts if another document becomes active | Before each release, on the owner's Mac |
