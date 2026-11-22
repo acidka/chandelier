@@ -15,7 +15,7 @@ Each phase has **exit criteria**. A phase is done only when they are met and the
 | 4 | Agent efficiency (instructions, skill, script library, benchmarks) | ✅ Done (2026-11-22) | — |
 | 5 | Robustness (MRAP, crashes, hangs, live test suite) | 🔄 MVP part done (2026-11-22); hangs and idempotency in 0.1 | ongoing |
 | 6 | Distribution (npm, Claude Code plugin, `.mcpb`, brand) | 🔄 brand done; packaging in 0.1 | 1–2 days |
-| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | ⏳ | ~5 days |
+| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | 🔄 W3 done | ~4.5 days |
 | 8 | Future (CEP/UXP transport, events, effects, data merge) | 🧊 | — |
 
 Estimates are for focused agent-assisted work, live-tested on the owner's Mac.
@@ -287,7 +287,7 @@ works on a fresh Windows account; README has a Windows quick start.
 - [ ] ⏳ W0 Parallels VM: Windows 11 ARM64, Illustrator (native ARM64 or x64 emulation — record which), Node 22 ARM64, Git
 - [ ] ⏳ W1 Spike: persistent `powershell.exe` bridge, `GetActiveObject` + `DoJavaScript` loop; measure latency, runtime load size, a 5-min call, a modal dialog, a crash, Unicode, whether activation is needed; choose PowerShell (A) or a .NET helper (E; owner: fine if needed)
 - [ ] ⏳ W2 Platform layer (`src/platform/{mac,win}.ts`), `src/bridge/bridge-win.ps1` (same NDJSON protocol, cached COM object, OLE message filter), `Transport` picks by platform
-- [ ] ⏳ W3 Pure-JS image pipeline (JPEG decode, resize, crop) replacing macOS `sips` on both platforms — can start now on macOS
+- [x] ✅ W3 Pure-JS image pipeline (2026-11-23): PNG 8/16-bit with alpha, JPEG via `jpeg-js` (pure JS), crop and area-average resize in `src/image.ts`; `preview` (shrink, reference crop/resize) and `export {refs}` no longer call `sips`; on macOS `sips` remains only as a converter for other formats (HEIC, TIFF, WebP, interlaced PNG); unit tests + live suites green
 - [ ] ⏳ W4 Paths into ExtendScript (forward slashes, drive letters); runtime checks on Windows (exports, PDF presets, Pathfinder menu commands, fonts, localised layer names, long paths)
 - [ ] ⏳ W5 HRESULT error map, `status` hints, launch from the registered install path, activation via `AppActivate`, Windows `live-restart`
 - [ ] ⏳ W6 CI matrix (macOS + Windows), fake-COM bridge protocol test, live suites green on Windows
@@ -361,6 +361,7 @@ works on a fresh Windows account; README has a Windows quick start.
 | 2026-11-22 | Benchmarks run once per arm from now on (owner) |
 | 2026-11-22 | Phase 4: shorter build loop — `documents new {units}`, `documents save {export, close}`, `preview {more, preflight, info}`; instructions aim for ~8 Illustrator calls |
 | 2026-11-22 | MVP: tool-call counts are goals, not exit criteria (owner) |
+| 2026-11-23 | W3 done: pure-JS image pipeline, no `sips` for PNG/JPEG (ships in the next release) |
 | 2026-11-23 | **0.1 release done:** clean plugin benchmark (C2p-2: 1.1 min, 10 calls, 0.44 M, 0 errors, 10/10); tag v0.1.1 + GitHub Release |
 | 2026-11-23 | Plugin 0.1.2: server started with `npx --prefix ${CLAUDE_PLUGIN_ROOT}` — inside a folder whose `package.json` is named `chandelier-mcp` (this repo, a clone) npm 10's npx looked for the bin in the local project and failed with `chandelier-mcp: command not found` |
 | 2026-11-23 | 0.1.1: Node version check at startup — on Node < 22.15 the server answers with one `status` tool explaining the fix (found by the plugin benchmark: the user's nvm default is Node 15) |

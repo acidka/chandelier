@@ -1,14 +1,13 @@
 import { z } from 'zod';
 import { mkdirSync, readdirSync, statSync, copyFileSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname, resolve, extname, basename } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import type { ToolDef } from './types.js';
 import { text, fail, J } from './types.js';
 import { refSchema } from './common.js';
 import { errorText } from './respond.js';
 import { readAiBleed, type Bleed } from '../aifile.js';
 import { mergePdfs, setBleedBoxes, pdfInfo } from '../pdf.js';
+import { shrinkPngFile } from '../image.js';
 
 /** Clip an exported SVG to its viewBox (= the artboard): Illustrator keeps art that lies outside it, and renderers
  * other than browsers' <img> draw it. */
@@ -24,7 +23,6 @@ export function clipSvgToViewBox(svg: string): string {
     svg.slice(i, j) + '</g>' + svg.slice(j);
 }
 
-const run = promisify(execFile);
 const UNIT: Record<string, number> = { pt: 1, px: 1, mm: 72 / 25.4, in: 72 };
 const EXT: Record<string, string> = { pdf: '.pdf', png: '.png', jpg: '.jpg', svg: '.svg', webp: '.webp' };
 let n = 0;
@@ -75,10 +73,12 @@ Returns {files:[{path, artboards, bytes, pages?, pdfx?, boxes?}]}.`,
       const env = await rt.cmd<any>('preview', { refs: a.refs, path: file, dpi: a.dpi ?? 72 * (a.scale ?? 1), background: a.background, pad: 0 });
       if (!env.ok) return { content: [{ type: 'text', text: errorText(env) }], isError: true };
       if (env.data.resize_to) {
-        const to = env.data.resize_to, px = env.data.px as number[], k = to / Math.max(px[0], px[1]);
-        await run('sips', ['-Z', String(to), file]).catch(() => {});
-        env.data.px = [Math.round(px[0] * k), Math.round(px[1] * k)];
-        env.data.scale = Math.round(env.data.scale * k * 1000) / 1000;
+        const px = env.data.px as number[];
+        try {
+          const got = shrinkPngFile(file, env.data.resize_to);
+          env.data.px = [got.w, got.h];
+          env.data.scale = Math.round(env.data.scale * got.w / px[0] * 1000) / 1000;
+        } catch { /* keep the larger image */ }
         delete env.data.resize_to;
       }
       return text({ files: [{ path: file, bytes: statSync(file).size, ...env.data }] });

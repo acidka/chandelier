@@ -1,9 +1,16 @@
-// Minimal PNG codec (no dependencies: Node's zlib) and image comparison for preview {reference}.
-// Decodes 8-bit non-interlaced PNGs (grey, grey+alpha, RGB, RGBA, palette) with all five row filters;
-// encodes 8-bit RGB. Reference JPEGs are converted to PNG with macOS `sips` before decoding.
+// Image work without platform tools (phase 7 W3: no macOS `sips`): a PNG codec on Node's zlib, JPEG decoding with
+// jpeg-js (pure JS), crop and area-average resize, and the comparison behind preview {reference}.
+// PNG: 8- and 16-bit, non-interlaced, grey / grey+alpha / RGB / RGBA / palette, all five row filters; encodes 8-bit
+// RGB or RGBA. Other formats (HEIC, TIFF, WebP, interlaced PNG) are not decoded here: callers may convert them with a
+// platform tool first (see decodeImage).
 import zlib from 'node:zlib';
+import { readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import jpeg from 'jpeg-js';
 
-export interface Img { w: number; h: number; rgb: Uint8Array } // 3 bytes per pixel, alpha composited on white
+/** rgb: 3 bytes per pixel, alpha composited on white; a: optional alpha (1 byte per pixel) for transparent images */
+export interface Img { w: number; h: number; rgb: Uint8Array; a?: Uint8Array }
 
 /** A pixel darker than this counts as content (text, rules), so paper tones, JPEG noise and light tints don't. */
 const INK = 150;
@@ -22,21 +29,25 @@ export function decodePng(buf: Buffer): Img {
     else if (kind === 'IEND') break;
     pos += 12 + len;
   }
-  if (depth !== 8 || interlace) throw new Error(`unsupported PNG (bit depth ${depth}, interlace ${interlace}): only 8-bit non-interlaced`);
-  const ch = ({ 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 } as Record<number, number>)[type];
-  if (!ch) throw new Error('unsupported PNG colour type ' + type);
-  const raw = zlib.inflateSync(Buffer.concat(idat)), stride = w * ch, px = Buffer.alloc(stride * h);
+  if ((depth !== 8 && depth !== 16) || (depth === 16 && type === 3) || interlace) throw new Error(`unsupported PNG (bit depth ${depth}, interlace ${interlace}): 8- or 16-bit, non-interlaced`);
+  const ch0 = ({ 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 } as Record<number, number>)[type];
+  if (!ch0) throw new Error('unsupported PNG colour type ' + type);
+  const bpp = ch0 * depth / 8; // bytes per pixel (the filter unit)
+  const raw = zlib.inflateSync(Buffer.concat(idat)), rstride = w * bpp, full = Buffer.alloc(rstride * h);
   for (let y = 0; y < h; y++) {
-    const f = raw[y * (stride + 1)], src = y * (stride + 1) + 1, dst = y * stride;
-    for (let x = 0; x < stride; x++) {
-      const a = x >= ch ? px[dst + x - ch] : 0, b = y ? px[dst - stride + x] : 0, c = x >= ch && y ? px[dst - stride + x - ch] : 0;
+    const f = raw[y * (rstride + 1)], src = y * (rstride + 1) + 1, dst = y * rstride;
+    for (let x = 0; x < rstride; x++) {
+      const a = x >= bpp ? full[dst + x - bpp] : 0, b = y ? full[dst - rstride + x] : 0, c = x >= bpp && y ? full[dst - rstride + x - bpp] : 0;
       let v = raw[src + x];
       if (f === 1) v += a; else if (f === 2) v += b; else if (f === 3) v += (a + b) >> 1;
       else if (f === 4) { const p = a + b - c, pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c); v += pa <= pb && pa <= pc ? a : (pb <= pc ? b : c); }
-      px[dst + x] = v & 255;
+      full[dst + x] = v & 255;
     }
   }
-  const rgb = new Uint8Array(w * h * 3);
+  // 16-bit: keep the high byte of each sample
+  const ch = ch0, px = depth === 16 ? Buffer.alloc(w * h * ch) : full;
+  if (depth === 16) for (let i = 0; i < px.length; i++) px[i] = full[i * 2];
+  const rgb = new Uint8Array(w * h * 3), alpha = type === 4 || type === 6 || trns ? new Uint8Array(w * h) : undefined;
   for (let i = 0; i < w * h; i++) {
     let r: number, g: number, bl: number, al = 255;
     if (type === 0) r = g = bl = px[i];
@@ -44,10 +55,80 @@ export function decodePng(buf: Buffer): Img {
     else if (type === 2) { r = px[i * 3]; g = px[i * 3 + 1]; bl = px[i * 3 + 2]; }
     else if (type === 6) { r = px[i * 4]; g = px[i * 4 + 1]; bl = px[i * 4 + 2]; al = px[i * 4 + 3]; }
     else { const k = px[i]; r = palette![k * 3]; g = palette![k * 3 + 1]; bl = palette![k * 3 + 2]; if (trns && k < trns.length) al = trns[k]; }
+    if (alpha) alpha[i] = al;
     const m = al / 255; // composite on white
     rgb[i * 3] = Math.round(r * m + 255 * (1 - m)); rgb[i * 3 + 1] = Math.round(g * m + 255 * (1 - m)); rgb[i * 3 + 2] = Math.round(bl * m + 255 * (1 - m));
   }
-  return { w, h, rgb };
+  return alpha ? { w, h, rgb, a: alpha } : { w, h, rgb };
+}
+
+export function decodeJpeg(buf: Buffer): Img {
+  const d = jpeg.decode(buf, { useTArray: true, formatAsRGBA: true, maxMemoryUsageInMB: 1024, maxResolutionInMP: 200 });
+  const n = d.width * d.height, rgb = new Uint8Array(n * 3);
+  for (let i = 0; i < n; i++) { rgb[i * 3] = d.data[i * 4]; rgb[i * 3 + 1] = d.data[i * 4 + 1]; rgb[i * 3 + 2] = d.data[i * 4 + 2]; }
+  return { w: d.width, h: d.height, rgb };
+}
+
+/** 'png' | 'jpeg' | null from the first bytes. */
+export function sniff(buf: Buffer): 'png' | 'jpeg' | null {
+  if (buf.length >= 8 && buf.subarray(0, 8).equals(SIG)) return 'png';
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpeg';
+  return null;
+}
+
+/** Decode a PNG or JPEG. Throws for anything else (the caller may convert it with a platform tool and retry). */
+export function decodeImage(buf: Buffer): Img {
+  const k = sniff(buf);
+  if (k === 'png') return decodePng(buf);
+  if (k === 'jpeg') return decodeJpeg(buf);
+  throw new Error('not a PNG or JPEG image');
+}
+
+/** Cut [x, y, w, h] (pixels, clamped to the image). */
+export function crop(img: Img, x: number, y: number, w: number, h: number): Img {
+  const x0 = Math.max(0, Math.min(img.w - 1, Math.round(x))), y0 = Math.max(0, Math.min(img.h - 1, Math.round(y)));
+  const cw = Math.max(1, Math.min(img.w - x0, Math.round(w))), chh = Math.max(1, Math.min(img.h - y0, Math.round(h)));
+  const rgb = new Uint8Array(cw * chh * 3), a = img.a ? new Uint8Array(cw * chh) : undefined;
+  for (let r = 0; r < chh; r++) {
+    rgb.set(img.rgb.subarray(((y0 + r) * img.w + x0) * 3, ((y0 + r) * img.w + x0 + cw) * 3), r * cw * 3);
+    if (a) a.set(img.a!.subarray((y0 + r) * img.w + x0, (y0 + r) * img.w + x0 + cw), r * cw);
+  }
+  return a ? { w: cw, h: chh, rgb, a } : { w: cw, h: chh, rgb };
+}
+
+/** Resize to exactly w × h: area averaging (each target pixel = the mean of the source area it covers), good for
+ * downscaling and fine for the mild upscaling a reference may need. */
+export function resize(img: Img, w: number, h: number): Img {
+  w = Math.max(1, Math.round(w)); h = Math.max(1, Math.round(h));
+  if (w === img.w && h === img.h) return img;
+  const sx = img.w / w, sy = img.h / h, rgb = new Uint8Array(w * h * 3), a = img.a ? new Uint8Array(w * h) : undefined;
+  for (let ty = 0; ty < h; ty++) {
+    const fy0 = ty * sy, fy1 = Math.min(img.h, fy0 + Math.max(sy, 1)), y0 = Math.floor(fy0), y1 = Math.min(img.h - 1, Math.ceil(fy1) - 1);
+    for (let tx = 0; tx < w; tx++) {
+      const fx0 = tx * sx, fx1 = Math.min(img.w, fx0 + Math.max(sx, 1)), x0 = Math.floor(fx0), x1 = Math.min(img.w - 1, Math.ceil(fx1) - 1);
+      let r = 0, g = 0, b = 0, al = 0, wt = 0;
+      for (let y = y0; y <= y1; y++) {
+        const wy = Math.min(y + 1, fy1) - Math.max(y, fy0);
+        if (wy <= 0) continue;
+        for (let x = x0; x <= x1; x++) {
+          const wx = Math.min(x + 1, fx1) - Math.max(x, fx0);
+          if (wx <= 0) continue;
+          const k = wx * wy, i = y * img.w + x;
+          r += img.rgb[i * 3] * k; g += img.rgb[i * 3 + 1] * k; b += img.rgb[i * 3 + 2] * k; if (a) al += img.a![i] * k; wt += k;
+        }
+      }
+      const o = ty * w + tx;
+      rgb[o * 3] = Math.round(r / wt); rgb[o * 3 + 1] = Math.round(g / wt); rgb[o * 3 + 2] = Math.round(b / wt);
+      if (a) a[o] = Math.round(al / wt);
+    }
+  }
+  return a ? { w, h, rgb, a } : { w, h, rgb };
+}
+
+/** Scale so the longest side is `max` (never up). */
+export function fitLongest(img: Img, max: number): Img {
+  const k = max / Math.max(img.w, img.h);
+  return k >= 1 ? img : resize(img, img.w * k, img.h * k);
 }
 
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
@@ -58,11 +139,19 @@ function chunk(kind: string, data: Buffer): Buffer {
   const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(body));
   return Buffer.concat([len, body, crc]);
 }
+/** 8-bit RGB, or RGBA when the image has alpha (the stored rgb is composited on white, so it is un-composited). */
 export function encodePng(img: Img): Buffer {
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(img.w, 0); ihdr.writeUInt32BE(img.h, 4); ihdr[8] = 8; ihdr[9] = 2;
-  const stride = img.w * 3, raw = Buffer.alloc((stride + 1) * img.h);
-  for (let y = 0; y < img.h; y++) Buffer.from(img.rgb.buffer, img.rgb.byteOffset + y * stride, stride).copy(raw, y * (stride + 1) + 1);
+  const ihdr = Buffer.alloc(13), ch = img.a ? 4 : 3;
+  ihdr.writeUInt32BE(img.w, 0); ihdr.writeUInt32BE(img.h, 4); ihdr[8] = 8; ihdr[9] = img.a ? 6 : 2;
+  const stride = img.w * ch, raw = Buffer.alloc((stride + 1) * img.h);
+  for (let y = 0; y < img.h; y++) {
+    if (!img.a) { Buffer.from(img.rgb.buffer, img.rgb.byteOffset + y * img.w * 3, img.w * 3).copy(raw, y * (stride + 1) + 1); continue; }
+    for (let x = 0; x < img.w; x++) {
+      const i = y * img.w + x, o = y * (stride + 1) + 1 + x * 4, al = img.a[i], m = al / 255;
+      for (let k = 0; k < 3; k++) raw[o + k] = m > 0 ? Math.max(0, Math.min(255, Math.round((img.rgb[i * 3 + k] - 255 * (1 - m)) / m))) : 0;
+      raw[o + 3] = al;
+    }
+  }
   return Buffer.concat([SIG, chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 6 })), chunk('IEND', Buffer.alloc(0))]);
 }
 
@@ -101,4 +190,25 @@ export function compare(ref: Img, prev: Img, grid = 4): Comparison {
     .sort((a, b) => b.diff - a.diff).slice(0, 3);
   const ri = bb(ref), pi = bb(prev);
   return { composite: { w: cw, h, rgb: out }, rmse: Math.round(Math.sqrt(sq / (w * h * 3)) / 255 * 1000) / 1000, ink: ri && pi ? { reference: ri, preview: pi } : null, regions };
+}
+
+/** Read an image file. PNG and JPEG are decoded here on every platform; other formats (HEIC, TIFF, WebP, interlaced
+ * PNG…) are converted to PNG with macOS `sips` first when it exists. */
+export async function readImage(path: string, tmpPng: string): Promise<Img> {
+  const buf = readFileSync(path);
+  try { return decodeImage(buf); } catch (e) {
+    if (process.platform !== 'darwin') throw new Error(`${(e as Error).message}: use a PNG or JPEG image`);
+    try {
+      await promisify(execFile)('sips', ['-s', 'format', 'png', path, '--out', tmpPng]);
+      return decodePng(readFileSync(tmpPng));
+    } catch { throw new Error(`cannot read ${path}: use a PNG or JPEG image`); }
+    finally { rmSync(tmpPng, { force: true }); }
+  }
+}
+
+/** Shrink a PNG file in place so its longest side is `max`. */
+export function shrinkPngFile(path: string, max: number): { w: number; h: number } {
+  const img = fitLongest(decodePng(readFileSync(path)), max);
+  writeFileSync(path, encodePng(img));
+  return { w: img.w, h: img.h };
 }

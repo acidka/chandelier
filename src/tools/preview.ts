@@ -1,17 +1,14 @@
 import { z } from 'zod';
 import { readFileSync, copyFileSync, rmSync, mkdirSync, existsSync, writeFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
-import { execFile } from 'node:child_process';
-import { promisify } from 'node:util';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolDef, Ctx } from './types.js';
 import { J, fail, ArgError } from './types.js';
 import { runStep, respond } from './respond.js';
 import { refSchema } from './common.js';
 import { errorText } from './respond.js';
-import { decodePng, encodePng, compare } from '../image.js';
+import { decodePng, encodePng, compare, crop, resize, readImage, shrinkPngFile } from '../image.js';
 
-const run = promisify(execFile);
 let n = 0;
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -68,12 +65,11 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   if (!env.ok) return { content: [{ type: 'text', text: errorText(env) }], isError: true };
   const v = env.data!;
   if (typeof v.resize_to === 'number') {
-    // macOS image tool; scales so the longest side is resize_to
+    // Illustrator renders at >= 72 ppi; shrink to the asked size here (pure JS, any platform)
     try {
-      await run('sips', ['-Z', String(v.resize_to), file]);
-      const px = v.px as number[], k = (v.resize_to as number) / Math.max(px[0], px[1]);
-      v.px = [Math.round(px[0] * k), Math.round(px[1] * k)];
-      v.scale = Math.round((v.scale as number) * k * 1000) / 1000;
+      const px = v.px as number[], got = shrinkPngFile(file, v.resize_to as number);
+      v.px = [got.w, got.h];
+      v.scale = Math.round((v.scale as number) * got.w / px[0] * 1000) / 1000;
     } catch { /* keep the larger image */ }
     delete v.resize_to;
   }
@@ -84,21 +80,16 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
     rmSync(file, { force: true });
     return { content: [{ type: 'image', data: data.toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(v) }] };
   }
-  // compare with the reference: crop, convert and resize it to the preview's exact pixel size (sips), then diff
-  const prev = decodePng(data), refFile = join(tmp, `r${id}.png`);
+  // compare with the reference: crop it and resize it to the preview's exact pixel size, then diff
+  const prev = decodePng(data);
+  let ref;
   try {
-    const cropSrc = join(tmp, `c${id}`);
-    copyFileSync(reference, cropSrc);
-    if (a.reference_crop) {
-      const [cx, cy, cw, ch] = a.reference_crop.map((x: number) => Math.round(x));
-      await run('sips', ['-c', String(ch), String(cw), '--cropOffset', String(cy), String(cx), cropSrc]);
-    }
-    await run('sips', ['-s', 'format', 'png', '-z', String(prev.h), String(prev.w), cropSrc, '--out', refFile]);
-    rmSync(cropSrc, { force: true });
-  } catch (e) { return fail('Could not read the reference image with sips: ' + (e as Error).message); }
-  const ref = decodePng(readFileSync(refFile));
+    ref = await readImage(reference, join(tmp, `r${id}.png`));
+    if (a.reference_crop) { const [cx, cy, cw, ch] = a.reference_crop; ref = crop(ref, cx, cy, cw, ch); }
+    ref = resize(ref, prev.w, prev.h);
+  } catch (e) { return fail('Could not read the reference image: ' + (e as Error).message); }
   const c = compare(ref, prev);
-  rmSync(refFile, { force: true }); rmSync(file, { force: true });
+  rmSync(file, { force: true });
   // fractions of the rendered area → session coordinates
   const [rx, ry, rw, rh] = v.rect as number[];
   const toRect = (f: number[]) => [r2(rx + f[0] * rw), r2(ry + f[1] * rh), r2(f[2] * rw), r2(f[3] * rh)];

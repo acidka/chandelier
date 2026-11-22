@@ -43,3 +43,41 @@ describe('compare', () => {
     expect(c.ink!.preview[2]).toBe(0.25); // same size, shifted
   });
 });
+
+describe('pure-JS image pipeline (W3: no sips)', async () => {
+  const { decodeImage, decodeJpeg, crop, resize, fitLongest, encodePng, decodePng, sniff } = await import('../../src/image.js');
+  const jpegjs = (await import('jpeg-js')).default;
+  // 4×2 image: left half red, right half blue
+  const w = 4, h = 2, rgba = Buffer.alloc(w * h * 4);
+  for (let i = 0; i < w * h; i++) { const left = i % w < 2; rgba.set(left ? [255, 0, 0, 255] : [0, 0, 255, 255], i * 4); }
+  const jpg = jpegjs.encode({ data: rgba, width: w, height: h }, 100).data;
+
+  it('decodes JPEG and sniffs formats', () => {
+    expect(sniff(jpg)).toBe('jpeg');
+    const img = decodeJpeg(jpg);
+    expect([img.w, img.h]).toEqual([4, 2]);
+    expect(img.rgb[0]).toBeGreaterThan(200); expect(img.rgb[2]).toBeLessThan(60);          // red-ish
+    expect(img.rgb[3 * 3 + 2]).toBeGreaterThan(200);                                       // blue-ish
+    expect(() => decodeImage(Buffer.from('GIF89a'))).toThrow(/not a PNG or JPEG/);
+  });
+
+  it('crops and resizes by area averaging', () => {
+    const img = { w, h, rgb: new Uint8Array(w * h * 3) };
+    for (let i = 0; i < w * h; i++) img.rgb.set(i % w < 2 ? [255, 0, 0] : [0, 0, 255], i * 3);
+    const c = crop(img, 2, 0, 2, 2);
+    expect([c.w, c.h, c.rgb[0], c.rgb[2]]).toEqual([2, 2, 0, 255]);
+    const r = resize(img, 2, 1);
+    expect(Array.from(r.rgb)).toEqual([255, 0, 0, 0, 0, 255]);
+    const half = resize(img, 1, 1);                                                        // mean of red and blue
+    expect(Array.from(half.rgb)).toEqual([128, 0, 128]);
+    expect(fitLongest(img, 2).w).toBe(2);
+    expect(fitLongest(img, 100)).toBe(img);                                                // never upscales
+  });
+
+  it('keeps alpha through resize and PNG round trip', () => {
+    const img = { w: 2, h: 1, rgb: new Uint8Array([255, 0, 0, 255, 255, 255]), a: new Uint8Array([255, 0]) };
+    const png = decodePng(encodePng(resize(img, 2, 1)));
+    expect(png.a && Array.from(png.a)).toEqual([255, 0]);
+    expect(Array.from(png.rgb.subarray(0, 3))).toEqual([255, 0, 0]);
+  });
+});

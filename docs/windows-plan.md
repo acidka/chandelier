@@ -17,7 +17,7 @@ the thin layer that carries a script into Illustrator and back, plus a few macOS
 | **Transport default** | `src/transport/transport.ts` | `command: 'osascript'` | Per platform: `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File bridge-win.ps1` |
 | **Error map** | `src/transport/errors.ts` | AppleEvent errnos (-600, -609, -1712, -1743 …) | COM HRESULTs (§ 3.5) |
 | **App lifecycle** | bridge ops `running` / `launch` / `activate`; `status {launch}` | AppleScript by bundle id, never resolved at compile time (C11) | Process check (no COM), launch from the registered install path, `WScript.Shell.AppActivate` |
-| **Image work** | `preview` (resize, reference crop/convert), `export {refs}` resize | macOS `sips` | Pure-JS pipeline on **both** platforms (§ 4) |
+| **Image work** | `preview` (resize, reference crop/convert), `export {refs}` resize | ✅ done (W3, 2026-11-23): pure JS on both platforms | `sips` kept on macOS only to convert other formats (HEIC, TIFF…) (§ 4) |
 | **Paths** | runtime `File` / `Folder`, Node temp dirs | POSIX paths | Drive letters and backslashes; normalise before they reach ExtendScript (§ 5) |
 | **Live tests** | `test/live-restart.mjs` (quits Illustrator via AppleScript), bench runner A (`osascript`) | macOS only | Windows variants or skips (§ 6) |
 | **Docs** | README quick start, agent guide § 7 | macOS steps | Windows install and troubleshooting |
@@ -140,7 +140,7 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | **W0** | Parallels VM with Windows 11 ARM64 on the owner's Mac; Illustrator (Creative Cloud second activation; native ARM64 build or x64 emulation — check which), Node 22 ARM64, Git | — | yes |
 | **W1** | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E | 0.5 d | yes |
 | **W2** | Platform layer `src/platform/{mac,win}.ts` (bridge command, lifecycle, error map); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` | 1 d | partly |
-| **W3** | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests | 0.5 d | no |
+| **W3** ✅ | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests — done 2026-11-23 | 0.5 d | no |
 | **W4** | Paths into ExtendScript; runtime checks from § 5 on Windows | 0.5 d | yes |
 | **W5** | HRESULT error map, `status` hints, launch from the registry path, activation, Windows `live-restart` | 0.5 d | yes |
 | **W6** | CI matrix (macOS + Windows), fake-COM bridge test, live suites green on Windows — in an **en_US** Illustrator UI (moved from 0.1) | 1 d | yes |
