@@ -1,5 +1,7 @@
 # Competitors
 
+Update 2026-11-23: four more community servers (Joystiick, jinkeda, gherardo200-glitch, kahrcitect), Adobe's AI Assistant and its local MCP preview (MAX 2026, private beta early 2027) are compared in [feature-gaps.md](feature-gaps.md).
+
 Researched 2026-11-22.
 
 ## 1. `ie3jp/illustrator-mcp-server` (independent, MIT)

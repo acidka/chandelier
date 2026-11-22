@@ -29,6 +29,7 @@ tools aren't enough. The [README](../README.md) is the short tour; this folder i
 |-----|--------------|
 | [research/benchmarks.md](research/benchmarks.md) | Every measurement: per-call latency, the calendar and design-from-image agent benchmarks, targets |
 | [research/illustrator-quirks.md](research/illustrator-quirks.md) | Known Illustrator 29.x failures and how Chandelier handles each one |
+| [research/feature-gaps.md](research/feature-gaps.md) | Missing tools, user needs, all known competitors with pros and cons, proposed order for 0.1.x–0.4 (2026-11-23) |
 | [research/competitors.md](research/competitors.md) | `ie3jp/illustrator-mcp-server` and Adobe's official MCP (beta): what they do, tool parity map |
 | [../bench/README.md](../bench/README.md) | How to run the benchmarks (scripts and saved results) |
 

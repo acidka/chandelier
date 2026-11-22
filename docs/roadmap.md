@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-11-22 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
+Last updated: 2026-11-23 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
 
 Each phase has **exit criteria**. A phase is done only when they are met and the docs are updated.
 
@@ -303,6 +303,15 @@ works on a fresh Windows account; README has a Windows quick start.
 - [ ] 🧊 Visual diff: compare a preview with a reference image and report misaligned regions
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
 
+## Candidates from the 2026-11-23 gap review 🧊
+
+Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
+
+- [ ] 🧊 0.1.x: safe restart + logs, recipe library, contrast/token checks as `preflight` options, layer-variant and screen-asset `export` options
+- [ ] 🧊 0.2: Windows (phase 7) + `symbols` + image trace
+- [ ] 🧊 0.3: `data_merge` (CSV/JSON rows → variations), multi-file jobs with dry run, recolor to a swatch library
+- [ ] 🧊 0.4: live effects, prepress extras (trap stroke, PDF/X output intents), visual diff
+
 ## Rejected ❌
 
 - ❌ **Forking the competitor** — its per-call design is the bottleneck; see [plan D8](plan.md#d8--fork-the-competitor-or-build-fresh--decided-build-fresh-borrow-knowledge)
@@ -384,3 +393,4 @@ works on a fresh Windows account; README has a Windows quick start.
 | 2026-11-22 | MVP exit met: M2 C1 1.5 min / 10 calls / 0.48 M / 10; C2 1.2 min / 11 calls / 0.42 M / 10; owner's real job open |
 | 2026-11-22 | Phase 5 (MVP scope): MRAP retry in the runtime + `status.mrap`, failed calls close their empty new document, live-suite document guard; crash/reload ticked |
 | 2026-11-22 | Phase 4 done: calendar C1/C2 re-run once each — 19 / 17 calls (≤ 20), 2.8 / 2.0 min, 0.95 / 0.78 M input |
+| 2026-11-23 | Feature-gap and competitor review ([research/feature-gaps.md](research/feature-gaps.md)): 4 more community Illustrator MCPs, Adobe AI Assistant and local MCP preview; candidate order for 0.1.x–0.4 |
