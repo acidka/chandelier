@@ -363,6 +363,23 @@ goals too (≤ 12 / ≤ 30). Against the baselines: C2 is 2× faster than Extend
   grid cells can't be named; no font metrics (cap height) to size text from an image; `export` PNG default size
   (72 ppi) not stated.
 
+### M2 through the Claude Code plugin — 2026-11-23 (arm C2, 1 run; 0.1 release check)
+
+Chandelier installed as the published plugin (`/plugin install chandelier --marketplace acidka/chandelier`, server
+`chandelier-mcp@0.1.0` via `npx`), same M2 prompt; the agent used the plugin's `illustrator` skill. Illustrator 29.1.0
+ru_RU, macOS 27.2.1, Apple M1. Files: `bench/results/m2/C2p-1/`.
+
+| Run | Wall | Requests | Tool calls | Input | Output | Tool errors | Quality | RMSE |
+|-----|-----:|---------:|-----------:|------:|-------:|------------:|--------:|-----:|
+| C2p-1 | 1.8 min | 22 | 26 | 1.18 M | 10.4 k | 6 | 10 | **0.108** |
+
+**Not a cost result:** the plugin's `npx` started the server with the first `node` on the user's PATH, an nvm Node
+15.14 (the server needs ≥ 22.15). On it `run_script` failed (`performance is not defined`) and every `preview` reply
+was rejected by the client (invalid base64), so the agent worked around both (scripts as `batch` steps, renders read
+from `save_to` files) — hence the extra calls and errors. The file itself is the closest to the reference of all runs
+(RMSE 0.108; CMYK, 5 global swatches, 13 paragraph styles, 121 live texts, preflight clean). Fixed in **0.1.1**: the
+server checks the Node version at startup and, if it is too old, answers with one `status` tool that explains the fix.
+
 ### Metrics extractor
 
 ```sh

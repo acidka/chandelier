@@ -100,7 +100,7 @@ agent using it recovers from the usual trouble (hangs, timeouts, dialogs) withou
 |------|-----------|
 | npm | ✅ `npx -y chandelier-mcp` from the registry starts in a clean folder with a fresh npm cache (2026-11-23) |
 | Claude Code plugin | `claude plugin install` works; the Illustrator skill and `/ai-preview`, `/ai-preflight` load; one M2 run (arm C2) through the plugin meets the MVP targets |
-| Claude Desktop | The `.mcpb` bundle installs; `status` and a `documents new` → `preview` round trip work |
+| Claude Desktop | ✅ `chandelier-0.1.0.mcpb` installed in Claude Desktop and works (owner, 2026-11-23) |
 | Robustness | ✅ Live tests cover a timeout while Illustrator is busy: the agent gets a clear hint, and `status.last_call` shows whether the call finished and the ids it created (a modal dialog takes the same path; not automated) |
 | Tool fixes from the logo job | ✅ `preview {region}` relative to a chosen artboard, SVG export clip to artboard, colour-contrast check for RGB documents — each with unit and live tests |
 | Languages | ✅ ru_RU: live suites green; en_US moved to 0.2 (Windows VM, owner 2026-11-23) |
@@ -258,6 +258,7 @@ this phase — has **no bleed** (C18). 33 tools; 78 unit tests and three live su
 - [x] ✅ Hang detection (0.1): after a timeout the server pings Illustrator and the error says either "answers again: call #n probably finished" or "not answering: a modal dialog may be open or it is still busy", with a do-not-repeat warning; unit test (fake Illustrator) + live test (busy Illustrator). A real modal dialog takes the same path but isn't automated (dismissing it needs accessibility rights)
 - [ ] ⏳ `status {restart: true}`: safe restart — refuses if any document has unsaved changes the agent didn't create (owner's Part 2.2 routine)
 - [x] ✅ Idempotency hints (0.1): every call that may change something is numbered and recorded in Illustrator; `status.last_call` = {call, cmd, finished, ok, created uuids, error, ms}, so after a timeout the agent checks instead of repeating (create tools already return their uuids)
+- [x] ✅ Node version guard (0.1.1): MCP clients start the server with the first `node` on their PATH; on Node < 22.15 it now answers with one `status` tool that explains the problem and the fix, instead of failing later (`performance is not defined`, invalid preview images — seen in the plugin benchmark run C2p-1, 2026-11-23)
 - [ ] ⏳ Structured logs (`CHANDELIER_LOG=debug`) with per-call timings
 - [x] ✅ Live integration suite (`npm run test:live`) on scratch documents; a guard (`test/live-lib.mjs`) checks before every call that the active document is one the suite made and aborts otherwise
 - [x] ✅ A failed call leaves no empty new document (M2 run A3): documents it created with no items and no file are closed with a warning (in `batch` only with `rollback`); warnings now also come with errors
@@ -267,8 +268,8 @@ this phase — has **no bleed** (C18). 33 tools; 78 unit tests and three live su
 
 - [x] ✅ Brand: logo + GitHub hero image, designed through Chandelier (2026-11-22): [brand.md](brand.md), files in `docs/assets/brand/`, README hero; [how it went](logo-plan.md#10-how-it-went-2026-11-22)
 - [x] ✅ npm package + `npx chandelier-mcp` (0.1): `package.json` ready (not private, `os: darwin`, `prepublishOnly`, no source maps); the packed tarball installed in a clean folder with a fresh npm cache runs through `npx` (32 tools, live status). **Published 2026-11-23:** `chandelier-mcp@0.1.0` on npm (npm's staged publishing: upload, then approval on npmjs.com); `npx -y chandelier-mcp` from the registry in a clean folder with a fresh cache: started in 3.3 s, 32 tools, live round trip
-- [x] ✅ Claude Code plugin (0.1): `plugin/` (`plugin.json` with the MCP server via `npx chandelier-mcp`, **Illustrator skill**, `/ai-preview`, `/ai-preflight`, icon) and `.claude-plugin/marketplace.json`; `claude plugin validate` passes. Install test + one M2 run through the plugin after `npm publish`
-- [x] ✅ `.mcpb` bundle for Claude Desktop (0.1): `npm run build:mcpb` (manifest 0.2, darwin, Node ≥ 22.15 — Claude Desktop 6.28 embeds Node 24.22; 6.6 MB); the unpacked bundle ran a live round trip. Install in Claude Desktop: owner's step
+- [x] ✅ Claude Code plugin (0.1): `plugin/` (`plugin.json` with the MCP server via `npx chandelier-mcp`, **Illustrator skill**, `/ai-preview`, `/ai-preflight`, icon) and `.claude-plugin/marketplace.json`; `claude plugin validate` passes. Installed from the public marketplace (`acidka/chandelier`) by the owner and loaded in Claude Code (2026-11-23)
+- [x] ✅ `.mcpb` bundle for Claude Desktop (0.1): `npm run build:mcpb` (manifest 0.2, darwin, Node ≥ 22.15 — Claude Desktop 6.28 embeds Node 24.22; 6.6 MB); the unpacked bundle ran a live round trip. Installed and working in Claude Desktop (owner, 2026-11-23)
 - [ ] ⏳ MCP registry listing (once the repo is public again)
 - [ ] ⏳ Switch the maintainer's production workflow from `illustrator-mcp` to this server; update its agent docs and skill (❓ owner)
 - [ ] ⏳ Multiple installed Illustrator versions (target a specific app path)
@@ -360,6 +361,8 @@ works on a fresh Windows account; README has a Windows quick start.
 | 2026-11-22 | Benchmarks run once per arm from now on (owner) |
 | 2026-11-22 | Phase 4: shorter build loop — `documents new {units}`, `documents save {export, close}`, `preview {more, preflight, info}`; instructions aim for ~8 Illustrator calls |
 | 2026-11-22 | MVP: tool-call counts are goals, not exit criteria (owner) |
+| 2026-11-23 | 0.1.1: Node version check at startup — on Node < 22.15 the server answers with one `status` tool explaining the fix (found by the plugin benchmark: the user's nvm default is Node 15) |
+| 2026-11-23 | Repo public with history collapsed into one commit; CI on macOS; plugin installed from the marketplace and the `.mcpb` working in Claude Desktop |
 | 2026-11-23 | `chandelier-mcp@0.1.0` published on npm; verified from the registry with npx |
 | 2026-11-23 | Version 0.1.0 (package, server, plugin, marketplace); `npm publish --dry-run` passes |
 | 2026-11-23 | Public-repo cleanup: other projects and local paths removed from docs and tests; en_US UI test moved to 0.2 |

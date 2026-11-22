@@ -127,8 +127,12 @@ npm install && npm run build      # then point your client at node /absolute/pat
 ```
 
 On the first call macOS asks whether your terminal (or app) may control Illustrator: allow it, or later in
-**System Settings → Privacy & Security → Automation**. If `node` on your PATH is older than 22.15, use the full path
-of a newer Node.
+**System Settings → Privacy & Security → Automation**.
+
+**Node version:** the plugin and `npx` start the server with the first `node` on your PATH. If that is older than
+22.15 (an old nvm default, for example), the server says so through the `status` tool instead of starting: install a
+current Node and make it the default (`nvm install 22 && nvm alias default 22`, or `brew install node`), or give
+the full path of a newer `node` as the command, then restart your MCP client.
 
 ## How it works
 
