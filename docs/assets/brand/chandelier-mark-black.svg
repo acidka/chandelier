@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="One_colour" data-name="One colour" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <g id="Mark_black" data-name="Mark black">
+    <circle id="Hanger" cx="256" cy="36" r="16" style="fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 10px;"/>
+    <line id="Chain" x1="256" y1="52" x2="256" y2="114" style="fill: none; stroke: #000; stroke-linejoin: round; stroke-width: 10px;"/>
+    <path id="Ring" d="M378.567,197.154c-43.236-51.527-114.083-70.51-177.29-47.505s-105.277,83.087-105.277,150.351,42.07,127.345,105.277,150.351,134.054,4.022,177.29-47.505" style="fill: none; stroke: #000; stroke-linejoin: round; stroke-width: 56px;"/>
+    <line id="Handle_line" data-name="Handle line" x1="378.567" y1="197.154" x2="432.561" y2="261.502" style="fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 6px;"/>
+    <circle id="Handle" cx="432.561" cy="261.502" r="11"/>
+    <rect id="Light" x="346.567" y="165.154" width="64" height="64" style="stroke: #fff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 10px;"/>
+    <line id="Handle_line-2" data-name="Handle line" x1="378.567" y1="402.846" x2="432.561" y2="338.498" style="fill: none; stroke: #000; stroke-linecap: round; stroke-linejoin: round; stroke-width: 6px;"/>
+    <circle id="Handle-2" data-name="Handle" cx="432.561" cy="338.498" r="11"/>
+    <rect id="Light-2" data-name="Light" x="346.567" y="370.846" width="64" height="64" style="stroke: #fff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 10px;"/>
+  </g>
+</svg>

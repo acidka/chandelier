@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Master" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <g id="Mark_small" data-name="Mark small">
+    <path id="Ring" d="M390.824,158.869c-47.56-56.68-125.491-77.561-195.019-52.255s-115.804,91.396-115.804,165.386,46.276,140.08,115.804,165.386c69.528,25.306,147.459,4.424,195.019-52.255" style="fill: none; stroke: #0f1b2d; stroke-linejoin: round; stroke-width: 84px;"/>
+    <rect id="Light" x="338.824" y="106.869" width="104" height="104" style="fill: #f2a93b;"/>
+    <rect id="Light-2" data-name="Light" x="338.824" y="333.131" width="104" height="104" style="fill: #f2a93b;"/>
+  </g>
+</svg>

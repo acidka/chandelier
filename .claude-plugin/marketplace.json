@@ -1,0 +1,13 @@
+{
+  "name": "chandelier",
+  "owner": { "name": "acidka", "url": "https://github.com/acidka" },
+  "metadata": { "description": "Chandelier: AI agents in Adobe Illustrator." },
+  "plugins": [
+    {
+      "name": "chandelier",
+      "source": "./plugin",
+      "description": "Adobe Illustrator for Claude Code: the Chandelier MCP server, an Illustrator skill, /ai-preview and /ai-preflight.",
+      "version": "0.1.0"
+    }
+  ]
+}

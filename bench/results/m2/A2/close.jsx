@@ -1,0 +1,1 @@
+var r="not found";for(var i=app.documents.length-1;i>=0;i--){var d=app.documents[i];if(d.fullName.fsName=="bench/results/m2/A2/M2-A2.ai"){r="saved="+d.saved;d.close(SaveOptions.DONOTSAVECHANGES);}}r+" docs="+app.documents.length;

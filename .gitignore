@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.idea/
+tmp/
+# local MCP config (absolute paths); the shared example is .mcp.example.json
+.mcp.json
+# benchmark output documents (big, and carry the author name in their metadata); PNGs and metrics are kept
+bench/results/**/*.ai
+bench/results/calendar/*/*.json
+!bench/results/calendar/*/metrics.json
+!bench/results/calendar/*/score-auto.json
+build/

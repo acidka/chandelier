@@ -1,0 +1,25 @@
+{
+  "label": "M2-B3",
+  "file": "<transcripts>/agent-ad16d6a9ab8f7ae9c.jsonl",
+  "window": {
+    "from": "2026-11-21T23:36:56.351Z",
+    "to": "2026-11-21T23:40:58.573Z"
+  },
+  "wallMinutes": 4,
+  "modelRequests": 30,
+  "inputTokensTotal": 2408406,
+  "inputTokens": {
+    "uncached": 64,
+    "cacheWrite": 98492,
+    "cacheRead": 2309850
+  },
+  "outputTokens": 27379,
+  "toolCalls": 91,
+  "toolCallsByFamily": {
+    "other": 10,
+    "B ie3 MCP": 81
+  },
+  "toolErrorsByFamily": {
+    "other": 1
+  }
+}

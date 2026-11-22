@@ -1,0 +1,45 @@
+# Rules for agents working in this repo
+
+## What this is
+**Chandelier** (люстра — Ukrainian slang for Illustrator): an MCP server that drives Adobe Illustrator fast: a persistent JXA bridge (`src/bridge/bridge-mac.js`), an
+ExtendScript runtime loaded once into Illustrator (`src/runtime/core.jsx` + one module per tool family, sent as one source; `$.global.AIA`), and a
+TypeScript MCP server (`src/`, built to `dist/`), packaged for npm (`chandelier-mcp`), as a Claude Code plugin
+(`plugin/`) and as a Claude Desktop bundle (`scripts/build-mcpb.mjs`). Plan and decisions: `docs/plan.md`. TODO board: `docs/roadmap.md`.
+
+## Commands
+Use Node ≥ 22.15 (if `node` on your PATH is older, run a newer one by its full path).
+
+```sh
+npm run build       # tsc + copy bridge/runtime into dist/
+npm test            # unit tests (no Illustrator needed)
+npm run lint:jsx    # ES3 lint of the runtime
+npm run typecheck
+npm run test:live   # needs a running Illustrator; works only in a document it creates
+node test/live-layout.mjs         # multi-artboard spacing/bleed, batch step artboard, AIA.at, non-printing renders
+node test/live-finish.mjs         # documents new {units}, preview {more, preflight, info}, documents save {export, close}
+node test/live-release.mjs        # 0.1: preview region from an artboard, SVG clipped to the artboard, low_contrast (also in test:live)
+node test/live-restart.mjs        # quits + relaunches Illustrator (refuses if documents are open)
+node test/verify-assumptions.mjs  # uuid / undo / 5 000-object scan checks (roadmap 1.6)
+npm run bench       # micro benchmark A/B/C
+npm run build:mcpb  # Claude Desktop bundle → build/chandelier-<version>.mcpb
+claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill, commands); marketplace in .claude-plugin/
+node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
+```
+
+## Rules
+- **Docs are always current.** Any change to design, tools or process updates `docs/` in the same commit
+  (tick the roadmap item, add a change-log row, keep tool tables in `docs/plan.md` true).
+- **The README is the project's face.** When status, numbers, tools or install steps change, update it too; every
+  number in it comes from `docs/research/benchmarks.md`.
+- **Client files never enter git.** Real jobs, their reference images and outputs live in the git-ignored `tmp/`;
+  docs describe them without client names, text or images.
+- **Runtime is ES3.** `var` only; no arrows, `let/const`, template strings, trailing commas, `Array#map/forEach/indexOf`,
+  `JSON`, `Object.keys`, `String#trim`; bracket nested `?:` (quirk B9). `npm run lint:jsx` must pass.
+  Runtime regexes stay ASCII-only (B6); keep the runtime file ASCII (escape as `\uXXXX`).
+- **Never read `ParagraphStyle.characterAttributes`** (crashes Illustrator, B1). Write a style's paragraph attributes
+  only through the style held in a variable (`var st = …getByName(n); st.paragraphAttributes.x = v`, C24).
+- Don't name runtime options `reflect`, `watch`, `unwatch` or `toSource`: every ExtendScript object already has them (C13).
+- **Never touch documents you didn't create** in tests or benchmarks; close scratch documents without saving.
+- Never auto-launch Illustrator (only `status {launch:true}`).
+- Coordinates in every tool: artboard top-left origin, y grows down, session `units` (see `docs/plan.md` D5).
+- Measurements in docs carry a date and environment (Illustrator version, macOS, Node).

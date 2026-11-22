@@ -1,0 +1,171 @@
+# Windows version — plan
+
+Status: ⏳ planned for after the 0.1 release, as 0.2 ([roadmap phase 7](roadmap.md#phase-7--windows-)); owner's decisions in § 10. Last updated: 2026-11-22.
+
+**Goal:** the same server, the same 32 tools and the same ExtendScript runtime on Windows 10/11 with Illustrator
+2025+ (29.x), with the same guarantees: one persistent connection (target < 10 ms per call), never launching
+Illustrator unasked, clear errors on hangs and crashes, print output identical to macOS.
+
+The runtime (`src/runtime/*.jsx`, `$.global.AIA`) is plain ExtendScript and already platform-neutral. What changes is
+the thin layer that carries a script into Illustrator and back, plus a few macOS tools the server calls.
+
+## 1. What is macOS-specific today
+
+| Area | Where | macOS today | Windows plan |
+|------|-------|-------------|--------------|
+| **Bridge** | `src/bridge/bridge-mac.js` | Persistent `osascript -l JavaScript`; NSAppleScript `with timeout` + `«event miscDjxM»` (do javascript) | New `src/bridge/bridge-win.ps1`: persistent `powershell.exe`, COM `Illustrator.Application.DoJavaScript` (§ 3) |
+| **Transport default** | `src/transport/transport.ts` | `command: 'osascript'` | Per platform: `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File bridge-win.ps1` |
+| **Error map** | `src/transport/errors.ts` | AppleEvent errnos (-600, -609, -1712, -1743 …) | COM HRESULTs (§ 3.5) |
+| **App lifecycle** | bridge ops `running` / `launch` / `activate`; `status {launch}` | AppleScript by bundle id, never resolved at compile time (C11) | Process check (no COM), launch from the registered install path, `WScript.Shell.AppActivate` |
+| **Image work** | `preview` (resize, reference crop/convert), `export {refs}` resize | macOS `sips` | Pure-JS pipeline on **both** platforms (§ 4) |
+| **Paths** | runtime `File` / `Folder`, Node temp dirs | POSIX paths | Drive letters and backslashes; normalise before they reach ExtendScript (§ 5) |
+| **Live tests** | `test/live-restart.mjs` (quits Illustrator via AppleScript), bench runner A (`osascript`) | macOS only | Windows variants or skips (§ 6) |
+| **Docs** | README quick start, agent guide § 7 | macOS steps | Windows install and troubleshooting |
+
+## 2. Requirements
+
+- Windows 11 on **ARM64 first** (the owner's test machine is a Parallels VM on Apple Silicon, § 10); x64 covered by
+  CI unit tests and the fake-COM bridge test until an x64 machine is available; Windows 10 22H2 best effort.
+- Illustrator 2025 (29.x) and 2026; Node ≥ 22.15; **Windows PowerShell 5.1** (built into every Windows 10/11).
+  PowerShell 7 is not enough on its own: .NET (Core) dropped `Marshal.GetActiveObject`, which § 3.2 needs.
+- No admin rights, no native Node addons, no build tools: `npx chandelier-mcp` must work on a fresh machine.
+
+## 3. The bridge
+
+### 3.1 Options
+
+| Option | Per call | Pros | Cons |
+|--------|---------:|------|------|
+| **A. Persistent PowerShell 5.1 + COM (recommended)** | ~2–5 ms (to measure) | Built into Windows; same NDJSON protocol as the macOS bridge; `GetActiveObject` attaches without launching; C# via `Add-Type` for a COM message filter | Start-up ~0.5–1.5 s once per session (Add-Type compiles); execution-policy / AMSI edge cases (§ 9) |
+| B. PowerShell per call (ie3's way) | ~300–600 ms | Simplest | The latency this project exists to remove |
+| C. Persistent WSH JScript (`cscript`) | ~2 ms | Starts in ~50 ms | No way to attach without launching except WMI tricks; no message filter; WSH is being phased out by Microsoft |
+| D. Node native COM addon (`winax`, `edge-js`) | < 1 ms | Fastest, no child process | Native build per Node ABI or prebuilt binaries; breaks `npx` simplicity; crashes take the server down |
+| E. Small .NET helper `.exe` shipped prebuilt | ~1 ms | Full control (STA thread, message filter, timeouts), no execution policy | Build pipeline + code signing (SmartScreen warnings); a binary in an npm package |
+
+Decision path: **spike A** first (step W1). If it misses the 10 ms target or the message filter proves fragile,
+spike E with the same protocol; the Node side does not change either way.
+
+### 3.2 How bridge A works
+
+```
+node (Transport) ──NDJSON over stdin/stdout──▶ powershell.exe -File bridge-win.ps1   (STA, one process per server)
+                                                  │ [Marshal]::GetActiveObject("Illustrator.Application")  (cached)
+                                                  ▼
+                                               Illustrator.exe  ── DoJavaScript(code) → result string
+```
+
+- **Protocol:** identical to `bridge-mac.js` — `{id, op: js|running|launch|activate, code?, timeout?}` in,
+  `{id, ok, result | error, errno}` out, readiness line `{id:0, ok:true, result:"ready"}`. `Transport`, the runtime
+  loader and every tool stay as they are.
+- **Encoding:** the Node side already escapes non-ASCII (`ascii.ts`) and the runtime answers in ASCII JSON, so the
+  pipe carries ASCII only; the bridge still sets `[Console]::InputEncoding/OutputEncoding` to UTF-8.
+- **Attach, never launch:** `GetActiveObject` fails with `MK_E_UNAVAILABLE` when Illustrator is not running →
+  answer `not running` (like errno -600 on macOS). `New-Object -ComObject` is never used: it would start Illustrator.
+- **The COM object is cached** for the session; on `RPC_E_DISCONNECTED` / `RPC_S_SERVER_UNAVAILABLE` (Illustrator quit
+  or crashed) the cache is dropped and the error maps to "quit or crashed"; the next call re-attaches and the runtime
+  reloads itself (its version check already does this).
+- **`running`:** `Get-Process -Name Illustrator` — no COM, so it can't start anything.
+- **`launch`:** install path from `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Illustrator.exe` (or the
+  Adobe keys), `Start-Process`, then the existing `status {launch}` wait loop.
+- **`activate`:** `WScript.Shell.AppActivate(<process id>)` — COM `Visible` is read-only since Illustrator 2026.
+  Whether Windows even needs activation before save/export (macOS quirk A10) is checked in W1; if not, it's a no-op.
+
+### 3.3 Busy Illustrator and modal dialogs
+
+Out-of-process COM calls that hit a busy Illustrator fail with `RPC_E_SERVERCALL_RETRYLATER` / `RPC_E_CALL_REJECTED`.
+The bridge registers an OLE **message filter** (`IMessageFilter`, a few lines of C# through `Add-Type`) that retries
+until the request's own timeout, then answers with a hint ("a dialog may be open in Illustrator"). This is the
+Windows half of the phase 5 hang-detection item.
+
+### 3.4 Timeouts
+
+A COM call cannot be cancelled. As on macOS, `Transport` gives every request a deadline (its timeout + grace); past
+it, it kills the bridge process, reports "may still be running — check before repeating", and respawns on the next
+call. Same semantics, same messages.
+
+### 3.5 Errors (HRESULT → message)
+
+| HRESULT | Meaning | Message (same wording as macOS where it maps) |
+|---------|---------|-----------------------------------------------|
+| `0x800401E3` MK_E_UNAVAILABLE | Not running | "Illustrator is not running. Start it, or call status with launch:true." |
+| `0x800401F3` CO_E_CLASSSTRING | Not installed / not registered | "Illustrator is not installed or its COM server is not registered (run it once as the user)." |
+| `0x80010108` RPC_E_DISCONNECTED · `0x800706BA` RPC_S_SERVER_UNAVAILABLE | Quit or crashed during the call | "Illustrator quit or crashed during the call. Restart it; the runtime reloads by itself." |
+| `0x8001010A` RPC_E_SERVERCALL_RETRYLATER · `0x80010001` RPC_E_CALL_REJECTED | Busy after all retries | "Illustrator stayed busy (a modal dialog?)…" |
+| `0x80020009` DISP_E_EXCEPTION | ExtendScript error outside the runtime's own try/catch | The script message |
+| `0x80070005` E_ACCESSDENIED | Different user / elevation level (one side "Run as administrator") | "Illustrator runs as another user or elevated; run both at the same level." |
+
+## 4. Image pipeline without `sips` (both platforms)
+
+`preview` and `export {refs}` call macOS `sips` to resize, crop and convert JPEG references. Replace it with one
+pure-JS pipeline used on both platforms: PNG decode/encode already exists (`src/image.ts`, Node's zlib); add a JPEG
+decoder (`jpeg-js`, pure JS, no native code) and box/bilinear resize + crop in JS. One code path, unit-tested on CI,
+and a macOS dependency removed. Can be done on macOS before any Windows work (step W3).
+
+## 5. Paths and the runtime
+
+- Node resolves user paths with `path.resolve` (backslashes, drive letters). Before a path enters ExtendScript, convert
+  it to forward slashes (`C:/Users/…`), which ExtendScript's `File` accepts on Windows; results come back via `fsName`
+  (native form) — fine for the agent.
+- Check every runtime use of `File` / `Folder` (documents open/save, export folders, place, preview, run_script
+  `file`, XMP bleed reading of saved `.ai` files) on Windows in the live suites.
+- Things to verify in W4, expected identical: `imageCapture` and `exportFile` output, PDF presets, menu commands used
+  by `path_ops` (Pathfinder names), `app.userInteractionLevel`, fonts' PostScript names, localised default layer names
+  (C-quirks), long paths (> 260 chars) in export folders.
+
+## 6. Tests
+
+- **Unit, CI:** add a GitHub Actions matrix `macos-latest` + `windows-latest` for `npm test`, `typecheck`, `lint:jsx`
+  (all Node, already cross-platform; the fake bridge is a Node script).
+- **Bridge protocol test without Illustrator:** `bridge-win.ps1` accepts `CHANDELIER_FAKE_COM=1` and uses a PowerShell
+  object with a `DoJavaScript` that echoes, sleeps or throws on cue — tests framing, escaping, timeouts and respawn on
+  the Windows runner, the way `fake-bridge.mjs` does for the Node side.
+- **Live, on a Windows machine with Illustrator:** `npm run test:live`, `live-layout`, `live-finish`,
+  `verify-assumptions`; a Windows `live-restart` (quit through COM `Quit()`, refuses if documents are open); the
+  live-suite document guard works unchanged.
+- **Benchmarks:** micro runner M on Windows (p50 per call vs macOS 5.7 ms); one M2 run, arm C2 (owner's rule: one run).
+
+## 7. Distribution on Windows
+
+- `npx chandelier-mcp`: npm creates the `.cmd` shim for the `bin`; `bridge-win.ps1` ships in `dist/` like the macOS
+  bridge.
+- Claude Code plugin and `.mcpb` (Claude Desktop for Windows) reuse the phase 6 packaging; the MCP config needs no
+  platform switch (the server picks its bridge from `process.platform`).
+- README: Windows quick start (Node, Illustrator running, first call), troubleshooting (execution policy, elevation,
+  dialogs).
+
+## 8. Steps
+
+| Step | What | Est. | Needs Windows? |
+|------|------|-----:|:--------------:|
+| **W0** | Parallels VM with Windows 11 ARM64 on the owner's Mac; Illustrator (Creative Cloud second activation; native ARM64 build or x64 emulation — check which), Node 22 ARM64, Git | — | yes |
+| **W1** | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E | 0.5 d | yes |
+| **W2** | Platform layer `src/platform/{mac,win}.ts` (bridge command, lifecycle, error map); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` | 1 d | partly |
+| **W3** | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests | 0.5 d | no |
+| **W4** | Paths into ExtendScript; runtime checks from § 5 on Windows | 0.5 d | yes |
+| **W5** | HRESULT error map, `status` hints, launch from the registry path, activation, Windows `live-restart` | 0.5 d | yes |
+| **W6** | CI matrix (macOS + Windows), fake-COM bridge test, live suites green on Windows — in an **en_US** Illustrator UI (moved from 0.1) | 1 d | yes |
+| **W7** | Benchmarks on Windows (micro M, one M2 C2 run), results in `benchmarks.md` | 0.5 d | yes |
+| **W8** | Windows install in README, agent guide troubleshooting; `.mcpb` / plugin checked on Windows | 0.5 d | yes |
+
+Total ≈ 5 days once a Windows machine exists. W3 (and the platform split of W2) can start on macOS now.
+
+## 9. Risks
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| No Windows machine with Illustrator | Blocks W1, W4–W8 | Owner's second Creative Cloud activation on a PC or VM (W0, ❓) |
+| COM busy / modal dialogs block calls | Hangs | Message filter with retry until the request timeout; hint in the error (§ 3.3) |
+| PowerShell execution policy (GPO `AllSigned`) or AMSI flags the bridge | Bridge won't start on managed PCs | `-ExecutionPolicy Bypass` (process scope, no admin) covers defaults; signed script or option E for locked-down machines |
+| `DoJavaScript` string-size limit | Runtime (~30 KB) won't load in one call | Measure in W1; fall back to `$.evalFile` of the runtime file written once per session |
+| Per-call latency above 10 ms | Slower agents | Option E (.NET helper) behind the same protocol |
+| Elevation mismatch (one side "Run as administrator") | `E_ACCESSDENIED` | Clear message (§ 3.5) |
+| One COM ProgID for all installed versions | Can't pick a version when two run | Document; version choice by launch path only (phase 6 item) |
+| Only an ARM64 VM to test on | x64-specific problems (COM registration, paths of the x64 build) found late | CI `windows-latest` (x64) runs unit + fake-COM tests; live x64 run when a machine or cloud VM is available; VM timings may differ from real PCs — benchmarks say so |
+
+## 10. Decisions (owner, 2026-11-22)
+
+1. **Test machine:** a VM — Parallels on the owner's Apple Silicon Mac, so **Windows 11 ARM64** is the first live
+   target (no PC available). W0 checks whether Illustrator runs as a native ARM64 build or under x64 emulation.
+2. **When:** after the 0.1 release — Windows ships as **0.2**.
+3. **.NET helper (option E):** acceptable if PowerShell turns out too slow or blocked and it can be built and signed
+   reasonably; decided after the W1 spike.

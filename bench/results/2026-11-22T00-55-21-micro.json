@@ -1,0 +1,173 @@
+{
+  "env": {
+    "date": "2026-11-22",
+    "illustrator": "29.1.0",
+    "macos": "27.2.1",
+    "node": "v26.3.0",
+    "cpu": "Apple M1"
+  },
+  "startup": {
+    "A": 0.4522919999999431,
+    "B": 273.78100000000006,
+    "C": 53.548584000000005
+  },
+  "ie3Version": "1.13.0",
+  "rows": [
+    {
+      "scenario": "S1",
+      "title": "Read artboards (×20, one call each)",
+      "runner": "A extendscript (osascript per call)",
+      "calls": 20,
+      "median": 149.67220799999996,
+      "p95": 185.86012500000015,
+      "min": 137.05445899999995,
+      "total": 3041.023459000001,
+      "errors": 0,
+      "items": 0,
+      "expectItems": 0
+    },
+    {
+      "scenario": "S1",
+      "title": "Read artboards (×20, one call each)",
+      "runner": "B ie3 illustrator-mcp-server",
+      "calls": 20,
+      "median": 320.1743750000005,
+      "p95": 343.07979200000045,
+      "min": 294.9284579999994,
+      "total": 6423.933249999996,
+      "errors": 0,
+      "items": 0,
+      "expectItems": 0
+    },
+    {
+      "scenario": "S1",
+      "title": "Read artboards (×20, one call each)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 20,
+      "median": 5.31879200000003,
+      "p95": 125.74325000000135,
+      "min": 4.253040999999939,
+      "total": 232.90237400000115,
+      "errors": 0,
+      "items": 0,
+      "expectItems": 0
+    },
+    {
+      "scenario": "S2",
+      "title": "Create a rectangle (×20, one call each)",
+      "runner": "A extendscript (osascript per call)",
+      "calls": 20,
+      "median": 157.95279200000004,
+      "p95": 188.62225000000035,
+      "min": 146.4478340000005,
+      "total": 3180.221002,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S2",
+      "title": "Create a rectangle (×20, one call each)",
+      "runner": "B ie3 illustrator-mcp-server",
+      "calls": 20,
+      "median": 332.7978750000002,
+      "p95": 352.44816699999865,
+      "min": 313.36175000000003,
+      "total": 6643.574750999998,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S2",
+      "title": "Create a rectangle (×20, one call each)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 20,
+      "median": 6.254542000002402,
+      "p95": 42.59012499999881,
+      "min": 5.3208750000012515,
+      "total": 200.72458499999993,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S3",
+      "title": "Create a 14 pt point text (×20, one call each)",
+      "runner": "A extendscript (osascript per call)",
+      "calls": 20,
+      "median": 155.39758300000176,
+      "p95": 248.16916700000002,
+      "min": 144.92345899999782,
+      "total": 3263.889999999996,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S3",
+      "title": "Create a 14 pt point text (×20, one call each)",
+      "runner": "B ie3 illustrator-mcp-server",
+      "calls": 20,
+      "median": 327.55216700000165,
+      "p95": 347.09454099999857,
+      "min": 309.1344170000011,
+      "total": 6534.263002000007,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S3",
+      "title": "Create a 14 pt point text (×20, one call each)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 20,
+      "median": 9.043291999998473,
+      "p95": 50.372292000000016,
+      "min": 5.790084000000206,
+      "total": 235.55458400000134,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S4",
+      "title": "Build 100 rectangles + 100 texts (each approach's natural way)",
+      "runner": "A extendscript (osascript per call)",
+      "calls": 1,
+      "median": 225.9310000000005,
+      "p95": 225.9310000000005,
+      "min": 225.9310000000005,
+      "total": 225.9310000000005,
+      "errors": 0,
+      "items": 200,
+      "expectItems": 200
+    },
+    {
+      "scenario": "S4",
+      "title": "Build 100 rectangles + 100 texts (each approach's natural way)",
+      "runner": "B ie3 illustrator-mcp-server",
+      "calls": 200,
+      "median": 328.2100830000054,
+      "p95": 360.645875000002,
+      "min": 296.0200409999961,
+      "total": 66059.708207,
+      "errors": 0,
+      "items": 200,
+      "expectItems": 200
+    },
+    {
+      "scenario": "S4",
+      "title": "Build 100 rectangles + 100 texts (each approach's natural way)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 1,
+      "median": 96.43537500000093,
+      "p95": 96.43537500000093,
+      "min": 96.43537500000093,
+      "total": 96.43537500000093,
+      "errors": 0,
+      "items": 200,
+      "expectItems": 200
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "chandelier": {
+      "command": "node",
+      "args": [
+        "dist/index.js"
+      ]
+    }
+  }
+}

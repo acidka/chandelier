@@ -1,0 +1,66 @@
+{
+  "env": {
+    "date": "2026-11-22",
+    "illustrator": "29.1.0",
+    "macos": "27.2.1",
+    "node": "v26.3.0",
+    "cpu": "Apple M1"
+  },
+  "startup": {
+    "C": 78.26216599999998
+  },
+  "rows": [
+    {
+      "scenario": "S1",
+      "title": "Read artboards (×20, one call each)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 20,
+      "median": 2.827709000000027,
+      "p95": 86.45249999999999,
+      "min": 2.626125000000002,
+      "total": 141.55895600000008,
+      "errors": 0,
+      "items": 0,
+      "expectItems": 0
+    },
+    {
+      "scenario": "S2",
+      "title": "Create a rectangle (×20, one call each)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 20,
+      "median": 3.139500000000112,
+      "p95": 3.4400419999999485,
+      "min": 2.9272079999999505,
+      "total": 63.08483600000022,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S3",
+      "title": "Create a 14 pt point text (×20, one call each)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 20,
+      "median": 5.403542000000016,
+      "p95": 76.47408300000006,
+      "min": 5.071957999999995,
+      "total": 202.38800000000026,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S4",
+      "title": "Build 100 rectangles + 100 texts (each approach's natural way)",
+      "runner": "C illustrator-agent bridge",
+      "calls": 1,
+      "median": 48.64179200000012,
+      "p95": 48.64179200000012,
+      "min": 48.64179200000012,
+      "total": 48.64179200000012,
+      "errors": 0,
+      "items": 200,
+      "expectItems": 200
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "label": "M2-A2",
+  "file": "<transcripts>/agent-a3c5db13b4ed64e23.jsonl",
+  "window": {
+    "from": "2026-11-21T23:20:24.242Z",
+    "to": "2026-11-21T23:22:19.865Z"
+  },
+  "wallMinutes": 1.9,
+  "modelRequests": 9,
+  "inputTokensTotal": 463878,
+  "inputTokens": {
+    "uncached": 18,
+    "cacheWrite": 41223,
+    "cacheRead": 422637
+  },
+  "outputTokens": 11784,
+  "toolCalls": 10,
+  "toolCallsByFamily": {
+    "other": 5,
+    "A ExtendScript (Bash)": 5
+  },
+  "toolErrorsByFamily": {}
+}

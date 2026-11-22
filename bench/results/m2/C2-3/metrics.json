@@ -1,0 +1,23 @@
+{
+  "label": "M2-C2-3",
+  "file": "<transcripts>/agent-a10ae25a690a2da4b.jsonl",
+  "window": {
+    "from": "2026-11-22T00:13:13.748Z",
+    "to": "2026-11-22T00:14:11.535Z"
+  },
+  "wallMinutes": 1,
+  "modelRequests": 9,
+  "inputTokensTotal": 377161,
+  "inputTokens": {
+    "uncached": 18,
+    "cacheWrite": 28654,
+    "cacheRead": 348489
+  },
+  "outputTokens": 5928,
+  "toolCalls": 12,
+  "toolCallsByFamily": {
+    "other": 4,
+    "C our MCP": 8
+  },
+  "toolErrorsByFamily": {}
+}

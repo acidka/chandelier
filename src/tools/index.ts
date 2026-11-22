@@ -1,0 +1,24 @@
+import type { ToolDef } from './types.js';
+import { status } from './status.js';
+import { configure } from './configure.js';
+import { documents } from './documents.js';
+import { run_script } from './run_script.js';
+import { preview } from './preview.js';
+import { batch } from './batch.js';
+import { create_shape } from './create_shape.js';
+import { create_path } from './create_path.js';
+import { create_text, edit_text } from './text.js';
+import { modify_items, delete_items } from './modify.js';
+import { transform_items, duplicate_items } from './transform.js';
+import { arrange_items, align_items } from './arrange.js';
+import { path_ops } from './path_ops.js';
+import { layers, artboards } from './structure.js';
+import { swatches, fonts } from './colors.js';
+import { styles } from './styles.js';
+import { place, menu_command, history } from './place.js';
+import { export_tool } from './export.js';
+import { preflight } from './preflight.js';
+import { find_items, get_items, get_tree, selection } from './inspect.js';
+import { document_info } from './document_info.js';
+
+export const TOOLS: ToolDef[] = [status, configure, documents, document_info, find_items, get_items, get_tree, selection, create_shape, create_path, create_text, edit_text, modify_items, delete_items, transform_items, duplicate_items, arrange_items, align_items, path_ops, layers, artboards, swatches, fonts, styles, place, menu_command, history, run_script, batch, preview, export_tool, preflight];

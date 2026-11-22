@@ -1,0 +1,65 @@
+{
+  "name": "chandelier-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets AI agents work in Adobe Illustrator fast: one persistent connection (~5 ms per call), batches, typed tools, ExtendScript, print-ready export and preflight.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "adobe-illustrator",
+    "illustrator",
+    "extendscript",
+    "ai-agents",
+    "claude",
+    "print",
+    "pdf-x",
+    "automation"
+  ],
+  "author": "acidka (https://github.com/acidka)",
+  "license": "MIT",
+  "homepage": "https://github.com/acidka/chandelier",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/acidka/chandelier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/acidka/chandelier/issues"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22.15"
+  },
+  "os": [
+    "darwin"
+  ],
+  "bin": {
+    "chandelier-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "!dist/**/*.map"
+  ],
+  "scripts": {
+    "build": "tsc -p . && node scripts/copy-assets.mjs",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:live": "npm run build && node test/live.mjs && node test/live-edit.mjs && node test/live-print.mjs && node test/live-release.mjs",
+    "typecheck": "tsc -p . --noEmit",
+    "lint:jsx": "node scripts/lint-jsx.mjs",
+    "bench": "node bench/micro.mjs",
+    "bench:macro": "node bench/macro-metrics.mjs",
+    "prepublishOnly": "npm run build && npm test && npm run lint:jsx",
+    "build:mcpb": "npm run build && node scripts/build-mcpb.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "pdf-lib": "^1.17.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "acorn": "^8.19.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}
