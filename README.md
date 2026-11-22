@@ -148,10 +148,8 @@ restarts. Architecture, decisions with their pros and cons, and the measurements
 
 ## Status
 
-**MVP done** (2026-11-22); **0.1 release in progress**. macOS only. Next:
+**0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle. macOS only. Next:
 
-- **0.1 release** — `npx chandelier-mcp`, a Claude Code plugin with an Illustrator skill, a Claude Desktop bundle,
-  hang hints, contrast checks.
 - **0.2: Windows** — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)).
 
 Everything planned and done: [roadmap](docs/roadmap.md).

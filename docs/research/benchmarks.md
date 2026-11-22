@@ -380,6 +380,18 @@ from `save_to` files) — hence the extra calls and errors. The file itself is t
 (RMSE 0.108; CMYK, 5 global swatches, 13 paragraph styles, 121 live texts, preflight clean). Fixed in **0.1.1**: the
 server checks the Node version at startup and, if it is too old, answers with one `status` tool that explains the fix.
 
+**Clean re-run on the fixed plugin** (plugin 0.1.2, `chandelier-mcp@0.1.1` on Node 22.23, 2026-11-23; files
+`bench/results/m2/C2p-2/`):
+
+| Run | Wall | Requests | Tool calls (Illustrator) | Input | Output | Tool errors | Quality | RMSE |
+|-----|-----:|---------:|-------------------------:|------:|-------:|------------:|--------:|-----:|
+| C2p-2 | **1.1 min** | 9 | **10 (5)** | **0.44 M** | 7.4 k | **0** | 10 | 0.145 |
+
+Through the installed plugin, with its `illustrator` skill: the fastest and cheapest M2 run so far, all MVP targets
+and the call goal met. 5 Illustrator calls: new document, one `run_script` builder, one `preview {reference,
+preflight}`, one `documents save {export, close}` (plus the builder's re-check). 5 global swatches, 13 paragraph
+styles, 121 live texts, preflight clean.
+
 ### Metrics extractor
 
 ```sh

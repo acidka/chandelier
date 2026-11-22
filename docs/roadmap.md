@@ -24,7 +24,7 @@ Estimates are for focused agent-assisted work, live-tested on the owner's Mac.
 both baselines (ExtendScript files and ie3 MCP). See [MVP](#milestone--mvp-) below. ✅ Exit met 2026-11-22 (M2: C1 10 calls / 1.5 min, C2 11 calls / 1.2 min,
 both 10/10); real job approved by the owner the same day. **MVP done.**
 
-**Milestone 🎯 0.1 release** (next) cuts across phases 4–6: someone other than the owner can install Chandelier and
+**Milestone 🎯 0.1 release** ✅ (2026-11-23, released as v0.1.1) cut across phases 4–6: someone other than the owner can install Chandelier and
 use it safely. See [0.1 release](#milestone--01-release-) below. Est. effort: 2–3 days.
 
 ---
@@ -89,7 +89,7 @@ Plus: MCP round trip p50 < 10 ms (micro S1–S3 with runner C-mcp); live test su
 **Out of scope (after MVP):** `path_ops`, `place`, `menu_command`, `history`, `transform_items`, `align_items`, PDF/X bleed
 boxes, overprint/separations, crop marks, the 12-page calendar macro, npm/plugin/`.mcpb`, Windows, phase 8.
 
-## Milestone 🎯 0.1 release 🔄
+## Milestone 🎯 0.1 release ✅
 
 **Goal:** Chandelier installs in one step for Claude Code and Claude Desktop on a Mac other than the owner's, and an
 agent using it recovers from the usual trouble (hangs, timeouts, dialogs) without harming documents.
@@ -99,12 +99,12 @@ agent using it recovers from the usual trouble (hangs, timeouts, dialogs) withou
 | Area | Pass when |
 |------|-----------|
 | npm | ✅ `npx -y chandelier-mcp` from the registry starts in a clean folder with a fresh npm cache (2026-11-23) |
-| Claude Code plugin | `claude plugin install` works; the Illustrator skill and `/ai-preview`, `/ai-preflight` load; one M2 run (arm C2) through the plugin meets the MVP targets |
+| Claude Code plugin | ✅ Installed from the marketplace; skill and commands load; M2 run C2p-2 through the plugin: 1.1 min, 10 calls, 0.44 M, 0 errors, 10/10 (2026-11-23) |
 | Claude Desktop | ✅ `chandelier-0.1.0.mcpb` installed in Claude Desktop and works (owner, 2026-11-23) |
 | Robustness | ✅ Live tests cover a timeout while Illustrator is busy: the agent gets a clear hint, and `status.last_call` shows whether the call finished and the ids it created (a modal dialog takes the same path; not automated) |
 | Tool fixes from the logo job | ✅ `preview {region}` relative to a chosen artboard, SVG export clip to artboard, colour-contrast check for RGB documents — each with unit and live tests |
 | Languages | ✅ ru_RU: live suites green; en_US moved to 0.2 (Windows VM, owner 2026-11-23) |
-| Docs | README install section for all three routes; `docs/` current; change log row; version 0.1.0 tagged on `main` |
+| Docs | ✅ README install routes; docs current; released as **v0.1.1** (npm `chandelier-mcp@0.1.1`, plugin 0.1.2, GitHub Release with the `.mcpb`) — 0.1.0 on npm lacks the Node guard |
 
 **In scope** (tick them in the phases below):
 - **Phase 4:** the three tool fixes from the logo job
@@ -361,6 +361,7 @@ works on a fresh Windows account; README has a Windows quick start.
 | 2026-11-22 | Benchmarks run once per arm from now on (owner) |
 | 2026-11-22 | Phase 4: shorter build loop — `documents new {units}`, `documents save {export, close}`, `preview {more, preflight, info}`; instructions aim for ~8 Illustrator calls |
 | 2026-11-22 | MVP: tool-call counts are goals, not exit criteria (owner) |
+| 2026-11-23 | **0.1 release done:** clean plugin benchmark (C2p-2: 1.1 min, 10 calls, 0.44 M, 0 errors, 10/10); tag v0.1.1 + GitHub Release |
 | 2026-11-23 | Plugin 0.1.2: server started with `npx --prefix ${CLAUDE_PLUGIN_ROOT}` — inside a folder whose `package.json` is named `chandelier-mcp` (this repo, a clone) npm 10's npx looked for the bin in the local project and failed with `chandelier-mcp: command not found` |
 | 2026-11-23 | 0.1.1: Node version check at startup — on Node < 22.15 the server answers with one `status` tool explaining the fix (found by the plugin benchmark: the user's nvm default is Node 15) |
 | 2026-11-23 | Repo public with history collapsed into one commit; CI on macOS; plugin installed from the marketplace and the `.mcpb` working in Claude Desktop |
