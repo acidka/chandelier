@@ -361,6 +361,7 @@ works on a fresh Windows account; README has a Windows quick start.
 | 2026-11-22 | Benchmarks run once per arm from now on (owner) |
 | 2026-11-22 | Phase 4: shorter build loop — `documents new {units}`, `documents save {export, close}`, `preview {more, preflight, info}`; instructions aim for ~8 Illustrator calls |
 | 2026-11-22 | MVP: tool-call counts are goals, not exit criteria (owner) |
+| 2026-11-23 | Plugin 0.1.2: server started with `npx --prefix ${CLAUDE_PLUGIN_ROOT}` — inside a folder whose `package.json` is named `chandelier-mcp` (this repo, a clone) npm 10's npx looked for the bin in the local project and failed with `chandelier-mcp: command not found` |
 | 2026-11-23 | 0.1.1: Node version check at startup — on Node < 22.15 the server answers with one `status` tool explaining the fix (found by the plugin benchmark: the user's nvm default is Node 15) |
 | 2026-11-23 | Repo public with history collapsed into one commit; CI on macOS; plugin installed from the marketplace and the `.mcpb` working in Claude Desktop |
 | 2026-11-23 | `chandelier-mcp@0.1.0` published on npm; verified from the registry with npx |
