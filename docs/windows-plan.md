@@ -187,14 +187,16 @@ Goal: after about an hour of the owner's time, once, the agent runs W1–W8 itse
 
 **Owner, once:**
 1. Parallels Desktop → New → "Get Windows 11 from Microsoft"; log in.
-2. In the VM, PowerShell as administrator: `powershell -ExecutionPolicy Bypass -File setup-vm.ps1 -PublicKey "<the Mac's ~/.ssh/id_ed25519.pub>"`
-   ([scripts/windows/setup-vm.ps1](../scripts/windows/setup-vm.ps1): OpenSSH server, the key, Node LTS and Git via
-   winget, no sleep). It prints the `ssh user@ip` line for the agent.
+2. On the Mac: `scripts/windows/connect-vm.sh` ([source](../scripts/windows/connect-vm.sh)). It makes an SSH key in
+   the git-ignored `tmp/windows-vm/` (with an `ssh_config`; `~/.ssh` untouched), starts the VM, runs
+   [setup-vm.ps1](../scripts/windows/setup-vm.ps1) in it through `prlctl exec` (OpenSSH server + the key, no sleep) —
+   or, if Parallels refuses exec, puts a one-line elevated PowerShell command on the clipboard to paste in the VM —
+   then installs Node LTS and Git over SSH (winget) and clones the repo (`develop`) to `C:\src\chandelier`.
 3. Creative Cloud → install Illustrator (en_US UI), start it once, close the first-run dialogs. Stay logged in to Windows.
 
-**The agent, from then on:** `ssh` in, clone/pull the repo, `npm ci && npm test`; anything that needs Illustrator
+**The agent, from then on:** `ssh -F tmp/windows-vm/ssh_config win`, clone/pull the repo, `npm ci && npm test`; anything that needs Illustrator
 goes through [scripts/windows/run-interactive.ps1](../scripts/windows/run-interactive.ps1), which runs the command as
 a scheduled task with an Interactive logon in the owner's desktop session and returns its output and exit code. Why:
 an SSH session is a separate logon session; COM's running-object table is per session, so `GetActiveObject` from SSH
-would not find the Illustrator on the desktop, and anything launched from it is invisible. Both scripts were written
+would not find the Illustrator on the desktop, and anything launched from it is invisible. The scripts were written
 on 2026-11-23 without a Windows machine and are checked in W0.

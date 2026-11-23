@@ -22,7 +22,8 @@ node test/live-restart.mjs        # quits + relaunches Illustrator (refuses if d
 node test/verify-assumptions.mjs  # uuid / undo / 5 000-object scan checks (roadmap 1.6)
 npm run bench       # micro benchmark A/B/C
 npm run build:mcpb  # Claude Desktop bundle → build/chandelier-<version>.mcpb
-scripts/windows/setup-vm.ps1      # once, in the Windows VM: SSH access for the agent (docs/windows-plan.md § 11)
+scripts/windows/connect-vm.sh     # on the Mac, once: Parallels VM → SSH for the agent (key in tmp/windows-vm/; runs setup-vm.ps1 in the VM)
+ssh -F tmp/windows-vm/ssh_config win  # into the Windows VM (docs/windows-plan.md § 11)
 scripts/windows/run-interactive.ps1  # over SSH: run a command in the VM's desktop session (live tests need it)
 claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill, commands); marketplace in .claude-plugin/
 node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
