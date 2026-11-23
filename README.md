@@ -150,7 +150,7 @@ restarts. Architecture, decisions with their pros and cons, and the measurements
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle. macOS only. Next:
 
-- **0.2: Windows** (in progress) — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)); bridge and CI written, live tests next.
+- **0.2: Windows** (in progress) — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)); bridge works with Illustrator 2027 on Windows 11 (ARM64); the main live suite passes, the rest is in progress.
 
 Everything planned and done: [roadmap](docs/roadmap.md).
 
