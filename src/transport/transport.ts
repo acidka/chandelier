@@ -36,7 +36,7 @@ export class Transport {
     this.opt = {
       command: opt.command ?? bridgeCommand().command,
       args: opt.args ?? (opt.command ? [] : bridgeCommand().args),
-      readyTimeoutMs: opt.readyTimeoutMs ?? 15_000,
+      readyTimeoutMs: opt.readyTimeoutMs ?? (Number(process.env.CHANDELIER_BRIDGE_START_MS) || 15_000), // env: slow machines (emulated VMs)
       graceMs: opt.graceMs ?? 10_000,
     };
   }

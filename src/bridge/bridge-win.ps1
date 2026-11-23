@@ -25,7 +25,7 @@ $out = [System.IO.StreamWriter]::new([Console]::OpenStandardOutput(), $utf8)
 $out.NewLine = "`n"
 $out.AutoFlush = $true
 
-Add-Type -TypeDefinition @'
+$CS = @'
 using System;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -62,6 +62,23 @@ namespace Chandelier {
   }
 }
 '@
+# Compiling $CS (csc.exe) costs ~2 s per start on a PC and over a minute on an emulated x64 VM: compile once into
+# %LOCALAPPDATA%\chandelier\bridge-<hash of the source>.dll and load that afterwards.
+$sha = [System.Security.Cryptography.SHA256]::Create()
+$hash = -join ($sha.ComputeHash($utf8.GetBytes($CS))[0..7] | ForEach-Object { $_.ToString('x2') })
+$dllDir = Join-Path $env:LOCALAPPDATA 'chandelier'
+$dll = Join-Path $dllDir "bridge-$hash.dll"
+$loaded = $false
+if (Test-Path $dll) { try { Add-Type -Path $dll; $loaded = $true } catch { } }
+if (-not $loaded) {
+  try { # compile to a temp name, then rename: a second bridge starting at the same time never loads a half-written file
+    New-Item -ItemType Directory -Force -Path $dllDir | Out-Null
+    $tmpDll = Join-Path $dllDir ("bridge-$hash-" + [Guid]::NewGuid().ToString('N') + '.dll')
+    Add-Type -TypeDefinition $CS -OutputAssembly $tmpDll -OutputType Library
+    try { Move-Item -LiteralPath $tmpDll -Destination $dll -ErrorAction Stop; $tmpDll = $dll } catch { }
+    Add-Type -Path $tmpDll
+  } catch { Add-Type -TypeDefinition $CS } # no writable LOCALAPPDATA: compile in memory as before
+}
 
 $FAKE = $env:CHANDELIER_FAKE_COM -eq '1'
 $PROGID = 'Illustrator.Application'

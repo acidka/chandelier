@@ -7,7 +7,9 @@ import { bridgeCommand } from '../../src/platform.js';
 
 const hasPs = process.platform === 'win32' && spawnSync('powershell.exe', ['-NoProfile', '-Command', 'exit 0']).status === 0;
 const hr = (hex: string) => parseInt(hex, 16) | 0;
-const make = (o: object = {}) => new Transport({ ...bridgeCommand('win'), readyTimeoutMs: 60_000, ...o });
+const slow = Number(process.env.CHANDELIER_TEST_SLOW) || 1; // see vitest.config.ts
+const LIMIT = 90_000 * slow;
+const make = (o: object = {}) => new Transport({ ...bridgeCommand('win'), readyTimeoutMs: 60_000 * slow, ...o });
 let T: Transport;
 afterEach(() => T?.stop());
 beforeAll(() => { process.env.CHANDELIER_FAKE_COM = '1'; });
@@ -19,18 +21,18 @@ describe.skipIf(!hasPs)('bridge-win.ps1 (fake COM)', () => {
     const r = await Promise.all([T.js('sleep:30'), T.js('echo:b'), T.call('running'), T.call('activate'), T.call('launch')]);
     expect(r.map((m) => m.result)).toEqual(['slept', 'b', 'yes', 'ok', 'ok']);
     expect(T.spawns).toBe(1);
-  }, 90_000);
+  }, LIMIT);
 
   it('carries escaped Unicode and control characters both ways', async () => {
     T = make();
     expect((await T.js('echo:Січень "q" \\ \u0001x')).result).toBe('\\u0421\\u0456\\u0447\\u0435\\u043d\\u044c "q" \\ \u0001x');
-  }, 90_000);
+  }, LIMIT);
 
   it('carries a runtime-sized script in one call', async () => {
     T = make();
     const big = 'x'.repeat(200_000);
     expect((await T.js(big)).result).toBe('len:200000');
-  }, 90_000);
+  }, LIMIT);
 
   it('maps HRESULTs to the shared messages', async () => {
     T = make();
@@ -39,7 +41,7 @@ describe.skipIf(!hasPs)('bridge-win.ps1 (fake COM)', () => {
     expect(m.errno).toBe(hr('800401E3'));
     expect(m.error).toMatch(/not running.*0x800401E3/);
     expect((await T.js('hr:8001010A')).error).toMatch(/modal dialog/);
-  }, 90_000);
+  }, LIMIT);
 
   it('answers "not running" without attaching', async () => {
     process.env.CHANDELIER_FAKE_RUNNING = 'no';
@@ -50,7 +52,7 @@ describe.skipIf(!hasPs)('bridge-win.ps1 (fake COM)', () => {
       expect(m.ok).toBe(false);
       expect(m.error).toMatch(/^Illustrator is not running/);
     } finally { delete process.env.CHANDELIER_FAKE_RUNNING; }
-  }, 90_000);
+  }, LIMIT);
 
   it('recovers after a crash and after a stuck call', async () => {
     T = make({ graceMs: 500 });
@@ -61,5 +63,5 @@ describe.skipIf(!hasPs)('bridge-win.ps1 (fake COM)', () => {
     expect(s.errno).toBe(-1712);
     expect((await T.js('echo:ok')).result).toBe('ok');
     expect(T.spawns).toBe(3);
-  }, 180_000);
+  }, 2 * LIMIT);
 });

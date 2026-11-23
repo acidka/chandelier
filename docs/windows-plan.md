@@ -120,6 +120,11 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
   `sleep:` / `hr:<hex>` / `crash`; `CHANDELIER_FAKE_RUNNING=no`); `test/unit/bridge-win.test.ts` drives it through
   the real `Transport` — framing, escaping, a 200 KB script, HRESULT messages, crash and stuck-call respawn. Runs
   where `powershell.exe` exists (the `windows-latest` CI job), skipped on macOS.
+- **Slow machines:** `CHANDELIER_TEST_SLOW=<factor>` stretches the unit tests' time limits (the emulated x64 VM
+  uses 8); `CHANDELIER_BRIDGE_START_MS` raises the server's 15 s limit for the bridge's ready line.
+- **Bridge start:** the C# helper (message filter, COM call) is compiled once into
+  `%LOCALAPPDATA%\chandelier\bridge-<hash>.dll` and loaded from there afterwards (2026-11-23, emulated Windows 10
+  x64 VM on Parallels 27.1: first start 136 s, cached 107 s; a bare `powershell.exe` alone takes 51 s there).
 - **Live, on a Windows machine with Illustrator:** `npm run test:live`, `live-layout`, `live-finish`,
   `verify-assumptions`; a Windows `live-restart` (quit through COM `Quit()`, refuses if documents are open); the
   live-suite document guard works unchanged.
