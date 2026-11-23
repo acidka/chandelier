@@ -145,7 +145,7 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 |------|------|-----:|:--------------:|
 | **W0** | Parallels VM with Windows 11 ARM64 on the owner's Mac, set up for agent access over SSH (§ 11); Illustrator (Creative Cloud second activation; native ARM64 build or x64 emulation — check which), Node 22 ARM64, Git | ~1 h owner | yes |
 | **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); modal dialog, crash and the 5-min call still open | 0.5 d | yes |
-| **W2** 🔄 | Platform layer `src/platform.ts` (bridge command, script paths); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` — written 2026-11-23, live run in W1 | 1 d | partly |
+| **W2** ✅ | Platform layer `src/platform.ts` (bridge command, script paths); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` — written 2026-11-23, ran live 2026-11-24 (§ 12) | 1 d | partly |
 | **W3** ✅ | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests — done 2026-11-23 | 0.5 d | no |
 | **W4** | Paths into ExtendScript; runtime checks from § 5 on Windows | 0.5 d | yes |
 | **W5** 🔄 | HRESULT error map ✅, `status` hints, launch from the registry path (written), activation (written), Windows `live-restart` | 0.5 d | yes |
@@ -159,7 +159,7 @@ Total ≈ 5 days once a Windows machine exists. W3 (and the platform split of W2
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| No Windows machine with Illustrator | Blocks W1, W4–W8 | Owner's second Creative Cloud activation on a PC or VM (W0, ❓) |
+| No Windows machine with Illustrator (resolved 2026-11-24) | Blocked W1, W4–W8 | Illustrator 2027 in the Windows 11 ARM64 VM (§ 12) |
 | COM busy / modal dialogs block calls | Hangs | Message filter with retry until the request timeout; hint in the error (§ 3.3) |
 | PowerShell execution policy (GPO `AllSigned`) or AMSI flags the bridge | Bridge won't start on managed PCs | `-ExecutionPolicy Bypass` (process scope, no admin) covers defaults; signed script or option E for locked-down machines |
 | `DoJavaScript` string-size limit | Runtime (~30 KB) won't load in one call | Measure in W1; fall back to `$.evalFile` of the runtime file written once per session |

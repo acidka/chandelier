@@ -15,7 +15,7 @@ Each phase has **exit criteria**. A phase is done only when they are met and the
 | 4 | Agent efficiency (instructions, skill, script library, benchmarks) | ✅ Done (2026-11-22) | — |
 | 5 | Robustness (MRAP, crashes, hangs, live test suite) | 🔄 MVP part done (2026-11-22); hangs and idempotency in 0.1 | ongoing |
 | 6 | Distribution (npm, Claude Code plugin, `.mcpb`, brand) | 🔄 brand done; packaging in 0.1 | 1–2 days |
-| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | 🔄 W3 done; W2/W5/W6 macOS-side parts done, waiting for the VM (W0) | ~4.5 days |
+| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | 🔄 W0, W2, W3 done; W1 mostly done (PowerShell bridge kept); W4–W8 next on the ARM64 VM | ~3 days |
 | 8 | Future (CEP/UXP transport, events, effects, data merge) | 🧊 | — |
 
 Estimates are for focused agent-assisted work, live-tested on the owner's Mac.
@@ -284,9 +284,9 @@ restart, verify-assumptions) are green; MCP round trip p50 < 10 ms (micro runner
 targets; Illustrator is never launched unasked; unit tests green on a macOS + Windows CI matrix; `npx chandelier-mcp`
 works on a fresh Windows account; README has a Windows quick start.
 
-- [ ] ❓ W0 Parallels VM (Windows, SSH, Node, Git ✅ 2026-11-23; **Illustrator won't install on ARM64**, neither release nor beta; emulated x64 VM tried and dropped as too slow → back to a Windows 11 ARM64 VM, owner tries the Illustrator trial): Windows 11 ARM64, Illustrator (native ARM64 or x64 emulation — record which), Node 22 ARM64, Git; set up for agent access over SSH (owner once: [windows-plan § 11](windows-plan.md#11-agent-access-to-the-vm-w0), `scripts/windows/connect-vm.sh` on the Mac); live runs through `scripts/windows/run-interactive.ps1`
+- [x] ✅ W0 Parallels VM (Windows, SSH, Node, Git 2026-11-23; Illustrator 2026 wouldn't install on ARM64 and an emulated x64 VM was dropped as too slow; **2026-11-24: Illustrator 2027 (31.0.0) installs as a native ARM64 build**): Windows 11 ARM64, Illustrator 2027 native ARM64, Node 22 ARM64, Git; set up for agent access over SSH (owner once: [windows-plan § 11](windows-plan.md#11-agent-access-to-the-vm-w0), `scripts/windows/connect-vm.sh` on the Mac); live runs through `scripts/windows/run-interactive.ps1`
 - [ ] 🔄 W1 Spike: persistent `powershell.exe` bridge, `GetActiveObject` + `DoJavaScript` loop; measure latency, runtime load size, a 5-min call, a modal dialog, a crash, Unicode, whether activation is needed; choose PowerShell (A) or a .NET helper (E; owner: fine if needed) — 2026-11-24: Illustrator 2027 native ARM64 in the VM; **A kept** (8 ms median), 1 MB scripts, Unicode, errors, 70 s call, `test/live.mjs` green; open: modal dialog, crash, 5-min call, activation (windows-plan § 12)
-- [ ] 🔄 W2 Platform layer (`src/platform.ts`: bridge command, script paths), `src/bridge/bridge-win.ps1` (same NDJSON protocol, cached COM object, OLE message filter, fake-COM mode), `Transport` picks by platform — written 2026-11-23; ticked after its first live run (W1)
+- [x] ✅ W2 Platform layer (`src/platform.ts`: bridge command, script paths), `src/bridge/bridge-win.ps1` (same NDJSON protocol, cached COM object, OLE message filter, fake-COM mode), `Transport` picks by platform — written 2026-11-23; first live run 2026-11-24: `test/live-w1-bridge.mjs` and `test/live.mjs` green through the full MCP server
 - [x] ✅ W3 Pure-JS image pipeline (2026-11-23): PNG 8/16-bit with alpha, JPEG via `jpeg-js` (pure JS), crop and area-average resize in `src/image.ts`; `preview` (shrink, reference crop/resize) and `export {refs}` no longer call `sips`; on macOS `sips` remains only as a converter for other formats (HEIC, TIFF, WebP, interlaced PNG); unit tests + live suites green
 - [ ] ⏳ W4 Paths into ExtendScript (forward slashes for `path`/`dir` args: done 2026-11-23; check drive letters live); runtime checks on Windows (exports, PDF presets, Pathfinder menu commands, fonts, localised layer names, long paths)
 - [ ] 🔄 W5 HRESULT error map (✅ 2026-11-23, unit-tested), `status` hints, launch from the registered install path, activation via `AppActivate`, Windows `live-restart`
@@ -401,3 +401,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-23 | W2/W6: bridge caches its compiled C# helper DLL; `CHANDELIER_TEST_SLOW` / `CHANDELIER_BRIDGE_START_MS` for slow machines (emulated VM) |
 | 2026-11-23 | W0 back to ARM64: x64 VM deleted (too slow); Windows 11 ARM64 VM via `connect-vm.sh` + ngen; unit tests green (112 + 1 skipped), bridge ready in ~2.5 s; owner installs the Illustrator trial |
 | 2026-11-24 | W1: Illustrator 2027 installs natively in the ARM64 VM; `test/live-w1-bridge.mjs`; PowerShell bridge kept (8 ms median idle); error map knows 0x80041389 (ExtendScript error); `test/live.mjs` passes on Windows |
+| 2026-11-24 | Roadmap: W0 and W2 ticked (Illustrator 2027 native ARM64 in the VM; Windows bridge and platform layer ran live); phase 7 estimate ~3 days left |
