@@ -235,3 +235,14 @@ after it, one SSH command took 60–80 s (Defender and Windows Update busy on th
 Fresh Windows has not built its .NET native images yet, so every PowerShell start JIT-compiles: run
 `ngen.exe executeQueuedItems` (Framework64 and Framework, v4.0.30319) once over SSH — 2 h emulated, then a bare
 `powershell.exe` starts in 12 s instead of 50 s and the bridge in 21 s instead of 81 s (Defender off; 2026-11-23).
+
+**Back to ARM64 (2026-11-23, evening, owner's choice):** the emulated x64 VM was too slow (SSH copies ~100 KB/s,
+PowerShell start 12–50 s) and was deleted. New VM "Windows 11" from Parallels' "Get Windows 11 from Microsoft"
+(Windows 11 Pro ARM64 build 26300, 4 vCPU, 6 GB, Parallels Tools 27.1); the owner installs the **Illustrator trial**
+there (the Creative Cloud release refused ARM64 earlier — the trial is the next attempt). `connect-vm.sh` set it up
+unchanged — but run it only after Windows' first-run screens: run during them, it found the temporary
+`defaultuser0` account. `ngen executeQueuedItems` took 6 min. Measured over SSH, warm (Parallels 27.1, macOS 27.2,
+Apple Silicon, Node 26.13 ARM64): bare `powershell.exe` 1.7 s, bridge ready (fake COM, cached helper DLL) 2.3–2.6 s;
+unit tests 112 passed + 1 skipped in 47 s (one timing test failed once while ngen ran alongside).
+Big files go into the VM over plain HTTP from the Mac (`python3 -m http.server --bind 10.211.55.2`, `curl.exe` in the
+VM), not `scp`.
