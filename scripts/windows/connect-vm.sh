@@ -4,10 +4,10 @@
 #   scripts/windows/connect-vm.sh ["VM name"]      (default: the first VM whose name contains "Windows")
 #
 # 1. Makes an SSH key in tmp/windows-vm/ (git-ignored; ~/.ssh is not touched) and an ssh config there.
-# 2. Starts the VM and waits for Parallels Tools.
+# 2. Starts the VM; if SSH already answers (make-x86-vm.sh set it up), skips to 4. Else waits for Parallels Tools.
 # 3. Runs setup-vm.ps1 in the VM (OpenSSH server + this key) through `prlctl exec`; if Parallels refuses exec
 #    (edition without it), puts a one-line command on the clipboard to paste into PowerShell in the VM.
-# 4. Waits for SSH, installs Node.js LTS and Git over SSH (winget), clones the repo (develop) to C:\src\chandelier.
+# 4. Waits for SSH, installs Node.js LTS and Git over SSH (install-tools.ps1, official downloads), clones the repo (develop) to C:\src\chandelier.
 # Afterwards:  ssh -F tmp/windows-vm/ssh_config win
 # Still manual: install Illustrator from Creative Cloud in the VM, start it once, close its first-run dialogs.
 # Safe to re-run. Written 2026-11-23.
@@ -67,6 +67,37 @@ vm_run_file() { # upload a PowerShell script (stdin) and run it in the VM as SYS
   "$PRLCTL" exec "$VM" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$remote.ps1" </dev/null
 }
 
+vm_ip() { # Parallels Tools' report, else the Parallels DHCP lease of the VM's MAC (works without Tools)
+  local ip mac
+  ip="$("$PRLCTL" list -a -o ip,name --no-header | grep -F "$VM" | awk '{print $1}' | grep -E '^[0-9]+\.' | head -1 || true)"
+  if [ -z "$ip" ]; then
+    mac="$("$PRLCTL" list -i "$VM" | sed -n 's/.*net0 .*mac=\([0-9A-Fa-f]*\).*/\1/p' | head -1 | tr 'A-F' 'a-f')"
+    [ -n "$mac" ] && ip="$(grep -i "$mac" /Library/Preferences/Parallels/parallels_dhcp_leases 2>/dev/null | sed -n 's/^\([0-9.]*\)=.*/\1/p' | tail -1)"
+  fi
+  printf '%s' "$ip"
+}
+write_cfg() {
+  cat > "$CFG" <<EOF
+Host win
+  HostName $1
+  User $2
+  IdentityFile $KEY
+  IdentitiesOnly yes
+  UserKnownHostsFile $DIR/known_hosts
+  StrictHostKeyChecking accept-new
+  ServerAliveInterval 30
+  LogLevel ERROR
+EOF
+}
+S() { ssh -F "$CFG" -o BatchMode=yes -o ConnectTimeout=5 win "$@"; }
+
+# Already reachable (e.g. make-x86-vm.sh's unattended install set SSH up)? Then skip straight to tools + repo.
+WINUSER="${WINUSER:-$USER}"
+IP="$(vm_ip)"
+READY=0
+if [ -n "$IP" ]; then write_cfg "$IP" "$WINUSER"; S 'Write-Output ready' 2>/dev/null | grep -q ready && READY=1; fi
+
+if [ "$READY" = 0 ]; then
 say "Waiting for Windows and Parallels Tools (log in to Windows in the VM window if it asks)"
 EXEC=0
 for _ in $(seq 1 60); do
@@ -102,24 +133,10 @@ fi
 WINUSER="${WINUSER:-$USER}"
 
 IP=""
-for _ in $(seq 1 30); do
-  IP="$("$PRLCTL" list -a -o ip,name --no-header | grep -F "$VM" | awk '{print $1}' | grep -E '^[0-9]+\.' | head -1 || true)"
-  [ -n "$IP" ] && break; sleep 2
-done
+for _ in $(seq 1 30); do IP="$(vm_ip)"; [ -n "$IP" ] && break; sleep 2; done
 [ -n "$IP" ] || read -r -p "VM IP address (setup printed it): " IP
-
-cat > "$CFG" <<EOF
-Host win
-  HostName $IP
-  User $WINUSER
-  IdentityFile $KEY
-  IdentitiesOnly yes
-  UserKnownHostsFile $DIR/known_hosts
-  StrictHostKeyChecking accept-new
-  ServerAliveInterval 30
-  LogLevel ERROR
-EOF
-S() { ssh -F "$CFG" -o BatchMode=yes -o ConnectTimeout=5 win "$@"; }
+write_cfg "$IP" "$WINUSER"
+fi
 
 say "Waiting for SSH at $WINUSER@$IP"
 ok=0
@@ -127,11 +144,10 @@ for _ in $(seq 1 30); do S 'Write-Output ready' 2>/dev/null | grep -q ready && {
 [ "$ok" = 1 ] || die "SSH does not answer. Check in the VM: Get-Service sshd; your user must be an administrator."
 
 # --- 4. tools + repo ---------------------------------------------------------------------------------------------
-say "Node.js and Git"
-S 'foreach ($id in @("OpenJS.NodeJS.LTS","Git.Git")) { winget list --id $id -e --accept-source-agreements *> $null; if ($LASTEXITCODE -ne 0) { winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements --scope machine } }' \
-  || echo "   winget over SSH failed: install Node.js LTS and Git in the VM by hand, then re-run this script."
-# new SSH sessions see the updated machine PATH
-S '$env:Path = [Environment]::GetEnvironmentVariable("Path","Machine"); node -v; git --version' || true
+say "Node.js and Git (official downloads)"
+scp -q -F "$CFG" "$ROOT/scripts/windows/install-tools.ps1" win:C:/Windows/Temp/install-tools.ps1 \
+  && S 'powershell -NoProfile -ExecutionPolicy Bypass -File C:\Windows\Temp\install-tools.ps1' \
+  || echo "   Installing Node.js/Git failed (output above): install them in the VM by hand, then re-run this script."
 
 say "Repository → C:\\src\\chandelier ($BRANCH)"
 S "\$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine'); if (-not (Test-Path C:\\src\\chandelier\\.git)) { New-Item -ItemType Directory -Force C:\\src | Out-Null; git clone -q $REPO C:\\src\\chandelier }; cd C:\\src\\chandelier; git fetch -q origin; git checkout -q $BRANCH 2>\$null; git pull -q 2>\$null; git log --oneline -1" \

@@ -397,3 +397,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-23 | Phase 7 (0.2) macOS-side work: `src/platform.ts`, `bridge-win.ps1` (PowerShell 5.1 + COM, message filter, fake-COM mode), HRESULT error map, forward-slash script paths, CI matrix macOS + Windows, `.gitattributes` (LF); agent-driven VM plan (windows-plan § 11, `scripts/windows/`) |
 | 2026-11-23 | W0: Windows 11 ARM64 VM reachable over SSH via `connect-vm.sh`; unit tests incl. fake-COM `bridge-win.ps1` green in the VM (113/113) |
 | 2026-11-23 | W0 blocker: Illustrator (release x64 and Windows-on-ARM beta) won't install in the Parallels ARM64 VM; live Windows steps need an x64 machine |
+| 2026-11-23 | W0 x64 route: ARM VM removed; unattended Windows 10 x64 VM under Parallels x86_64 emulation (`make-x86-vm.sh`, `install-tools.ps1`; `connect-vm.sh` finds the IP via DHCP leases) |

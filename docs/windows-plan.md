@@ -215,3 +215,12 @@ release of Illustrator fails its system check on Windows 11 ARM64, and Illustrat
 build (minimum hardware: Snapdragon X Elite), would not install either (VM: 4 vCPU "Apple Silicon", 6 GB RAM,
 Parallels display adapter). The VM stays useful for unit tests and the fake-COM bridge; live steps (W1, W4–W8) need an
 **x64 Windows** machine with Illustrator — see § 9 and the open decision in § 10.
+
+**x64 route (2026-11-23, owner's choice): Parallels' x86_64 emulation on the same Mac.** The ARM VM and its ISOs were
+deleted. `scripts/windows/make-x86-vm.sh <iso>` builds "Windows 10 x64" with the hidden `--cpu-type x86` (1 vCPU,
+6 GB; Windows 11 24H2+ is not supported by the emulator) from the Windows 10 Enterprise 22H2 **evaluation** ISO
+(Microsoft's direct link, 90 days, no key) and an unattended-setup disc (`Autounattend.xml`: disk, local admin
+account with auto-logon, `setup-vm.ps1` at first logon → SSH with the agent key; password in git-ignored
+`tmp/windows-vm/`). `connect-vm.sh` then finds the VM's IP from the Parallels DHCP leases (no Parallels Tools needed)
+and installs Node and Git from their official downloads (`install-tools.ps1`; no winget on a fresh Windows 10).
+Emulated, so slow: fine for correctness (W1, W4–W6), not for benchmarks (W7 needs real x64 hardware).
