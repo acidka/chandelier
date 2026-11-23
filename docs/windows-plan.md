@@ -200,3 +200,11 @@ a scheduled task with an Interactive logon in the owner's desktop session and re
 an SSH session is a separate logon session; COM's running-object table is per session, so `GetActiveObject` from SSH
 would not find the Illustrator on the desktop, and anything launched from it is invisible. The scripts were written
 on 2026-11-23 without a Windows machine and are checked in W0.
+
+**W0 status (2026-11-23):** Windows 11 ARM64 in Parallels 27.1; `connect-vm.sh` ran end to end after two fixes
+(`prlctl exec` refuses command lines over ~4 KB and forwards the caller's stdin → upload in chunks with stdin from
+`/dev/null`; the SSH firewall rule covered Private networks only, the Parallels network is Public → `-Profile Any`).
+Node 26.13 ARM64 and Git 2.56 via winget over SSH. Over SSH call `npm.cmd` / `npx.cmd`: the default execution policy
+blocks the `npm.ps1` shims (the bridge is unaffected: it runs with `-ExecutionPolicy Bypass`). **All 113 unit tests
+pass in the VM, including `bridge-win.ps1` in fake-COM mode**; a bridge start takes ~2.4 s, most likely `Add-Type`
+compiling its C# (W1: measure, cache the compiled type if it matters). Illustrator: not installed yet (owner).
