@@ -144,7 +144,7 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | Step | What | Est. | Needs Windows? |
 |------|------|-----:|:--------------:|
 | **W0** | Parallels VM with Windows 11 ARM64 on the owner's Mac, set up for agent access over SSH (§ 11); Illustrator (Creative Cloud second activation; native ARM64 build or x64 emulation — check which), Node 22 ARM64, Git | ~1 h owner | yes |
-| **W1** | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E | 0.5 d | yes |
+| **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); modal dialog, crash and the 5-min call still open | 0.5 d | yes |
 | **W2** 🔄 | Platform layer `src/platform.ts` (bridge command, script paths); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` — written 2026-11-23, live run in W1 | 1 d | partly |
 | **W3** ✅ | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests — done 2026-11-23 | 0.5 d | no |
 | **W4** | Paths into ExtendScript; runtime checks from § 5 on Windows | 0.5 d | yes |
@@ -166,7 +166,7 @@ Total ≈ 5 days once a Windows machine exists. W3 (and the platform split of W2
 | Per-call latency above 10 ms | Slower agents | Option E (.NET helper) behind the same protocol |
 | Elevation mismatch (one side "Run as administrator") | `E_ACCESSDENIED` | Clear message (§ 3.5) |
 | One COM ProgID for all installed versions | Can't pick a version when two run | Document; version choice by launch path only (phase 6 item) |
-| Illustrator won't install on Windows ARM64 in Parallels (**happened 2026-11-23**) | No live Windows tests on the owner's Mac | x64 cloud VM (Azure/AWS, Creative Cloud second activation) or a PC; same SSH setup (`setup-vm.ps1` is hypervisor-neutral) |
+| Illustrator won't install on Windows ARM64 in Parallels (happened 2026-11-23; **Illustrator 2027 installs natively, 2026-11-24**) | No live Windows tests on the owner's Mac | x64 cloud VM (Azure/AWS, Creative Cloud second activation) or a PC; same SSH setup (`setup-vm.ps1` is hypervisor-neutral) |
 | Only an ARM64 VM to test on | x64-specific problems (COM registration, paths of the x64 build) found late | CI `windows-latest` (x64) runs unit + fake-COM tests; live x64 run when a machine or cloud VM is available; VM timings may differ from real PCs — benchmarks say so |
 
 ## 10. Decisions (owner, 2026-11-22)
@@ -215,7 +215,7 @@ blocks the `npm.ps1` shims (the bridge is unaffected: it runs with `-ExecutionPo
 pass in the VM, including `bridge-win.ps1` in fake-COM mode**; a bridge start takes ~2.4 s, most likely `Add-Type`
 compiling its C# (W1: measure, cache the compiled type if it matters).
 
-**Blocker (2026-11-23): Illustrator does not install in the ARM64 VM.** Creative Cloud 6.11 installs, but the x64
+**Blocker (2026-11-23, resolved 2026-11-24 — see § 12): Illustrator does not install in the ARM64 VM.** Creative Cloud 6.11 installs, but the x64
 release of Illustrator fails its system check on Windows 11 ARM64, and Illustrator (Beta), Adobe's only Windows-on-ARM
 build (minimum hardware: Snapdragon X Elite), would not install either (VM: 4 vCPU "Apple Silicon", 6 GB RAM,
 Parallels display adapter). The VM stays useful for unit tests and the fake-COM bridge; live steps (W1, W4–W8) need an
@@ -246,3 +246,40 @@ Apple Silicon, Node 26.13 ARM64): bare `powershell.exe` 1.7 s, bridge ready (fak
 unit tests 112 passed + 1 skipped in 47 s (one timing test failed once while ngen ran alongside).
 Big files go into the VM over plain HTTP from the Mac (`python3 -m http.server --bind 10.211.55.2`, `curl.exe` in the
 VM), not `scp`.
+
+## 12. W1 results (2026-11-24)
+
+**Illustrator 2027 (31.0.0) installs in the Windows 11 ARM64 VM and is a native ARM64 build** (`Illustrator.exe`
+machine type 0xAA64), from Creative Cloud 6.11, registered as `Illustrator.Application` / `Illustrator.Application.31`;
+install path from the App Paths key. (Illustrator 2026 had refused this VM, § 11.) It runs as two `Illustrator.exe`
+processes started together; `GetActiveObject` finds the right one. Buying the plan inside the VM failed for the owner
+(cards declined); signing in to an account that already has the plan avoids checkout there.
+
+[test/live-w1-bridge.mjs](../test/live-w1-bridge.mjs) drives `bridge-win.ps1` directly (desktop session via
+`run-interactive.ps1`). Windows 11 Pro ARM64 26300 VM, 4 vCPU, 6 GB, Parallels 27.1, macOS 27.2, Apple Silicon,
+Node 26.13 ARM64, Illustrator 31.0.0, no document open:
+
+| Check | Idle VM (first run) | Same VM ~1 h later, loaded |
+|---|---|---|
+| Bridge ready (cached helper DLL) | 2.5 s | 4.4 s |
+| `running` (process list only) | 88 ms | 431 ms |
+| First `js` (attach) | 102 ms | 491 ms |
+| 200 × `1+1`: median / p95 / max | **8.1 / 32 / 137 ms** | 127 / 247 / 537 ms |
+| Script 30 KB / 100 KB / 300 KB / 1 MB | 21 / 38 / 40 / 148 ms | 201 / 196 / 127 / 232 ms |
+| `activate` | 1.3 s | 164 ms |
+
+- **Option A (PowerShell + COM) kept:** 8 ms median on an idle VM meets the 10 ms target; no `DoJavaScript` size limit
+  up to 1 MB, so the runtime loads in one call (no `$.evalFile` fallback).
+- **Unicode:** non-ASCII arrives intact both as `\uXXXX` escapes (what the transport sends) and raw.
+- **Errors:** an ExtendScript error (throw or syntax error) comes back as HRESULT **0x80041389** (FACILITY_ITF + 5001,
+  the same 5001 as on macOS) with message and line; added to the error map. A 70 s call completes (the message filter
+  keeps the call alive); measured 82 s.
+- **Full MCP server:** `node test/live.mjs` passes unchanged on Windows (23 checks: documents new/save/close, text,
+  batch of 100, selection, preview by export and by image capture, run_script errors). Its run_script round trip
+  measured p50 269 ms — taken while the VM was in the loaded state above, not comparable with macOS 5.7 ms.
+- **Noise:** the slowdown hit everything equally, including `running`, which never touches Illustrator — so the VM,
+  not the bridge: 0.9 GB of 6 GB free (Illustrator ~1.8 GB) while the Mac was indexing (Spotlight) and throttled.
+  Latency numbers for Windows need an idle VM, or real hardware (W7).
+- **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM), a crash and re-attach,
+  the 5-min call, and whether save/export need activation (macOS A10).
+

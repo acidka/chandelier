@@ -48,6 +48,7 @@ describe('Windows error map', () => {
     expect(explain(hr('80010108'), 'x')).toMatch(/quit or crashed/);
     expect(explain(hr('8001010A'), 'x')).toMatch(/modal dialog/);
     expect(explain(hr('80070005'), 'x')).toMatch(/administrator/);
+    expect(explain(-2147216503, 'Error 17')).toMatch(/^ExtendScript error \(often.*0x80041389: Error 17/); // W1: what DoJavaScript throws
     expect(explain(hr('80004005'), 'raw')).toBe('raw');
   });
 
