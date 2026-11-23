@@ -144,7 +144,7 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | Step | What | Est. | Needs Windows? |
 |------|------|-----:|:--------------:|
 | **W0** | Parallels VM with Windows 11 ARM64 on the owner's Mac, set up for agent access over SSH (§ 11); Illustrator (Creative Cloud second activation; native ARM64 build or x64 emulation — check which), Node 22 ARM64, Git | ~1 h owner | yes |
-| **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); modal dialog, crash and the 5-min call still open | 0.5 d | yes |
+| **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); crash ✅; modal dialog and the 5-min call still open | 0.5 d | yes |
 | **W2** ✅ | Platform layer `src/platform.ts` (bridge command, script paths); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` — written 2026-11-23, ran live 2026-11-24 (§ 12) | 1 d | partly |
 | **W3** ✅ | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests — done 2026-11-23 | 0.5 d | no |
 | **W4** | Paths into ExtendScript; runtime checks from § 5 on Windows | 0.5 d | yes |
@@ -280,6 +280,14 @@ Node 26.13 ARM64, Illustrator 31.0.0, no document open:
 - **Noise:** the slowdown hit everything equally, including `running`, which never touches Illustrator — so the VM,
   not the bridge: 0.9 GB of 6 GB free (Illustrator ~1.8 GB) while the Mac was indexing (Spotlight) and throttled.
   Latency numbers for Windows need an idle VM, or real hardware (W7).
-- **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM), a crash and re-attach,
-  the 5-min call, and whether save/export need activation (macOS A10).
+- **Crash (2026-11-24):** `test/live-restart.mjs` now runs on Windows: it kills Illustrator (`taskkill /F`) during a
+  20 s call. The call in flight fails 1.15 s after the kill with **0x800706BE** (RPC_S_CALL_FAILED) — not in the first
+  error map, so the bridge kept the dead COM object and the first call after a relaunch failed before re-attaching.
+  Fixed: 0x800706BE counts as "quit or crashed" in the bridge and the error map, and the bridge drops its cached
+  object whenever Illustrator isn't running. Then: `status` / calls say "not running" (42 / 33 ms), `status
+  {launch:true}` relaunches and answers in 19.3 s (24 s before the fix), the runtime reloads by itself (228 ms), one
+  bridge process throughout. The test now counts runtime loads from its own start (another session may have loaded the
+  runtime already).
+- **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM), the 5-min call, and
+  whether save/export need activation (macOS A10).
 

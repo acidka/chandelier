@@ -84,7 +84,8 @@ $FAKE = $env:CHANDELIER_FAKE_COM -eq '1'
 $PROGID = 'Illustrator.Application'
 $HR_NOT_RUNNING = [Convert]::ToInt32('800401E3', 16)   # MK_E_UNAVAILABLE
 $HR_NOT_INSTALLED = [Convert]::ToInt32('800401F3', 16) # CO_E_CLASSSTRING
-$HR_GONE = @('80010108', '800706BA', '80010007', '80010012') | ForEach-Object { [Convert]::ToInt32($_, 16) }
+# Illustrator quit or crashed; 800706BE (RPC_S_CALL_FAILED) is what the call in flight gets (W1)
+$HR_GONE = @('80010108', '800706BA', '800706BE', '80010007', '80010012') | ForEach-Object { [Convert]::ToInt32($_, 16) }
 $script:app = $null
 
 if (-not $FAKE) { [void][Chandelier.MessageFilter]::Register() }
@@ -103,8 +104,8 @@ function Is-Running {
 }
 
 function Get-App {
+  if (-not (Is-Running)) { $script:app = $null; Fail $HR_NOT_RUNNING 'not running' } # drop a dead object before a relaunch
   if ($script:app) { return $script:app }
-  if (-not (Is-Running)) { Fail $HR_NOT_RUNNING 'not running' }
   $script:app = [System.Runtime.InteropServices.Marshal]::GetActiveObject($PROGID)
   return $script:app
 }
@@ -121,7 +122,7 @@ function Invoke-Js($req) {
   $t = 300
   if ($req.timeout) { $t = [Math]::Max(1, [int][Math]::Round([double]$req.timeout)) }
   [Chandelier.MessageFilter]::LimitMs = $t * 1000
-  if (-not (Is-Running)) { Fail $HR_NOT_RUNNING 'not running' }
+  if (-not (Is-Running)) { $script:app = $null; Fail $HR_NOT_RUNNING 'not running' }
   if ($FAKE) { return Invoke-Fake ([string]$req.code) }
   $r = [Chandelier.Com]::Call((Get-App), 'DoJavaScript', @([string]$req.code))
   if ($null -eq $r) { return '' }

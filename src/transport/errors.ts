@@ -22,6 +22,7 @@ export const ERRNO: Record<string, string> = {
   '0x800401F3': 'Illustrator is not installed or its COM server is not registered (start it once as this user).', // CO_E_CLASSSTRING
   '0x80010108': GONE, // RPC_E_DISCONNECTED
   '0x800706BA': GONE, // RPC_S_SERVER_UNAVAILABLE
+  '0x800706BE': GONE, // RPC_S_CALL_FAILED: the call in flight when Illustrator died (W1)
   '0x80010007': GONE, // RPC_E_SERVER_DIED
   '0x80010012': GONE, // RPC_E_SERVER_DIED_DNE
   '0x8001010A': BUSY, // RPC_E_SERVERCALL_RETRYLATER

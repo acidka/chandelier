@@ -18,7 +18,7 @@ npm run test:live   # needs a running Illustrator; works only in a document it c
 node test/live-layout.mjs         # multi-artboard spacing/bleed, batch step artboard, AIA.at, non-printing renders
 node test/live-finish.mjs         # documents new {units}, preview {more, preflight, info}, documents save {export, close}
 node test/live-release.mjs        # 0.1: preview region from an artboard, SVG clipped to the artboard, low_contrast (also in test:live)
-node test/live-restart.mjs        # quits + relaunches Illustrator (refuses if documents are open)
+node test/live-restart.mjs        # quits (Windows: kills mid-call) + relaunches Illustrator (refuses if documents are open)
 node test/verify-assumptions.mjs  # uuid / undo / 5 000-object scan checks (roadmap 1.6)
 npm run bench       # micro benchmark A/B/C
 npm run build:mcpb  # Claude Desktop bundle → build/chandelier-<version>.mcpb
