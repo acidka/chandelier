@@ -27,7 +27,7 @@ call $Command > "$log" 2>&1
 echo %ERRORLEVEL% > "$code"
 "@
 
-$user = "$env:USERDOMAIN\$env:USERNAME"
+$user = [Security.Principal.WindowsIdentity]::GetCurrent().Name # USERDOMAIN is empty in SSH sessions
 $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$cmd`""
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds $TimeoutSec)
