@@ -49,9 +49,22 @@ case "$status" in
   *) "$PRLCTL" start "$VM" ;;
 esac
 
-vm_ps() { # run a PowerShell script (stdin) in the VM as SYSTEM through Parallels Tools
-  local b64; b64="$(iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')"
+# prlctl exec refuses command lines over ~4 KB ("Unable to open new session", seen 2026-11-23): short commands go
+# inline, scripts are uploaded in chunks and run as a file.
+vm_ps() { # run a SHORT PowerShell snippet (stdin) in the VM as SYSTEM through Parallels Tools
+  local b64; b64="$( (printf '$ProgressPreference = "SilentlyContinue"\n'; cat) | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')"
   "$PRLCTL" exec "$VM" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand "$b64"
+}
+vm_run_file() { # upload a PowerShell script (stdin) and run it in the VM as SYSTEM
+  # prlctl exec forwards OUR stdin to the guest: read the script first, give every exec /dev/null
+  local remote='C:\Windows\Temp\chandelier-setup' chunk b64
+  b64="$( (printf '$ProgressPreference = "SilentlyContinue"\n'; cat) | base64 | tr -d '\n')"
+  "$PRLCTL" exec "$VM" cmd /c "del /q $remote.b64 $remote.ps1 2>nul & exit 0" </dev/null >/dev/null
+  for chunk in $(printf '%s' "$b64" | fold -w 1000); do
+    "$PRLCTL" exec "$VM" cmd /c "echo $chunk>>$remote.b64" </dev/null >/dev/null || return 1
+  done
+  "$PRLCTL" exec "$VM" cmd /c "certutil -f -decode $remote.b64 $remote.ps1 >nul" </dev/null || return 1
+  "$PRLCTL" exec "$VM" powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$remote.ps1" </dev/null
 }
 
 say "Waiting for Windows and Parallels Tools (log in to Windows in the VM window if it asks)"
@@ -73,7 +86,7 @@ payload() {
 # --- 3. OpenSSH in the VM ------------------------------------------------------------------------------------------
 if [ "$EXEC" = 1 ]; then
   say "Setting up OpenSSH in the VM (prlctl exec, takes a few minutes the first time)"
-  payload true | vm_ps || die "setup-vm.ps1 failed in the VM (output above)."
+  payload true | vm_run_file || die "setup-vm.ps1 failed in the VM (output above)."
   WINUSER="$(echo '(Get-CimInstance Win32_ComputerSystem).UserName' | vm_ps | tr -d '\r' | tail -1)"
   WINUSER="${WINUSER##*\\}"
 else
@@ -104,6 +117,7 @@ Host win
   UserKnownHostsFile $DIR/known_hosts
   StrictHostKeyChecking accept-new
   ServerAliveInterval 30
+  LogLevel ERROR
 EOF
 S() { ssh -F "$CFG" -o BatchMode=yes -o ConnectTimeout=5 win "$@"; }
 
