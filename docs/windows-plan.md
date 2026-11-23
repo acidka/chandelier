@@ -232,3 +232,6 @@ Emulated, so slow: fine for correctness (W1, W4–W6), not for benchmarks (W7 ne
 Measured 2026-11-23 (Parallels 27.1, macOS 27.2, Apple Silicon): the unattended install took 57 min to SSH; right
 after it, one SSH command took 60–80 s (Defender and Windows Update busy on the single emulated CPU), so
 `connect-vm.sh` retries its SSH check.
+Fresh Windows has not built its .NET native images yet, so every PowerShell start JIT-compiles: run
+`ngen.exe executeQueuedItems` (Framework64 and Framework, v4.0.30319) once over SSH — 2 h emulated, then a bare
+`powershell.exe` starts in 12 s instead of 50 s and the bridge in 21 s instead of 81 s (Defender off; 2026-11-23).
