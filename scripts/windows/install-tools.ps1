@@ -11,7 +11,9 @@ function Refresh-Path { $env:Path = [Environment]::GetEnvironmentVariable('Path'
 Refresh-Path
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-  $v = (Invoke-RestMethod 'https://nodejs.org/dist/index.json' | Where-Object { $_.lts } | Select-Object -First 1).version
+  # assign first: PowerShell 5.1 passes a JSON array down the pipeline as ONE object (seen 2026-11-23)
+  $releases = Invoke-RestMethod 'https://nodejs.org/dist/index.json'
+  $v = ($releases | Where-Object { $_.lts } | Select-Object -First 1).version
   $a = 'x64'; if ($arm) { $a = 'arm64' }
   $msi = Join-Path $tmp "node-$v-$a.msi"
   Write-Host "Node.js $v ($a)"
