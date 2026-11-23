@@ -161,6 +161,7 @@ Total ≈ 5 days once a Windows machine exists. W3 (and the platform split of W2
 | Per-call latency above 10 ms | Slower agents | Option E (.NET helper) behind the same protocol |
 | Elevation mismatch (one side "Run as administrator") | `E_ACCESSDENIED` | Clear message (§ 3.5) |
 | One COM ProgID for all installed versions | Can't pick a version when two run | Document; version choice by launch path only (phase 6 item) |
+| Illustrator won't install on Windows ARM64 in Parallels (**happened 2026-11-23**) | No live Windows tests on the owner's Mac | x64 cloud VM (Azure/AWS, Creative Cloud second activation) or a PC; same SSH setup (`setup-vm.ps1` is hypervisor-neutral) |
 | Only an ARM64 VM to test on | x64-specific problems (COM registration, paths of the x64 build) found late | CI `windows-latest` (x64) runs unit + fake-COM tests; live x64 run when a machine or cloud VM is available; VM timings may differ from real PCs — benchmarks say so |
 
 ## 10. Decisions (owner, 2026-11-22)
@@ -207,4 +208,10 @@ on 2026-11-23 without a Windows machine and are checked in W0.
 Node 26.13 ARM64 and Git 2.56 via winget over SSH. Over SSH call `npm.cmd` / `npx.cmd`: the default execution policy
 blocks the `npm.ps1` shims (the bridge is unaffected: it runs with `-ExecutionPolicy Bypass`). **All 113 unit tests
 pass in the VM, including `bridge-win.ps1` in fake-COM mode**; a bridge start takes ~2.4 s, most likely `Add-Type`
-compiling its C# (W1: measure, cache the compiled type if it matters). Illustrator: not installed yet (owner).
+compiling its C# (W1: measure, cache the compiled type if it matters).
+
+**Blocker (2026-11-23): Illustrator does not install in the ARM64 VM.** Creative Cloud 6.11 installs, but the x64
+release of Illustrator fails its system check on Windows 11 ARM64, and Illustrator (Beta), Adobe's only Windows-on-ARM
+build (minimum hardware: Snapdragon X Elite), would not install either (VM: 4 vCPU "Apple Silicon", 6 GB RAM,
+Parallels display adapter). The VM stays useful for unit tests and the fake-COM bridge; live steps (W1, W4–W8) need an
+**x64 Windows** machine with Illustrator — see § 9 and the open decision in § 10.
