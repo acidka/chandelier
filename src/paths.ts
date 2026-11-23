@@ -3,5 +3,4 @@
 import { fileURLToPath } from 'node:url';
 
 export const asset = (rel: string): string => fileURLToPath(new URL('./' + rel, import.meta.url));
-export const BRIDGE_PATH = asset('bridge/bridge-mac.js');
 export const RUNTIME_DIR = asset('runtime');

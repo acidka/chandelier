@@ -1,12 +1,13 @@
-// Transport to Illustrator over the persistent macOS bridge (src/bridge/bridge-mac.js).
+// Transport to Illustrator over the persistent bridge: src/bridge/bridge-mac.js (macOS) or bridge-win.ps1 (Windows),
+// picked by src/platform.ts. Both speak the same NDJSON protocol.
 //
 // - One long-lived child process; NDJSON in both directions; readiness handshake ({id:0,result:"ready"}).
 // - Serialised: one request in flight (Illustrator is single-threaded anyway).
-// - Every request has a deadline (its AppleScript timeout + grace). If the bridge doesn't answer by then it is
+// - Every request has a deadline (its own timeout + grace). If the bridge doesn't answer by then it is
 //   considered stuck: killed, the call fails with a "may still be running" error, and the next call respawns it.
 // - If the bridge process dies, pending calls fail at once with the exit reason; the next call respawns it.
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { BRIDGE_PATH } from '../paths.js';
+import { bridgeCommand } from '../platform.js';
 import { ascii } from './ascii.js';
 import { explain } from './errors.js';
 
@@ -33,8 +34,8 @@ export class Transport {
 
   constructor(opt: TransportOptions = {}) {
     this.opt = {
-      command: opt.command ?? 'osascript',
-      args: opt.args ?? ['-l', 'JavaScript', BRIDGE_PATH],
+      command: opt.command ?? bridgeCommand().command,
+      args: opt.args ?? (opt.command ? [] : bridgeCommand().args),
       readyTimeoutMs: opt.readyTimeoutMs ?? 15_000,
       graceMs: opt.graceMs ?? 10_000,
     };
@@ -51,7 +52,7 @@ export class Transport {
   private async start(): Promise<void> {
     this.spawns++;
     this.stderrTail = '';
-    const p = spawn(this.opt.command, this.opt.args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    const p = spawn(this.opt.command, this.opt.args, { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     this.p = p;
     let buf = '';
     p.stdout.setEncoding('utf8');

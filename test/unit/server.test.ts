@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 // Full stack minus Apple events: MCP client → server → Transport → fake bridge → real runtime in a vm.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -5,7 +6,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer } from '../../src/server.js';
 import { Transport } from '../../src/transport/transport.js';
 
-const FAKE = new URL('./fake-illustrator.mjs', import.meta.url).pathname;
+const FAKE = fileURLToPath(new URL('./fake-illustrator.mjs', import.meta.url));
 let client: Client, T: Transport;
 const call = async (name: string, args: object = {}) => {
   const r: any = await client.callTool({ name, arguments: args });

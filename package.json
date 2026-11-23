@@ -29,7 +29,8 @@
     "node": ">=22.15"
   },
   "os": [
-    "darwin"
+    "darwin",
+    "win32"
   ],
   "bin": {
     "chandelier-mcp": "dist/index.js"

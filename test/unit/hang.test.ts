@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 // 0.1 robustness: a call that times out gets a hint from a follow-up ping, and status.last_call says whether the
 // last call that could change something finished and what it created.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -6,7 +7,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer } from '../../src/server.js';
 import { Transport } from '../../src/transport/transport.js';
 
-const FAKE = new URL('./fake-illustrator.mjs', import.meta.url).pathname;
+const FAKE = fileURLToPath(new URL('./fake-illustrator.mjs', import.meta.url));
 let client: Client, T: Transport;
 const call = async (name: string, args: object = {}) => {
   const r: any = await client.callTool({ name, arguments: args });

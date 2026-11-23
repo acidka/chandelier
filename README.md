@@ -150,7 +150,7 @@ restarts. Architecture, decisions with their pros and cons, and the measurements
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle. macOS only. Next:
 
-- **0.2: Windows** — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)).
+- **0.2: Windows** (in progress) — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)); bridge and CI written, live tests next.
 
 Everything planned and done: [roadmap](docs/roadmap.md).
 

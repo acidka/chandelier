@@ -1,7 +1,8 @@
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect, afterEach } from 'vitest';
 import { Transport } from '../../src/transport/transport.js';
 
-const FAKE = new URL('./fake-bridge.mjs', import.meta.url).pathname;
+const FAKE = fileURLToPath(new URL('./fake-bridge.mjs', import.meta.url));
 const make = (o: object = {}) => new Transport({ command: process.execPath, args: [FAKE], ...o });
 let T: Transport;
 afterEach(() => T?.stop());

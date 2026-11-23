@@ -15,7 +15,7 @@ Each phase has **exit criteria**. A phase is done only when they are met and the
 | 4 | Agent efficiency (instructions, skill, script library, benchmarks) | ✅ Done (2026-11-22) | — |
 | 5 | Robustness (MRAP, crashes, hangs, live test suite) | 🔄 MVP part done (2026-11-22); hangs and idempotency in 0.1 | ongoing |
 | 6 | Distribution (npm, Claude Code plugin, `.mcpb`, brand) | 🔄 brand done; packaging in 0.1 | 1–2 days |
-| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | 🔄 W3 done | ~4.5 days |
+| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | 🔄 W3 done; W2/W5/W6 macOS-side parts done, waiting for the VM (W0) | ~4.5 days |
 | 8 | Future (CEP/UXP transport, events, effects, data merge) | 🧊 | — |
 
 Estimates are for focused agent-assisted work, live-tested on the owner's Mac.
@@ -274,7 +274,7 @@ this phase — has **no bleed** (C18). 33 tools; 78 unit tests and three live su
 - [ ] ⏳ Switch the maintainer's production workflow from `illustrator-mcp` to this server; update its agent docs and skill (❓ owner)
 - [ ] ⏳ Multiple installed Illustrator versions (target a specific app path)
 
-## Phase 7 — Windows ⏳
+## Phase 7 — Windows 🔄
 
 Plan, options with pros and cons, risks: [windows-plan.md](windows-plan.md). Starts after the 0.1 release; ships as
 **0.2**. Test machine: a Parallels VM with Windows 11 **ARM64** (owner, 2026-11-22); x64 via CI until a machine exists.
@@ -284,13 +284,13 @@ restart, verify-assumptions) are green; MCP round trip p50 < 10 ms (micro runner
 targets; Illustrator is never launched unasked; unit tests green on a macOS + Windows CI matrix; `npx chandelier-mcp`
 works on a fresh Windows account; README has a Windows quick start.
 
-- [ ] ⏳ W0 Parallels VM: Windows 11 ARM64, Illustrator (native ARM64 or x64 emulation — record which), Node 22 ARM64, Git
+- [ ] ⏳ W0 Parallels VM: Windows 11 ARM64, Illustrator (native ARM64 or x64 emulation — record which), Node 22 ARM64, Git; set up for agent access over SSH (owner ~1 h once: [windows-plan § 11](windows-plan.md#11-agent-access-to-the-vm-w0), `scripts/windows/setup-vm.ps1`); live runs through `scripts/windows/run-interactive.ps1`
 - [ ] ⏳ W1 Spike: persistent `powershell.exe` bridge, `GetActiveObject` + `DoJavaScript` loop; measure latency, runtime load size, a 5-min call, a modal dialog, a crash, Unicode, whether activation is needed; choose PowerShell (A) or a .NET helper (E; owner: fine if needed)
-- [ ] ⏳ W2 Platform layer (`src/platform/{mac,win}.ts`), `src/bridge/bridge-win.ps1` (same NDJSON protocol, cached COM object, OLE message filter), `Transport` picks by platform
+- [ ] 🔄 W2 Platform layer (`src/platform.ts`: bridge command, script paths), `src/bridge/bridge-win.ps1` (same NDJSON protocol, cached COM object, OLE message filter, fake-COM mode), `Transport` picks by platform — written 2026-11-23; ticked after its first live run (W1)
 - [x] ✅ W3 Pure-JS image pipeline (2026-11-23): PNG 8/16-bit with alpha, JPEG via `jpeg-js` (pure JS), crop and area-average resize in `src/image.ts`; `preview` (shrink, reference crop/resize) and `export {refs}` no longer call `sips`; on macOS `sips` remains only as a converter for other formats (HEIC, TIFF, WebP, interlaced PNG); unit tests + live suites green
-- [ ] ⏳ W4 Paths into ExtendScript (forward slashes, drive letters); runtime checks on Windows (exports, PDF presets, Pathfinder menu commands, fonts, localised layer names, long paths)
-- [ ] ⏳ W5 HRESULT error map, `status` hints, launch from the registered install path, activation via `AppActivate`, Windows `live-restart`
-- [ ] ⏳ W6 CI matrix (macOS + Windows), fake-COM bridge protocol test, live suites green on Windows
+- [ ] ⏳ W4 Paths into ExtendScript (forward slashes for `path`/`dir` args: done 2026-11-23; check drive letters live); runtime checks on Windows (exports, PDF presets, Pathfinder menu commands, fonts, localised layer names, long paths)
+- [ ] 🔄 W5 HRESULT error map (✅ 2026-11-23, unit-tested), `status` hints, launch from the registered install path, activation via `AppActivate`, Windows `live-restart`
+- [ ] 🔄 W6 CI matrix (macOS + Windows) ✅, fake-COM bridge protocol test ✅ (`test/unit/bridge-win.test.ts`, 2026-11-23), live suites green on Windows ⏳
 - [ ] ⏳ W7 Benchmarks on Windows (micro M, one M2 C2 run) → [benchmarks](research/benchmarks.md)
 - [ ] ⏳ W8 Windows install and troubleshooting in README and agent guide; `.mcpb` and plugin checked on Windows
 
@@ -394,3 +394,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-22 | Phase 5 (MVP scope): MRAP retry in the runtime + `status.mrap`, failed calls close their empty new document, live-suite document guard; crash/reload ticked |
 | 2026-11-22 | Phase 4 done: calendar C1/C2 re-run once each — 19 / 17 calls (≤ 20), 2.8 / 2.0 min, 0.95 / 0.78 M input |
 | 2026-11-23 | Feature-gap and competitor review ([research/feature-gaps.md](research/feature-gaps.md)): 4 more community Illustrator MCPs, Adobe AI Assistant and local MCP preview; candidate order for 0.1.x–0.4 |
+| 2026-11-23 | Phase 7 (0.2) macOS-side work: `src/platform.ts`, `bridge-win.ps1` (PowerShell 5.1 + COM, message filter, fake-COM mode), HRESULT error map, forward-slash script paths, CI matrix macOS + Windows, `.gitattributes` (LF); agent-driven VM plan (windows-plan § 11, `scripts/windows/`) |

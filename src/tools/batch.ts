@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { ToolDef, Step } from './types.js';
 import { fail, J, ArgError } from './types.js';
 import { clip, errorText } from './respond.js';
+import { scriptPaths } from '../platform.js';
 
 interface StepResult { ok: boolean; data?: unknown; error?: string; line?: number; where?: string }
 interface BatchData { completed: number; total: number; failed_step?: number; rolled_back?: number; results: StepResult[] }
@@ -55,7 +56,7 @@ steps_file: a JSON file with the steps (array or {steps}) instead of steps.`,
     }
     if (steps.some((s) => s.activate)) await T.call('activate');
     const env = await rt.cmd<BatchData>('batch', {
-      steps: steps.map((s) => ({ cmd: s.cmd, args: s.args, settings: s.settings })),
+      steps: steps.map((s) => ({ cmd: s.cmd, args: scriptPaths(s.args), settings: s.settings })),
       stop_on_error: a.stop_on_error !== false, rollback: !!a.rollback,
     }, { timeout: a.timeout });
     if (!env.ok) return { content: [{ type: 'text', text: errorText(env) }], isError: true };

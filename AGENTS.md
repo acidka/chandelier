@@ -1,7 +1,7 @@
 # Rules for agents working in this repo
 
 ## What this is
-**Chandelier** (люстра — Ukrainian slang for Illustrator): an MCP server that drives Adobe Illustrator fast: a persistent JXA bridge (`src/bridge/bridge-mac.js`), an
+**Chandelier** (люстра — Ukrainian slang for Illustrator): an MCP server that drives Adobe Illustrator fast: a persistent bridge (JXA `src/bridge/bridge-mac.js` on macOS, PowerShell/COM `src/bridge/bridge-win.ps1` on Windows, picked in `src/platform.ts`), an
 ExtendScript runtime loaded once into Illustrator (`src/runtime/core.jsx` + one module per tool family, sent as one source; `$.global.AIA`), and a
 TypeScript MCP server (`src/`, built to `dist/`), packaged for npm (`chandelier-mcp`), as a Claude Code plugin
 (`plugin/`) and as a Claude Desktop bundle (`scripts/build-mcpb.mjs`). Plan and decisions: `docs/plan.md`. TODO board: `docs/roadmap.md`.
@@ -22,6 +22,8 @@ node test/live-restart.mjs        # quits + relaunches Illustrator (refuses if d
 node test/verify-assumptions.mjs  # uuid / undo / 5 000-object scan checks (roadmap 1.6)
 npm run bench       # micro benchmark A/B/C
 npm run build:mcpb  # Claude Desktop bundle → build/chandelier-<version>.mcpb
+scripts/windows/setup-vm.ps1      # once, in the Windows VM: SSH access for the agent (docs/windows-plan.md § 11)
+scripts/windows/run-interactive.ps1  # over SSH: run a command in the VM's desktop session (live tests need it)
 claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill, commands); marketplace in .claude-plugin/
 node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
 ```

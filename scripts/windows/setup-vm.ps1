@@ -1,0 +1,52 @@
+# One-time setup of a Windows test machine (VM) so an agent on the Mac can work in it over SSH (phase 7 W0).
+# Run ONCE in the VM, in Windows PowerShell "Run as administrator":
+#
+#   powershell -ExecutionPolicy Bypass -File setup-vm.ps1 -PublicKey "ssh-ed25519 AAAA... you@mac"
+#
+# What it does: OpenSSH server (PowerShell as its shell) with your Mac's public key, Node.js LTS + Git via winget,
+# no sleep while plugged in, and prints the address to ssh to. It does NOT install Illustrator: sign in to Creative
+# Cloud, install Illustrator, start it once and close its first-run dialogs yourself (the only manual part).
+# Untested until W0 (written 2026-11-23 without a Windows machine).
+param([Parameter(Mandatory = $true)][string]$PublicKey)
+$ErrorActionPreference = 'Stop'
+
+function Step($m) { Write-Host "==> $m" }
+
+Step 'OpenSSH server'
+$cap = Get-WindowsCapability -Online | Where-Object Name -like 'OpenSSH.Server*' | Select-Object -First 1
+if ($cap.State -ne 'Installed') { Add-WindowsCapability -Online -Name $cap.Name | Out-Null }
+Set-Service -Name sshd -StartupType Automatic
+Start-Service sshd
+New-ItemProperty -Path 'HKLM:\SOFTWARE\OpenSSH' -Name DefaultShell -PropertyType String -Force `
+  -Value "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" | Out-Null
+if (-not (Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -ErrorAction SilentlyContinue)) {
+  New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH Server (sshd)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 | Out-Null
+}
+
+Step 'Authorized key'
+# Members of Administrators use the shared administrators_authorized_keys file (sshd_config default on Windows).
+$isAdmin = (New-Object Security.Principal.WindowsPrincipal ([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+if ($isAdmin) {
+  $f = "$env:ProgramData\ssh\administrators_authorized_keys"
+  Add-Content -Path $f -Value $PublicKey
+  icacls.exe $f /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F' | Out-Null
+} else {
+  $d = Join-Path $env:USERPROFILE '.ssh'
+  New-Item -ItemType Directory -Force -Path $d | Out-Null
+  Add-Content -Path (Join-Path $d 'authorized_keys') -Value $PublicKey
+}
+
+Step 'Node.js LTS and Git (winget)'
+foreach ($id in @('OpenJS.NodeJS.LTS', 'Git.Git')) {
+  winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements --scope machine
+}
+
+Step 'No sleep while plugged in (the agent works while you are away)'
+powercfg /change standby-timeout-ac 0
+powercfg /change monitor-timeout-ac 0
+
+Step 'Done'
+$ip = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' } | Select-Object -First 1).IPAddress
+Write-Host "From the Mac:  ssh $env:USERNAME@$ip"
+Write-Host 'Stay logged in to Windows: Illustrator and the live tests run in your desktop session (scripts/windows/run-interactive.ps1).'
+Write-Host 'Next: install Illustrator from Creative Cloud, start it once, close the first-run dialogs.'

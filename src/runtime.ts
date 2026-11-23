@@ -1,5 +1,5 @@
 // The ExtendScript runtime (src/runtime/*.jsx) lives in Illustrator's persistent engine as $.global.AIA.
-// Every call is one Apple event: a version check plus AIA.dispatch({cmd, args, settings}). When Illustrator
+// Every call is one Apple event (one COM DoJavaScript call on Windows): a version check plus AIA.dispatch({cmd, args, settings}). When Illustrator
 // restarted (no AIA) or the runtime file changed (other hash), the runtime is sent again and the call retried.
 //
 // The runtime is sent inline (one ~30 KB Apple event per Illustrator session) rather than with $.evalFile:
@@ -8,6 +8,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { RUNTIME_DIR } from './paths.js';
+import { scriptPaths } from './platform.js';
+import { isTimeout } from './transport/errors.js';
 import type { Transport } from './transport/transport.js';
 import { defaultSettings, type Settings } from './settings.js';
 
@@ -77,12 +79,12 @@ export class Runtime {
     const { timeout: defTimeout, ...settings } = { ...this.settings, ...o.settings };
     const timeout = o.timeout;
     const call = ++this.calls;
-    const src = Runtime.wrap({ cmd, args, settings, call });
+    const src = Runtime.wrap({ cmd, args: scriptPaths(args), settings, call });
     for (let attempt = 0; attempt < 2; attempt++) {
       const m = await this.T.js(src, timeout ?? defTimeout);
       if (!m.ok) {
         const env: Envelope<T> = { ok: false, error: m.error ?? 'unknown bridge error', bridge: true };
-        if (m.errno === -1712 && cmd !== 'ping') env.error += ' ' + await this.afterTimeout(call, cmd);
+        if (isTimeout(m.errno) && cmd !== 'ping') env.error += ' ' + await this.afterTimeout(call, cmd);
         return env;
       }
       const r = m.result ?? '';

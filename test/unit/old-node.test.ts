@@ -1,9 +1,10 @@
+import { fileURLToPath } from 'node:url';
 // On a Node that is too old, the server answers MCP with one `status` tool that explains the problem (old-node.ts).
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 
-const OLD = new URL('../../dist/old-node.js', import.meta.url).pathname;
+const OLD = fileURLToPath(new URL('../../dist/old-node.js', import.meta.url));
 const lines = [
   { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '0' } } },
   { jsonrpc: '2.0', method: 'notifications/initialized' },
