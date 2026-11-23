@@ -89,13 +89,17 @@ Host win
   LogLevel ERROR
 EOF
 }
-S() { ssh -F "$CFG" -o BatchMode=yes -o ConnectTimeout=5 win "$@"; }
+S() { ssh -F "$CFG" -o BatchMode=yes -o ConnectTimeout=20 win "$@"; }
 
 # Already reachable (e.g. make-x86-vm.sh's unattended install set SSH up)? Then skip straight to tools + repo.
 WINUSER="${WINUSER:-$USER}"
 IP="$(vm_ip)"
 READY=0
-if [ -n "$IP" ]; then write_cfg "$IP" "$WINUSER"; S 'Write-Output ready' 2>/dev/null | grep -q ready && READY=1; fi
+# (an emulated x64 VM answers in 1-2 minutes per command while Defender and Windows Update are busy: retry)
+if [ -n "$IP" ] && nc -z -G 5 "$IP" 22 2>/dev/null; then
+  write_cfg "$IP" "$WINUSER"
+  for _ in 1 2 3; do S 'Write-Output ready' 2>/dev/null | grep -q ready && { READY=1; break; }; sleep 10; done
+fi
 
 if [ "$READY" = 0 ]; then
 say "Waiting for Windows and Parallels Tools (log in to Windows in the VM window if it asks)"

@@ -224,3 +224,6 @@ account with auto-logon, `setup-vm.ps1` at first logon → SSH with the agent ke
 `tmp/windows-vm/`). `connect-vm.sh` then finds the VM's IP from the Parallels DHCP leases (no Parallels Tools needed)
 and installs Node and Git from their official downloads (`install-tools.ps1`; no winget on a fresh Windows 10).
 Emulated, so slow: fine for correctness (W1, W4–W6), not for benchmarks (W7 needs real x64 hardware).
+Measured 2026-11-23 (Parallels 27.1, macOS 27.2, Apple Silicon): the unattended install took 57 min to SSH; right
+after it, one SSH command took 60–80 s (Defender and Windows Update busy on the single emulated CPU), so
+`connect-vm.sh` retries its SSH check.
