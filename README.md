@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-0F1B2D"></a>
-  <img alt="macOS" src="https://img.shields.io/badge/platform-macOS-0F1B2D?logo=apple&logoColor=white">
+  <img alt="macOS and Windows" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-0F1B2D">
   <img alt="Adobe Illustrator 2025+" src="https://img.shields.io/badge/Illustrator-2025%2B-0F1B2D">
   <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-0F1B2D">
   <a href="https://ko-fi.com/acidka"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white"></a>
@@ -91,8 +91,8 @@ or px). Full catalogue: [plan § 6](docs/plan.md#6-tool-catalogue); how agents s
 
 ## Quick start
 
-**Needs:** macOS, Adobe Illustrator 2025 or later (tested on 29.1) running, and Node.js 22.15 or later for the
-Claude Code and `npx` routes.
+**Needs:** macOS or Windows 11, Adobe Illustrator 2025 or later running (tested on 29.1 on macOS, 2027 / 31.0 on
+Windows 11 ARM64), and Node.js 22.15 or later for the Claude Code and `npx` routes.
 
 **Claude Code — plugin (recommended).** The MCP server, an Illustrator skill and the `/ai-preview` and
 `/ai-preflight` commands:
@@ -106,7 +106,8 @@ Claude Code and `npx` routes.
 **Claude Code or any MCP client — server only:**
 
 ```sh
-claude mcp add chandelier -- npx -y chandelier-mcp
+claude mcp add chandelier -- npx -y chandelier-mcp            # macOS
+claude mcp add chandelier -- cmd /c npx -y chandelier-mcp     # Windows
 ```
 
 or in an MCP config (`.mcp.json`, Cursor…):
@@ -114,6 +115,9 @@ or in an MCP config (`.mcp.json`, Cursor…):
 ```json
 { "mcpServers": { "chandelier": { "command": "npx", "args": ["-y", "chandelier-mcp"] } } }
 ```
+
+(On Windows: `"command": "cmd", "args": ["/c", "npx", "-y", "chandelier-mcp"]` — Windows has no `npx` executable,
+only `npx.cmd`. The plugin and the Claude Desktop bundle handle this themselves.)
 
 **Claude Desktop.** Download `chandelier-<version>.mcpb` from the
 [releases](https://github.com/acidka/chandelier/releases) and open it (or **Settings → Extensions → Install
@@ -126,8 +130,12 @@ git clone https://github.com/acidka/chandelier.git && cd chandelier
 npm install && npm run build      # then point your client at node /absolute/path/to/chandelier/dist/index.js
 ```
 
-On the first call macOS asks whether your terminal (or app) may control Illustrator: allow it, or later in
+**macOS:** on the first call macOS asks whether your terminal (or app) may control Illustrator: allow it, or later in
 **System Settings → Privacy & Security → Automation**.
+
+**Windows:** nothing to allow. Run Illustrator and your MCP client at the same level (both normal, or both "Run as
+administrator"). The first start compiles a small helper (a few seconds); later starts reuse it. Illustrator can't
+save or open files whose path is 260 characters or longer: the server refuses those with a message.
 
 **Node version:** the plugin and `npx` start the server with the first `node` on your PATH. If that is older than
 22.15 (an old nvm default, for example), the server says so through the `status` tool instead of starting: install a
@@ -138,19 +146,23 @@ the full path of a newer `node` as the command, then restart your MCP client.
 
 ```
 AI agent ──MCP (stdio)──▶ Chandelier server (Node.js)
-                              │  one persistent bridge process (osascript / JXA, AppleScript with timeouts)
+                              │  one persistent bridge process:
+                              │  macOS: osascript / JXA (Apple events) · Windows: PowerShell + COM (DoJavaScript)
                               ▼
                           Adobe Illustrator ── AIA runtime (ExtendScript, loaded once per Illustrator session)
 ```
 
-Each tool call becomes one Apple event that runs one runtime command; the runtime reloads itself after Illustrator
-restarts. Architecture, decisions with their pros and cons, and the measurements behind them: [plan](docs/plan.md).
+Each tool call becomes one Apple event (macOS) or COM call (Windows) that runs one runtime command; the runtime
+reloads itself after Illustrator restarts. Architecture, decisions with their pros and cons, and the measurements
+behind them: [plan](docs/plan.md).
 
 ## Status
 
-**0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle. macOS only. Next:
+**0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
 
-- **0.2: Windows** (in progress) — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)); bridge works with Illustrator 2027 on Windows 11 (ARM64); the main live suite passes, the rest is in progress.
+**0.2: Windows** — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)): all live suites pass
+with Illustrator 2027 on Windows 11 (ARM64, in a Parallels VM); npm package, plugin and Claude Desktop bundle run on
+Windows. Release pending.
 
 Everything planned and done: [roadmap](docs/roadmap.md).
 

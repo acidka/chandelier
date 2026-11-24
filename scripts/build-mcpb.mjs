@@ -50,7 +50,7 @@ const manifest = {
   tools,
   keywords: pkg.keywords,
   license: pkg.license,
-  compatibility: { platforms: ['darwin'], runtimes: { node: '>=22.15.0' } },
+  compatibility: { platforms: ['darwin', 'win32'], runtimes: { node: '>=22.15.0' } },
 };
 writeFileSync(join(STAGE, 'manifest.json'), JSON.stringify(manifest, null, 2));
 

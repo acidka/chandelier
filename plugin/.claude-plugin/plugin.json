@@ -1,7 +1,7 @@
 {
   "name": "chandelier",
-  "version": "0.1.2",
-  "description": "Work in Adobe Illustrator from Claude Code: the Chandelier MCP server (fast persistent connection, batches, typed tools, ExtendScript, print-ready export and preflight), an Illustrator skill, and /ai-preview and /ai-preflight commands. macOS.",
+  "version": "0.2.0",
+  "description": "Work in Adobe Illustrator from Claude Code: the Chandelier MCP server (fast persistent connection, batches, typed tools, ExtendScript, print-ready export and preflight), an Illustrator skill, and /ai-preview and /ai-preflight commands. macOS and Windows.",
   "author": {
     "name": "acidka",
     "url": "https://github.com/acidka"
@@ -20,12 +20,9 @@
   ],
   "mcpServers": {
     "chandelier": {
-      "command": "npx",
+      "command": "node",
       "args": [
-        "-y",
-        "--prefix",
-        "${CLAUDE_PLUGIN_ROOT}",
-        "chandelier-mcp@^0.1.1"
+        "${CLAUDE_PLUGIN_ROOT}/launch.mjs"
       ]
     }
   }

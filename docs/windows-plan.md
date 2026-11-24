@@ -152,7 +152,7 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | **W5** ✅ | HRESULT error map, hints (links dialog named in busy/timeout messages), launch from the registry path, activation (off by default), Windows `live-restart` — all live-checked 2026-11-24 | 0.5 d | yes |
 | **W6** ✅ | CI matrix (macOS + Windows) ✅, fake-COM bridge test ✅, live suites green on Windows ✅ 2026-11-24 (§ 13) — in an **en_US** Illustrator UI (moved from 0.1) | 1 d | yes |
 | **W7** | Benchmarks on Windows (micro M, one M2 C2 run), results in `benchmarks.md` | 0.5 d | yes |
-| **W8** | Windows install in README, agent guide troubleshooting; `.mcpb` / plugin checked on Windows | 0.5 d | yes |
+| **W8** ✅ | Windows install in README, agent guide troubleshooting; `.mcpb` / plugin checked on Windows (§ 14) | 0.5 d | yes |
 
 Total ≈ 5 days once a Windows machine exists. W3 (and the platform split of W2) can start on macOS now.
 
@@ -343,4 +343,27 @@ from `test/live-lib.mjs`; our document is closed by then). Corrected `live.mjs` 
 48 ms, p95 ~100–120 ms — the run-to-run spread is the VM (6 GB, Illustrator ~1.8 GB, emulated graphics), as the
 owner suspected. macOS on hardware: 5.7 ms. Whether Windows meets the 10 ms target needs real hardware (W7);
 if it doesn't, the dispatch wrapper's ~6 ms is the first thing to trim.
+
+## 14. W8: packaging on Windows (2026-11-24)
+
+Version 0.2.0 (package, server, plugin, marketplace). Checked in the VM (§ 12), Node 26.13 ARM64, Illustrator 31.0:
+
+- **npm package:** `os` already lists `win32`. The packed `chandelier-mcp-0.2.0.tgz`, installed by npx into an empty
+  npm cache, starts and answers a live `status` (below).
+- **Claude Code plugin:** it started the server with a bare `npx`, which Windows doesn't have (only `npx.cmd`, which
+  needs a shell — why Claude Code's docs wrap npx servers in `cmd /c` on Windows), and a plugin's `mcpServers` entry
+  can't differ per OS. Now the plugin runs `node ${CLAUDE_PLUGIN_ROOT}/launch.mjs`, which runs
+  `npx -y --prefix <plugin> --package chandelier-mcp@^0.2.0 chandelier-mcp` (`npx.cmd` through cmd on Windows, as one
+  command line: arguments quoted so cmd keeps the `^` of the range, the command name not — a batch file started by a
+  quoted bare name takes the current folder as its own and npx then can't find npm). Verified: macOS 1.6–3.5 s;
+  Windows with an empty npm cache 20.9 s to a live `status` (the first install); a `^` range resolves on Windows
+  (checked with `^0.1.1`, which npm then refuses as macOS-only — correctly). `CHANDELIER_MCP_SPEC` overrides the
+  package for tests. Not checked inside Claude Code on Windows (not installed in the VM).
+- **Claude Desktop bundle:** manifest `compatibility.platforms` = darwin, win32. The unpacked
+  `chandelier-0.2.0.mcpb` runs `node dist/index.js` on Windows: 1.0 s to a live `status`. Not checked inside Claude
+  Desktop for Windows (not installed in the VM).
+- **"Fresh Windows account":** replaced by a clean folder and an empty npm cache in the VM's account, as on macOS in
+  0.1 — Illustrator's COM object is per desktop session, so a second account would need its own logged-in desktop.
+- **Docs:** README (requirements, `cmd /c npx` for the server-only route, Windows notes, how it works, status),
+  agent guide § 7 (path too long, links dialog, elevation).
 

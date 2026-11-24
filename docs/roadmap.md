@@ -292,7 +292,7 @@ works on a fresh Windows account; README has a Windows quick start.
 - [x] ✅ W5 HRESULT error map (✅ 2026-11-23, unit-tested; + 0x80041389, 0x800706BE from live runs), hints (busy/timeout messages name the links dialog ✅), launch from the registered install path (✅ live 2026-11-24), activation via `AppActivate` (works; off by default on Windows), Windows `live-restart` (✅ 2026-11-24: kill during a call, relaunch, runtime reload)
 - [x] ✅ W6 CI matrix (macOS + Windows) ✅, fake-COM bridge protocol test ✅ (`test/unit/bridge-win.test.ts`, 2026-11-23), live suites green on Windows ✅ 2026-11-24 (all nine, windows-plan § 13; transport grace 1 s on Windows so call timeouts hold)
 - [ ] ⏳ W7 Benchmarks on Windows (micro M, one M2 C2 run) → [benchmarks](research/benchmarks.md)
-- [ ] ⏳ W8 Windows install and troubleshooting in README and agent guide; `.mcpb` and plugin checked on Windows
+- [x] ✅ W8 Windows install and troubleshooting in README and agent guide; `.mcpb` and plugin checked on Windows — 2026-11-24: version 0.2.0; plugin starts the server through `plugin/launch.mjs` (Windows has no bare `npx`); packed package, plugin launcher and unpacked `.mcpb` answer a live `status` in the VM (windows-plan § 14)
 
 ## Phase 8 — Future 🧊
 
@@ -408,3 +408,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Windows runs stop cluttering the owner's desktop: `run-interactive.ps1` runs headless (no terminal window); `live-w1-activate.mjs` opens no Notepad. Illustrator's links dialog (missing/modified link) noted as a script-blocking modal |
 | 2026-11-24 | Windows round trip by layer (VM): bridge 9 ms, runtime wrapper +6, server +1–5 → MCP ~20 ms p50; the 42 ms was `live.mjs`' guard adding a status call per timed call (loop now unguarded); runs vary 21–48 ms in the VM → target needs real hardware (W7) |
 | 2026-11-24 | W4/W5 done: Illustrator's saveAs to a 260+ char path opens the Save As dialog and hangs → save/open/place refuse such paths on Windows; busy/timeout hints name the links dialog |
+| 2026-11-24 | W8: version 0.2.0; plugin runs `node launch.mjs` (npx.cmd on Windows); README/agent guide for Windows; package, plugin launcher and `.mcpb` checked live in the VM |

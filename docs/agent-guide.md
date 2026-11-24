@@ -110,6 +110,9 @@ does preflight + export.
 | "No layer named Layer 1" in a non-English UI | Use `@first` / `@active`; "Layer 1" also finds the localised default layer |
 | A script error | The message has the line in **your** code, or says it came from an `AIA` helper |
 | `preflight` RGB on a linked image | Convert the image to CMYK, or embed it (Illustrator converts on embed) |
+| Windows: "Path too long for Illustrator" | Illustrator can't save or open a path of 260+ characters (it would open a dialog and wait): save to a shorter folder. Exports to long paths work |
+| Windows: calls hang after the user clicks into Illustrator | A dialog is waiting, often "Some files are missing or modified in the Links panel" (a document with a broken or changed link). Ask the user to answer it; then `status` |
+| Windows: "Illustrator runs as another user or elevated" | Illustrator and the MCP client run at different levels (one "as administrator"): restart one so both match |
 
 ## 8. What to tell the user when done
 
