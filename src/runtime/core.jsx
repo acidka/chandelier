@@ -177,6 +177,9 @@ $.global.AIA = (function () {
     if ((m = s.match(/^rgb\(([\d.]+),([\d.]+),([\d.]+)\)$/i))) {
       c = new RGBColor(); c.red = +m[1]; c.green = +m[2]; c.blue = +m[3]; return c;
     }
+    if ((m = s.match(/^lab\(([\d.]+),(-?[\d.]+),(-?[\d.]+)\)$/i))) {
+      c = new LabColor(); c.l = +m[1]; c.a = +m[2]; c.b = +m[3]; return c;
+    }
     if (spec.indexOf('swatch:') === 0) {
       var rest = spec.slice(7), at = rest.lastIndexOf('@'), tint = null;
       if (at > 0) { tint = +rest.slice(at + 1); rest = rest.slice(0, at); }

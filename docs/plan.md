@@ -182,11 +182,34 @@ Both: the plugin is a thin wrapper around the npm package.
 - Writes target an explicit document when given (`doc` argument); otherwise the active one, and every response says which document was used.
 - `run_script` is powerful by design; it's documented as such. No sandbox (ExtendScript can't be sandboxed).
 
+### D12 — Data merge: template copies, not Illustrator Variables ✅ decided (0.3)
+
+| Option | Pros | Cons |
+|--------|------|------|
+| Illustrator Variables + data sets (`doc.variables`, `dataSets`) | Native; the designer sees them in the Variables panel | One item per variable: no placeholders inside running text; no n-up sheets; one data set shown at a time, so every row needs a display + export; image variables need linked files anyway |
+| **Copy the template per row and fill the copies** (chosen) | `{{field}}` inside any text, keeping the placeholder's style; artboards, n-up grids or files from one call; the template stays untouched and re-runnable | Our own conventions (item names `{{field}}`, `{{?field}}`) to learn; very big runs hit the canvas (227 in square) and 1000-artboard limits → `offset`/`limit` or `mode: "files"` |
+
+Rows are sent in chunks of ~40 per Illustrator call so a long run never meets the call timeout. In files mode each
+row is filled into copies in place (originals hidden), exported, and the copies removed (`merge {action: "clear"}`
+runs in a `finally`, and a later call clears a run that stopped half-way).
+
+### D13 — Tool profiles: full by default, lean on request ✅ decided (0.3)
+
+The tool list is re-read on every agent request. With the 0.3 tools it is 53.6 KB (~15.8 k tokens).
+
+| Option | Pros | Cons |
+|--------|------|------|
+| Keep trimming descriptions under a fixed budget | One list for every client | Diminishing returns; agents need the details that get cut |
+| Pure "search & call" (only `search_tools` + `call_tool`) | Smallest list | An extra round trip before most calls; untyped calls → more argument errors; the build loop (~8 calls) gets longer |
+| **Profiles** (chosen): `full` (default) and `lean` = the 8 tools a build uses + a `tools` meta-tool (catalog, query, schema, call); other tools also run as `batch` steps | Clients that defer tool loading themselves (Claude Code, Claude Desktop) keep typed schemas; clients that load everything (or cap the count) get 15.4 KB (~4.9 k tokens) with no extra round trip on the usual path | Two lists to keep in budget (unit tests: full < 55 KB, lean < 18 KB) |
+
+`CHANDELIER_TOOLS=lean`, or a comma-separated list of tool names to show.
+
 ## 6. Tool catalogue
 
 Every mutating tool can also be a `batch` step: `{"tool": "create_shape", "args": {...}}`.
-Status 2026-11-22: tools 1–32 are built (phases 1–3; crop marks are an `artboards` action); `symbols` is not built yet
-(phase 8, with symbol editing).
+Status 2026-11-24: tools 1–35 are built (crop marks are an `artboards` action; `symbols` in 0.2.1; `data_merge` and the
+`tools` meta-tool in 0.3).
 MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` for many objects in one call.
 
 | # | Tool | Actions / what it does | Phase |
@@ -194,7 +217,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 1 | `status` | Bridge + Illustrator state, version, open docs, settings, latency; `launch: true`; `restart: true` (quit + relaunch + reopen, refused while any document is unsaved) | 1 |
 | 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate | 1 |
 | 3 | `run_script` | Run ExtendScript `code` or a `.jsx` `file` with `args`; helpers available as `AIA.*` (`AIA.at(k, fn)` = coordinates from artboard k); returns JSON; `recipe`: ready builders shipped in `src/recipes/` (calendar-month, labels-sheet, business-card, style-guide, color-chips; `recipe: "list"`; 0.2.1) | 1 |
-| 4 | `batch` | Many tool steps in one call; `@n` refs; per-step `artboard` (coordinates from that artboard); `stop_on_error`; `rollback` of created items | 1 |
+| 4 | `batch` | Many tool steps in one call; `@n` refs; per-step `artboard` (coordinates from that artboard); `stop_on_error`; `rollback` of created items; `files` (0.3): the steps over many files — open → steps → save a copy into `out_dir` (or `in_place` / `none`) → `export` (`{name}` = file stem) → close; files already open are skipped; `dry_run` | 1 |
 | 5 | `documents` | `list`, `new` (preset, size, colour mode, **bleed**, artboard grid; `spacing` = gap between trim edges), `open`, `activate`, `save`, `save_as` (ai/pdf/svg/eps; `export: [...]` + `close: true` finish a build in one call), `close`; `new {units}` sets the session units | 1 |
 | 6 | `document_info` | Compact summary: size, colour mode, artboards, layers, counts by type, swatches, fonts, selection | 1 |
 | 7 | `find_items` | Query by type, name (pattern), layer, artboard, text, font, size range, fill/stroke colour, bounds, state; `fields`, `limit` | 1 |
@@ -215,7 +238,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 22 | `delete_items` | Delete by refs/query; returns count | 2 |
 | 23 | `layers` | `list`, `add`, `update` (name, visible, locked, printable, colour), `remove`, `reorder`, sublayers | 2 |
 | 24 | `artboards` | `list`, `add`, `update`, `remove`, `activate`, `fit_to_art`, `grid_layout` — **top-left rect everywhere** | 2 |
-| 25 | `swatches` | `list`, `add` (global process / spot / plain), `update`, `remove`, gradients, groups, `clean_defaults` | 2 |
+| 25 | `swatches` | `list`, `add` (global process / spot / plain), `update`, `remove`, gradients, groups, `clean_defaults`; `import` an `.ase` swatch library; `recolor` (0.3): every fill, stroke, text run and gradient stop → the nearest target swatch within a ΔE tolerance, or an explicit `map`; tints stay tints; `dry_run` | 2 |
 | 26 | `styles` | Paragraph, character and graphic styles: `list`, `create`, `update`, `apply`, `remove` | 2 |
 | 27 | `fonts` | Search installed fonts (family/style/PostScript name) | 2 |
 | 28 | `place` | Place/embed raster, PDF, AI; import **SVG markup** as editable art | 2 |
@@ -224,6 +247,8 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 31 | `preflight` | RGB in CMYK, missing fonts, broken links, low-res images, overset text, default-12 pt orphans, items off artboard, real spot colours only, non-printing layers skipped; `contrast` (WCAG AA in any colour space), `tokens {colors, fonts, sizes}` → `off_token` brand check (0.2.1) | 3 |
 | 32 | `menu_command` | `app.executeMenuCommand` on refs (escape hatch for effects and anything without an API) | 2 |
 | 33 | `symbols` | `list`, `create` from items (they become one instance, or `keep`), `place`, `replace`, `expand`, `remove` (`force` for instances) — done in 0.2.1 | 2 |
+| 34 | `data_merge` | Variable data (0.3): a template (artboard or refs) with `{{field}}` placeholders in text and items named `{{field}}` (text, linked image, symbol, colour) or `{{?field}}` (shown if set), filled from CSV/TSV/JSON rows → one artboard per row, an n-up `grid`, or one exported file per row; `dry_run` matches fields and columns ([D12](#d12--data-merge-template-copies-not-illustrator-variables--decided-03)) | 0.3 |
+| 35 | `tools` | Only in a tool profile (`CHANDELIER_TOOLS=lean` or a list): catalog, `query`, full schema by `name`, `call` + `args` for the tools left out of the list ([D13](#d13--tool-profiles-full-by-default-lean-on-request--decided-03)) | 0.3 |
 
 Tool descriptions are kept short; the conventions (refs, colours, coordinates) live in the MCP server
 `instructions`, sent once per session instead of being repeated in 33 schemas.

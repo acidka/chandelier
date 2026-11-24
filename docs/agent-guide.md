@@ -143,6 +143,42 @@ group and returns what it made.
 
 Use a recipe as a starting point, then adjust with the normal tools (swatches, styles, `modify_items`).
 
+## Production runs (0.3)
+
+**Variable data** — `data_merge`. Build one template (artboard 0, or give `refs`):
+
+| In the template | Gets |
+|---|---|
+| `{{field}}` anywhere in a text | the value, in the placeholder's style (several per text are fine) |
+| item named `{{field}}`: text frame | the whole contents |
+| item named `{{field}}`: linked image | relinked to the value (a file path, relative to the data file), fit inside the old box, centred; empty → hidden |
+| item named `{{field}}`: symbol instance | the symbol with that name |
+| item named `{{field}}`: path, compound path, group | fill colour (any colour spec, e.g. `swatch:Gold`) |
+| item named `{{?field}}` | shown only when the value is non-empty and not `0` / `false` / `no` / `off` |
+
+Always `dry_run: true` first: it lists the template's fields, `missing_in_data` and `unused_columns`. Modes:
+`artboards` (default; one per row, laid out right of the existing ones; `name` pattern, `columns`, `spacing`), `grid`
+(n-up; `grid {cols, rows, dx, dy}`: copies per artboard, the first where the template sits), `files` (one export per
+row; `export {format, path: "out/{Name}.pdf", …}`; the document ends as it was). `remove_template: true` deletes the
+template and its artboard afterwards. A row with a missing image is reported in `problems` and the run goes on.
+Illustrator's canvas (227 in square) and its 1000-artboard limit cap one document: use `offset`/`limit` per document,
+or `files`.
+
+**Many files** — `batch {files, steps, …}`: paths, folders (their .ai/.pdf/.eps/.svg) or `*.ai` globs. Each file:
+open → steps → save → `export` (`{name}` in the path = the file's stem) → close. `save: "copy"` (default) writes into
+`out_dir` and refuses the originals' folder; `"in_place"` overwrites (only when the user asked); `"none"`. Files open
+in Illustrator are skipped. Run `dry_run: true` first: it opens, runs and reports, then closes without saving.
+
+**Recolour** — `swatches {action: "recolor"}`: every fill, stroke, text run and gradient stop goes to the nearest
+target swatch (`to`: names or `"group:Name"`; default all global and spot swatches) if it lies within `tolerance` (CIE76
+ΔE without a colour profile, default 20), or follows an explicit `map {"cmyk(0,90,80,5)": "swatch:Red"}`. Tints of a
+swatch match by the swatch's colour and stay tints. Gradients are recoloured once per gradient (they are document-wide).
+`dry_run` reports `colors` and `unmatched` first. Brand libraries: `swatches {action: "import", path: "brand.ase"}`.
+
+**Lean tool list** — with `CHANDELIER_TOOLS=lean` only `status`, `documents`, `batch`, `run_script`, `preview`,
+`export`, `find_items`, `get_items` and `tools` are listed. `tools {}` lists the rest, `tools {query}` searches,
+`tools {name}` returns a schema, `tools {call, args}` runs one; step tools also work inside `batch`.
+
 ## Reference: `AIA.*` helpers in `run_script`
 
 Positions and sizes in session units (default pt, artboard top-left, y down); font size, leading, tracking and

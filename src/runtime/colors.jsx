@@ -140,8 +140,176 @@
       }
       return { removed: removed, groups_removed: groupsRemoved, left: doc.swatches.length };
     }
+    if (act === 'import') {
+      // swatches read from an .ase file on the Node side: [{name, color, kind, group}]
+      var made = 0, upd = 0;
+      for (i = 0; i < a.items.length; i++) {
+        var it = a.items[i], kd = a.kind || it.kind, ex = !!findSwatch(doc, it.name), gname = a.group || it.group;
+        if (kd === 'process') {
+          sw = findSwatch(doc, it.name);
+          if (!sw) { sw = doc.swatches.add(); sw.name = it.name; }
+          sw.color = A.color(it.color);
+        } else sw = spotSwatch(doc, it.name, it.color, kd === 'spot');
+        if (gname) swatchGroup(doc, gname).addSwatch(sw);
+        if (ex) upd++; else made++;
+      }
+      return { added: made, updated: upd, group: a.group || undefined };
+    }
+    if (act === 'recolor') return recolor(a, doc);
     throw new Error('Unknown swatches action "' + act + '".');
   };
+
+  // -- recolor (0.3): every fill, stroke, text run and gradient stop -> the nearest target swatch (CIE76 dE in Lab;
+  // CMYK is approximated without a profile, the same way on both sides) or an explicit map. Recolor Artwork has no
+  // scripting API, so this walks the items.
+  function rgbOf(c) {
+    var t = c.typename;
+    if (t === 'RGBColor') return [c.red, c.green, c.blue];
+    if (t === 'GrayColor') { var g = 255 * (1 - c.gray / 100); return [g, g, g]; }
+    if (t === 'CMYKColor') { var k = 1 - c.black / 100; return [255 * (1 - c.cyan / 100) * k, 255 * (1 - c.magenta / 100) * k, 255 * (1 - c.yellow / 100) * k]; }
+    return null;
+  }
+  function labOf(c) {
+    if (!c) return null;
+    var t = c.typename;
+    if (t === 'LabColor') return [c.l, c.a, c.b];
+    if (t === 'SpotColor') {
+      var base = labOf(c.spot.color), f = c.tint / 100;
+      if (!base) return null;
+      return [100 - (100 - base[0]) * f, base[1] * f, base[2] * f];
+    }
+    var rgb = rgbOf(c);
+    if (!rgb) return null;
+    function lin(v) { v = v / 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    var R = lin(rgb[0]), G = lin(rgb[1]), B = lin(rgb[2]);
+    var X = (0.4124 * R + 0.3576 * G + 0.1805 * B) / 0.95047, Y = 0.2126 * R + 0.7152 * G + 0.0722 * B, Z = (0.0193 * R + 0.1192 * G + 0.9505 * B) / 1.08883;
+    function fn(v) { return v > 0.008856 ? Math.pow(v, 1 / 3) : 7.787 * v + 16 / 116; }
+    var fx = fn(X), fy = fn(Y), fz = fn(Z);
+    return [116 * fy - 16, 500 * (fx - fy), 200 * (fy - fz)];
+  }
+  function dE(p, q) { return Math.sqrt((p[0] - q[0]) * (p[0] - q[0]) + (p[1] - q[1]) * (p[1] - q[1]) + (p[2] - q[2]) * (p[2] - q[2])); }
+
+  function recolor(a, doc) {
+    var targets = [], tset = {}, i, j, gm = groupOfMap(doc);
+    function addTarget(sw) {
+      var k = kindOf(sw);
+      if (k !== 'global' && k !== 'spot' && k !== 'process') return;
+      if (tset[sw.name]) return;
+      tset[sw.name] = true;
+      var base = k === 'process' ? sw.color : sw.color.spot.color;
+      targets.push({ name: sw.name, kind: k, sw: sw, lab: labOf(base) });
+    }
+    if (a.to) {
+      for (i = 0; i < a.to.length; i++) {
+        var nm = String(a.to[i]).replace(/^swatch:/, '');
+        if (nm.indexOf('group:') === 0) {
+          var gn = nm.slice(6), found = false;
+          for (j = 0; j < doc.swatches.length; j++) if (gm[doc.swatches[j].name] === gn) { addTarget(doc.swatches[j]); found = true; }
+          if (!found) throw new Error('No swatches in a group named "' + gn + '".');
+        } else { var s0 = findSwatch(doc, nm); if (!s0) throw new Error('No swatch named "' + nm + '".'); addTarget(s0); }
+      }
+    } else if (!a.map) {
+      for (j = 0; j < doc.swatches.length; j++) { var kk = kindOf(doc.swatches[j]); if (kk === 'global' || kk === 'spot') addTarget(doc.swatches[j]); }
+    }
+    if (!targets.length && !a.map) throw new Error('No target swatches: give to [names or "group:Name"], or map {from: to}, or add global swatches first.');
+    var map = {}, k2;
+    if (a.map) for (k2 in a.map) if (a.map.hasOwnProperty(k2)) map[A.colorStr(A.color(k2))] = a.map[k2];
+    var tol = a.tolerance === undefined ? 20 : a.tolerance, dry = !!a.dry_run;
+    var seen = {}, order = [], changed = 0, locked = 0;
+    // decide once per distinct colour
+    function plan(c) {
+      var key = A.colorStr(c);
+      if (seen.hasOwnProperty(key)) return seen[key];
+      var p = { from: key, uses: 0, to: null };
+      seen[key] = p; order.push(key);
+      if (c.typename === 'SpotColor') {
+        var ct = c.spot.colorType;
+        if (ct === ColorModel.REGISTRATION || tset[c.spot.name]) { p.keep = true; return p; }
+      }
+      if (map.hasOwnProperty(key)) { p.to = map[key]; p.spec = map[key]; return p; }
+      if (!targets.length) { p.keep = true; return p; }
+      // a tint of a swatch is matched by its swatch's colour (and stays a tint)
+      var L = labOf(c.typename === 'SpotColor' ? c.spot.color : c);
+      if (!L) { p.keep = true; return p; }
+      var best = null, bd = 1e9;
+      for (var q = 0; q < targets.length; q++) { if (!targets[q].lab) continue; var d = dE(L, targets[q].lab); if (d < bd) { bd = d; best = targets[q]; } }
+      p.de = Math.round(bd * 10) / 10;
+      if (!best || bd > tol) { p.nearest = best ? best.name : null; return p; }
+      p.to = best.name;
+      // a tint of a global/spot swatch stays a tint of the new one
+      var tint = c.typename === 'SpotColor' ? c.tint : 100;
+      p.spec = best.kind === 'process' ? best.sw.color : 'swatch:' + best.name + (Math.round(tint) === 100 ? '' : '@' + Math.round(tint));
+      return p;
+    }
+    function apply(c, set) {
+      if (!c || c.typename === 'NoColor' || c.typename === 'PatternColor') return;
+      if (c.typename === 'GradientColor') { grads[c.gradient.name] = c.gradient; return; }
+      var p = plan(c);
+      p.uses++;
+      if (p.keep || !p.spec || dry) return;
+      set(typeof p.spec === 'string' ? A.color(p.spec) : p.spec);
+      changed++;
+    }
+    var grads = {};
+    function paintItem(it) {
+      var t = it.typename;
+      if (t === 'PathItem') {
+        if (it.filled) apply(it.fillColor, function (c) { it.fillColor = c; });
+        if (it.stroked) apply(it.strokeColor, function (c) { it.strokeColor = c; });
+      } else if (t === 'TextFrame') {
+        // textRanges holds one range per character: equal neighbours become one span, recoloured in one write
+        var chars = it.textRanges, n = chars.length, spans = [], r, cur = null;
+        for (r = 0; r < n; r++) {
+          var ca = chars[r].characterAttributes, f = ca.fillColor, sk = ca.strokeWeight > 0 ? ca.strokeColor : null;
+          var key = A.colorStr(f) + '|' + (sk ? A.colorStr(sk) : '');
+          if (cur && cur.key === key) cur.len++;
+          else { cur = { key: key, at: r, len: 1, fill: f, stroke: sk }; spans.push(cur); }
+        }
+        for (r = 0; r < spans.length; r++) (function (sp) {
+          function range() { var g = it.textRanges[sp.at]; if (sp.len > 1) g.length = sp.len; return g.characterAttributes; }
+          apply(sp.fill, function (c) { range().fillColor = c; });
+          if (sp.stroke) apply(sp.stroke, function (c) { range().strokeColor = c; });
+        })(spans[r]);
+      } else if (t === 'CompoundPathItem') {
+        for (var m = 0; m < it.pathItems.length; m++) paintItem(it.pathItems[m]);
+      }
+    }
+    // locked items, or items in a locked / hidden layer or a locked group, can't be changed: counted, not touched
+    function blocked(it) {
+      if (it.locked) return true;
+      for (var q = it.parent; q && q.typename !== 'Document'; q = q.parent) {
+        if (q.typename === 'Layer' && (q.locked || !q.visible)) return true;
+        if (q.typename === 'GroupItem' && q.locked) return true;
+      }
+      return false;
+    }
+    function visit(it) {
+      if (!dry && it.typename !== 'GroupItem' && blocked(it)) { locked++; return; }
+      paintItem(it);
+    }
+    var roots = a.refs !== undefined ? A.refs(a.refs) : null;
+    if (roots) { for (i = 0; i < roots.length; i++) { visit(roots[i]); if (roots[i].typename === 'GroupItem') A.walk(visit, roots[i]); } }
+    else A.walk(visit);
+    // gradients are document-wide: their stops are recoloured once
+    var gcount = 0, gn2;
+    for (gn2 in grads) if (grads.hasOwnProperty(gn2)) {
+      gcount++;
+      var st = grads[gn2].gradientStops;
+      for (j = 0; j < st.length; j++) (function (stop) { apply(stop.color, function (c) { stop.color = c; }); })(st[j]);
+    }
+    var colors = [], unmatched = [];
+    for (i = 0; i < order.length; i++) {
+      var p = seen[order[i]];
+      if (p.keep) continue;
+      if (p.to) colors.push({ from: p.from, to: p.to, de: p.de, uses: p.uses });
+      else unmatched.push({ color: p.from, nearest: p.nearest, de: p.de, uses: p.uses });
+    }
+    var res = { changed: changed, colors: colors, unmatched: unmatched, tolerance: tol, targets: targets.length };
+    if (dry) { res.dry_run = true; delete res.changed; }
+    if (gcount) res.gradients = gcount;
+    if (locked) res.skipped_locked = locked;
+    return res;
+  }
 
   // -- fonts ----------------------------------------------------------------------------
   A.cmd.fonts = function (a) {

@@ -60,6 +60,10 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
 - **Ready-made and checked.** Recipes for a calendar month, a labels sheet, a business card, a style guide and colour
   chips (`run_script {recipe}`); brand checks in `preflight` (allowed colours, fonts and sizes; contrast); exports per
   layer set (with and without the dieline) and screen assets at 1x/2x/3x; symbols and image trace.
+- **Production runs.** `data_merge` fills a template from a CSV or JSON file (`{{name}}` in any text, swapped photos,
+  colours, optional parts) into one artboard per row, n-up sheets, or one PDF/PNG per row; `batch {files}` runs the
+  same steps over a folder of files and saves copies; `swatches {recolor}` snaps every colour to a brand palette
+  (also from an `.ase` swatch library).
 - **Agent-friendly.** Compact responses with limits, conventions sent once in the server instructions, errors that
   say what to do next, and two ready-made prompts: `recreate_design` and `print_export`.
 
@@ -74,9 +78,13 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
 
 > Change the brand colour everywhere to `cmyk(100, 60, 0, 10)` and export PNG previews of every artboard.
 
+> Make a certificate for every row of `attendees.csv` and export one PDF per person, named after them.
+
+> Open every `.ai` in `~/jobs/spring`, snap all colours to the swatches in `brand.ase`, and save copies to `~/jobs/out`.
+
 ## Tools
 
-33 tools; every tool that changes a document can also be a step inside `batch`.
+34 tools; every tool that changes a document can also be a step inside `batch`.
 
 | Group | Tools |
 |-------|-------|
@@ -85,7 +93,7 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
 | Create | `create_text` · `create_shape` · `create_path` · `place` |
 | Edit | `edit_text` · `modify_items` · `transform_items` · `duplicate_items` · `arrange_items` · `align_items` · `path_ops` · `delete_items` |
 | Structure and colour | `layers` · `artboards` · `swatches` · `styles` |
-| Build | `batch` · `run_script` · `menu_command` |
+| Build | `batch` (also over many files) · `run_script` · `data_merge` · `menu_command` · `symbols` |
 | Look, check, output | `preview` · `preflight` · `export` |
 
 Coordinates in every tool: `[x, y, w, h]` from the artboard's top-left, y down, in the session's units (pt, mm, in
@@ -145,6 +153,11 @@ save or open files whose path is 260 characters or longer: the server refuses th
 current Node and make it the default (`nvm install 22 && nvm alias default 22`, or `brew install node`), or give
 the full path of a newer `node` as the command, then restart your MCP client.
 
+**Smaller tool list:** MCP clients that load every tool schema up front (no deferred tool loading) can set
+`CHANDELIER_TOOLS=lean`: the eight tools a build uses plus a `tools` tool that lists, explains and calls the rest
+(about 4.9 k tokens per request instead of 15.8 k, [benchmarks](docs/research/benchmarks.md#tool-list-size)). A
+comma-separated list of tool names works too.
+
 **Debug log:** set `CHANDELIER_LOG=debug` in the server's environment for one JSON line per tool call (tool, time,
 result) on stderr, or `CHANDELIER_LOG_FILE=/path/to/file` to append them to a file.
 
@@ -165,6 +178,10 @@ behind them: [plan](docs/plan.md).
 ## Status
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
+
+**0.3** (2026-11-24): production automation — `data_merge` (variable data into artboards, n-up sheets or files),
+`batch {files}` (the same steps over many files, copies saved), `swatches {recolor, import}` (snap colours to a
+palette or an `.ase` library), and the `lean` tool profile. Release pending.
 
 **0.2.1 released** (2026-11-24): recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart
 and a debug log; a fix for tinted swatches (a tint changed the swatch itself).

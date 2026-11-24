@@ -12,6 +12,7 @@ import { respond, runStep } from './tools/respond.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { VERSION } from './version.js';
 import { defaultSettings } from './settings.js';
+import { profile, toolsTool } from './tools/tools_meta.js';
 
 export const INSTRUCTIONS = `chandelier drives Adobe Illustrator on this Mac (~5 ms per call).
 Conventions: coordinates [x, y, w, h] from the top-left of the active artboard, y down, in points (configure: units mm/in/px, origin, artboard). Colours "cmyk(100,85,30,25)", "gray(60)", "#1e2a44", "swatch:Name", "swatch:Name@50", "gradient:Name@45", "none". Refs (one or a list): uuid, "selection", "name:Glob*", "layer:Name", "artboard:N", "@n" (an earlier batch step). Uuids change when a document is reopened.
@@ -98,12 +99,23 @@ function registerPrompts(server: McpServer): void {
 4. Report the file, its pages and boxes (from the export result) and what preflight found.` } }] }));
 }
 
-export function createServer(opts: { transport?: Transport; tmp?: string } = {}) {
+const LEAN_NOTE = `
+More tools than are listed: tools {} (catalog), {query}, {name} (schema), {call, args}; the ones that change items also work as batch steps.`;
+
+export function createServer(opts: { transport?: Transport; tmp?: string; tools?: string } = {}) {
   const T = opts.transport ?? new Transport();
   const settings = defaultSettings();
   const ctx: Ctx = { T, rt: new Runtime(T, settings), tmp: opts.tmp ?? mkdtempSync(join(tmpdir(), 'aia-')), created: new Set(), settings, tools: new Map(TOOLS.map((t) => [t.name, t])) };
-  const server = new McpServer({ name: 'chandelier', version: VERSION }, { instructions: INSTRUCTIONS });
-  for (const tool of TOOLS) {
+  // tool profile (0.3): CHANDELIER_TOOLS=lean or a list of names; the rest behind the "tools" tool
+  const shown = profile(opts.tools ?? process.env.CHANDELIER_TOOLS, TOOLS.map((t) => t.name));
+  let exposed = TOOLS;
+  if (shown) {
+    const meta = toolsTool(TOOLS.filter((t) => !shown.includes(t.name)).map((t) => t.name));
+    ctx.tools.set(meta.name, meta);
+    exposed = [...TOOLS.filter((t) => shown.includes(t.name)), meta];
+  }
+  const server = new McpServer({ name: 'chandelier', version: VERSION }, { instructions: shown ? INSTRUCTIONS + LEAN_NOTE : INSTRUCTIONS });
+  for (const tool of exposed) {
     server.registerTool(tool.name, { description: tool.description, inputSchema: tool.shape }, (args: unknown) => callTool(tool, args ?? {}, ctx));
   }
   registerPrompts(server);

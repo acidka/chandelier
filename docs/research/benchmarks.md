@@ -497,6 +497,35 @@ artboard 0 and copied to all artboards with `duplicate_items {to_artboards:"all"
 Result files: [`bench/results/calendar-tools/`](../../bench/results/calendar-tools/) (`calendar-2027.ai`, `january.png`, `july.png`).
 This is the floor for an agent: it shows the tools can do the job in ≤ 20 calls; the agent-level macro run is phase 4.
 
+## Tool list size
+
+The tool list (names, descriptions, input schemas) is re-read on every agent request. `node scripts/schema-size.mjs`
+(tokens ≈ characters / 3.5), 2026-11-24, Chandelier 0.3 on develop, Node 22.23:
+
+| Profile | Tools | Schemas | Instructions | ≈ tokens per request |
+|---------|-------|---------|--------------|----------------------|
+| `full` (default) | 34 | 53 587 chars | 1 644 chars | 15.8 k |
+| `CHANDELIER_TOOLS=lean` | 9 (8 + `tools`) | 15 400 chars | 1 772 chars | 4.9 k |
+
+History of the full list: 61.6 KB before phase 4 slimming, 48.9 KB after it (2026-11-22), 49.9 KB in 0.2.1. Clients
+that defer tool loading (Claude Code, Claude Desktop) pay only for the names of tools they don't load.
+
+## 2e. Production automation (0.3) — 2026-11-24
+
+One run of `test/live-production.mjs` on the owner's Mac (Apple M1, macOS 27.2.1, Illustrator 29.1 ru_RU, Node 22.23),
+times through the full MCP server:
+
+| Call | Work | Time |
+|------|------|------|
+| `data_merge {dry_run}` | read a 3-row CSV, scan a 5-item template | 0.23 s |
+| `data_merge` (artboards) | 3 rows → 3 artboards: text, image relink, colour, visibility | 0.22 s |
+| `data_merge` (grid) | 3 rows, 2 per artboard → 2 artboards | 0.06 s |
+| `data_merge {mode: "files"}` | 2 rows → 2 PNGs (fill, export, restore per row) | 4.7 s |
+| `batch {files, dry_run}` | 2 files: open, 1 step, close | 6.1 s |
+| `batch {files, out_dir, export}` | 2 files: open, 1 step, save copy, PNG, close | 13.6 s |
+
+Opening, saving and exporting files dominate (Illustrator's own work, about 1–3 s each); the merge itself is fast.
+
 ## 3. Targets
 
 | Metric | Target | Status |

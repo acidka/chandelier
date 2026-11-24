@@ -1,6 +1,6 @@
 ---
 name: illustrator
-description: Use when the user wants something made, changed, checked or exported in Adobe Illustrator (posters, calendars, labels, print layouts, recreating a design from an image, preflight, PDF/X export) through the chandelier MCP tools. Covers the short build loop, recreating a design from a reference image, print checks and recovery from timeouts.
+description: Use when the user wants something made, changed, checked or exported in Adobe Illustrator (posters, calendars, labels, print layouts, recreating a design from an image, variable data from a spreadsheet, the same change over many files, recolouring to a brand palette, preflight, PDF/X export) through the chandelier MCP tools. Covers the short build loop, recreating a design from a reference image, production runs, print checks and recovery from timeouts.
 ---
 
 # Working in Adobe Illustrator with Chandelier
@@ -45,6 +45,22 @@ Name layers and groups. Keep scripts re-runnable.
 5. **Proofread every word against the reference** — on a client's job the words are theirs.
 6. Missing font? Pick the closest installed one (`fonts {query}`) and match widths with the style's `hscale` so lines
    break where the reference breaks; put body copy in area text.
+
+## Production runs
+
+- **Variable data** (certificates, badges, cards, labels): build one template on artboard 0. Put `{{field}}` in any
+  text (it keeps the placeholder's style); name an item `{{photo}}` (linked image: the value is a file path), `{{logo}}`
+  (symbol name), `{{color}}` (fill) or `{{?vip}}` (shown only when set). Then `data_merge {data: "people.csv",
+  dry_run: true}` — fix what `missing_in_data` shows — and run it: `mode: "artboards"` (one per row, `name: "{Name}"`),
+  `"grid"` (n-up sheets: `grid {cols, rows, dx, dy}`), or `"files"` (`export {format: "pdf", path: "out/{Name}.pdf"}`).
+  `remove_template: true` leaves only the filled artboards. Hundreds of rows: `offset`/`limit` per document, or files.
+- **Many files:** `batch {files: ["jobs/*.ai"], steps, out_dir, export: [{format: "pdf", path: "pdf/{name}.pdf"}]}`.
+  Run it with `dry_run: true` first. Copies go to `out_dir`; overwrite originals only when the user asks
+  (`save: "in_place"`). Files open in Illustrator are skipped.
+- **Brand palette:** `swatches {action: "import", path: "brand.ase"}`, then `swatches {action: "recolor", to:
+  ["group:Brand"], dry_run: true}`; read `colors` and `unmatched`, adjust `tolerance` or add a `map`, then run it.
+- With `CHANDELIER_TOOLS=lean` only eight tools are listed: `tools {query}` finds the others, `tools {call, args}`
+  runs them, and they also work as `batch` steps.
 
 ## Print checks
 

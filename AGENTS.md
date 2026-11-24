@@ -18,6 +18,7 @@ npm run test:live   # needs a running Illustrator; works only in a document it c
 node test/live-layout.mjs         # multi-artboard spacing/bleed, batch step artboard, AIA.at, non-printing renders
 node test/live-finish.mjs         # documents new {units}, preview {more, preflight, info}, documents save {export, close}
 node test/live-release.mjs        # 0.1: preview region from an artboard, SVG clipped to the artboard, low_contrast (also in test:live)
+node test/live-production.mjs     # 0.3: data_merge, batch {files}, swatches recolor/import (temp files only)
 node test/live-restart.mjs        # quits (Windows: kills mid-call) + relaunches Illustrator (refuses if documents are open)
 node test/live-safe-restart.mjs   # status {restart}: refused while unsaved, else relaunch + reopen (refuses if documents are open)
 node test/verify-assumptions.mjs  # uuid / undo / 5 000-object scan checks (roadmap 1.6)

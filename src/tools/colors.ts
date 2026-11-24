@@ -1,5 +1,9 @@
 import { z } from 'zod';
+import { resolve } from 'node:path';
 import type { ToolDef } from './types.js';
+import { ArgError } from './types.js';
+import { refSchema } from './common.js';
+import { readAse } from '../ase.js';
 
 const stop = z.object({ color: z.string(), at: z.number().min(0).max(100).optional(), opacity: z.number().min(0).max(100).optional(), midpoint: z.number().min(13).max(87).optional() });
 
@@ -7,10 +11,11 @@ export const swatches: ToolDef = {
   name: 'swatches',
   description: `Swatches of the active document. kind: "global" (global process — edit once, every use updates; default for add) | "spot" | "process" (plain) | "gradient".
 action: "list" (kind, group filters) · "add" (name, color; updates the swatch if it exists, so batches can be re-run; gradient: type linear|radial, stops [{color, at 0-100, opacity, midpoint}]; group) · "update" (name → color / stops / new_name / group) · "remove" (name or names) ·
-"clean_defaults" (remove the default process swatches, unused default gradients/patterns and empty groups; keeps [None], [Registration], global and spot swatches and "keep" names).
+"clean_defaults" (remove the default process swatches, unused default gradients/patterns and empty groups; keeps [None], [Registration], global and spot swatches and "keep" names) ·
+"import" (path: an .ase swatch library; kind and group override the file's) · "recolor" (refs? default all: every fill, stroke, text run and gradient stop → the nearest of to [swatch names, "group:Name"; default all global/spot] within tolerance (ΔE, default 20), or map {"cmyk(…)": "swatch:X"}; tints stay tints; dry_run → report only) → {colors [{from, to, de, uses}], unmatched}.
 Use them as colours: "swatch:Name", "swatch:Name@50" (tint), "gradient:Name@45" (angle).`,
   shape: {
-    action: z.enum(['list', 'add', 'update', 'remove', 'clean_defaults']).optional(),
+    action: z.enum(['list', 'add', 'update', 'remove', 'clean_defaults', 'import', 'recolor']).optional(),
     name: z.string().optional(), names: z.array(z.string()).optional(), new_name: z.string().optional(),
     kind: z.enum(['global', 'spot', 'process', 'gradient', 'pattern', 'none', 'registration']).optional(),
     color: z.string().optional(),
@@ -19,8 +24,19 @@ Use them as colours: "swatch:Name", "swatch:Name@50" (tint), "gradient:Name@45" 
     group: z.string().optional(),
     keep: z.array(z.string()).optional(),
     limit: z.number().min(1).optional(),
+    path: z.string().optional(),
+    refs: refSchema.optional(), to: z.array(z.string()).optional(), map: z.record(z.string(), z.string()).optional(),
+    tolerance: z.number().min(0).optional(), dry_run: z.boolean().optional(),
   },
-  step: (a) => ({ cmd: 'swatches', args: a }),
+  step(a) {
+    if (a.action !== 'import') return { cmd: 'swatches', args: a };
+    if (!a.path) throw new ArgError('import needs path (an .ase file)');
+    let items;
+    try { items = readAse(resolve(a.path)); } catch (e) { throw new ArgError(`import: ${(e as Error).message}`); }
+    if (!items.length) throw new ArgError('import: no colours in ' + a.path);
+    const { path: _p, ...rest } = a;
+    return { cmd: 'swatches', args: { ...rest, items } };
+  },
 };
 
 export const fonts: ToolDef = {

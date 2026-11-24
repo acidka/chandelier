@@ -324,13 +324,27 @@ fit, to keep the tool list under its 50 KB budget.
 - [x] ✅ macOS live pass (Illustrator 29.1 ru_RU, macOS, Node 22.23, 2026-11-24): all seven suites green (`live`, `live-edit`, `live-release`, `live-layout`, `live-finish`, `live-checks`, `live-print`); the earlier `live-print` failure (preflight missed `rgb_in_cmyk` **and** `low_res` for the linked `LowRes` image, so the image itself wasn't seen as a linked raster) didn't reproduce in 10 runs, alone and after the other suites. The test now records how Illustrator sees `LowRes` and prints it if the check fails again
 - [x] ✅ Release 0.2.1 (2026-11-24): npm `chandelier-mcp@0.2.1` (owner; checked from the registry with a live `status`), plugin and marketplace 0.2.1 (launcher `^0.2.0` picks it up), `main` fast-forwarded, tag `v0.2.1`, GitHub release with `chandelier-0.2.1.mcpb`
 
+## Milestone 🎯 0.3 — production automation 🔄 (features done; Windows check and release open)
+
+Items 2–4 of the [gap review](research/feature-gaps.md#recommended-order): the jobs print shops and production teams
+repeat, done in one call each. Owner, 2026-11-24: "finish 0.3"; the tool-list size problem solved with profiles
+(owner suggested a search-and-call pattern; [plan D13](plan.md#d13--tool-profiles-full-by-default-lean-on-request--decided-03)).
+
+- [x] ✅ `data_merge` (new tool): template on an artboard (or refs) with `{{field}}` in any text (keeps the placeholder's style) and items named `{{field}}` (text, linked image fit in its box, symbol, colour) or `{{?field}}` (shown when set); data from CSV/TSV/JSON (BOM, quotes, `;`/tab) or inline rows, `offset`/`limit`; modes `artboards` (one per row), `grid` (n-up per artboard), `files` (one export per row, `{field}`/`{n}` in the path, document unchanged); `name` pattern, `remove_template`, `dry_run` (template fields vs data columns); problems per row (missing image) don't stop a run; [plan D12](plan.md#d12--data-merge-template-copies-not-illustrator-variables--decided-03)
+- [x] ✅ Multi-file jobs: `batch {files}` (paths, folders, `*.ai` globs) — open → steps → save a copy into `out_dir` (default; refused when it is the originals' folder) / `in_place` / `none` → `export` (`{name}` = file stem) → close without saving; files already open are skipped; `dry_run` runs and reports without saving or exporting; per-file results
+- [x] ✅ Recolor: `swatches {action: "recolor"}` — fills, strokes, text runs (merged into spans) and gradient stops → nearest target swatch (`to`: names or `group:Name`, default all global/spot) within `tolerance` (CIE76 ΔE, default 20), or an explicit `map`; tints of a swatch match by the swatch colour and stay tints; locked content counted, not touched; `dry_run`. `swatches {action: "import"}` reads an `.ase` swatch library (CMYK, RGB, Lab, gray; groups; global/spot/process); colour spec `lab(l,a,b)`
+- [x] ✅ Tool profiles: `CHANDELIER_TOOLS=lean` (8 tools + `tools` meta-tool: catalog, query, schema, call; 15.4 KB ≈ 4.9 k tokens) or a list of names; `full` stays the default (53.6 KB; budget raised to 55 KB)
+- [x] ✅ Tests: unit (CSV, patterns, ASE round trip, file lists, profiles, lean server) and `test/live-production.mjs` (macOS, Illustrator 29.1 ru_RU, 2026-11-24: green)
+- [ ] ⏳ Windows: `test/live-production.mjs` in the VM
+- [ ] ⏳ Release 0.3.0: version bump, npm (owner approves the staged publish), `main`, tag, GitHub release with the `.mcpb`
+
 ## Candidates from the 2026-11-23 gap review 🧊
 
 Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
 
 - [x] ✅ 0.1.x → shipped in 0.2.1: safe restart + logs, recipe library, contrast/token checks as `preflight` options, layer-variant and screen-asset `export` options
 - [x] ✅ 0.2: Windows (phase 7, 0.2.0) + `symbols` + image trace (0.2.1)
-- [ ] 🧊 0.3: `data_merge` (CSV/JSON rows → variations), multi-file jobs with dry run, recolor to a swatch library
+- [x] ✅ 0.3: `data_merge` (CSV/JSON rows → variations), multi-file jobs with dry run, recolor to a swatch library
 - [ ] 🧊 0.4: live effects, prepress extras (trap stroke, PDF/X output intents), visual diff
 
 ## Rejected ❌
@@ -442,3 +456,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | 0.2.1 macOS live pass: 6 of 7 suites green; `live-print` fails (`rgb_in_cmyk` not reported) — blocks the 0.2.1 release |
 | 2026-11-24 | 0.2.1 macOS live pass green: `live-print` failure not reproduced in 10 runs (alone and after all suites); the test now prints how Illustrator sees the linked image if it recurs — release unblocked |
 | 2026-11-24 | **0.2.1 released**: npm, plugin 0.2.1, tag `v0.2.1`, GitHub release with the `.mcpb`; W1 modal-dialog check carried over to phase 7 |
+| 2026-11-24 | 0.3 features: `data_merge`, `batch {files}`, `swatches {recolor, import}`, tool profiles (`CHANDELIER_TOOLS=lean`, `tools` meta-tool); plan D12, D13; `test/live-production.mjs` green on macOS |
