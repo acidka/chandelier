@@ -28,7 +28,8 @@ echo %ERRORLEVEL% > "$code"
 "@
 
 $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name # USERDOMAIN is empty in SSH sessions
-$action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$cmd`""
+# conhost --headless: a console without a window, so runs don't pop up a terminal on the user's desktop
+$action = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless cmd.exe /c `"$cmd`""
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Seconds $TimeoutSec)
 Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Settings $settings -Force | Out-Null

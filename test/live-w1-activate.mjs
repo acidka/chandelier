@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // W1 (docs/windows-plan.md § 12): do save and export work on Windows while Illustrator is NOT in front?
 // macOS needed activation before save/export (quirk A10), so the server activates by default; this runs with
-// configure {activate:false}, with another window (Notepad) in front, then with Illustrator minimized, and checks
-// that every file is written. Works only in a document it creates; closes it; kills only the Notepad it started.
+// configure {activate:false} with Illustrator visible but not in front (minimized, then shown again without
+// activation: Windows doesn't let a background process bring another window forward), then minimized, and checks
+// that every file is written. Opens no other windows. Works only in a document it creates; closes it; leaves
+// Illustrator's window shown, not activated.
 // Windows only, desktop session (scripts/windows/run-interactive.ps1).
 //   npm run build && node test/live-w1-activate.mjs
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, statSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -35,7 +37,8 @@ async function call(name, args, check) {
 const ps = (cmd) => execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', cmd]).toString().trim();
 const FG = `Add-Type -Name W -Namespace U -MemberDefinition '[DllImport("user32.dll")] public static extern System.IntPtr GetForegroundWindow(); [DllImport("user32.dll")] public static extern int GetWindowThreadProcessId(System.IntPtr h, out int p); [DllImport("user32.dll")] public static extern bool ShowWindow(System.IntPtr h, int n);';`;
 const foreground = () => ps(`${FG} $p = 0; [void][U.W]::GetWindowThreadProcessId([U.W]::GetForegroundWindow(), [ref]$p); (Get-Process -Id $p).ProcessName`);
-const minimizeIllustrator = () => ps(`${FG} Get-Process Illustrator | Where-Object { $_.MainWindowHandle -ne 0 } | ForEach-Object { [void][U.W]::ShowWindow($_.MainWindowHandle, 6) }; 'ok'`);
+// ShowWindow: 6 = minimize (activates the next window), 4 = show in its last size and place without activating
+const showIllustrator = (n) => ps(`${FG} Get-Process Illustrator | Where-Object { $_.MainWindowHandle -ne 0 } | ForEach-Object { [void][U.W]::ShowWindow($_.MainWindowHandle, ${n}) }; 'ok'`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const fileOk = (p, magic) => { const b = readFileSync(p); if (!b.length || !b.subarray(0, magic.length).equals(Buffer.from(magic))) throw new Error(`${p}: bad file`); return statSync(p).size; };
 
@@ -44,13 +47,9 @@ const r = await call('documents', { action: 'new', width: 200, height: 120, unit
 const name = JSON.parse(txt(r)).name;
 await call('create_shape', { shape: 'rect', x: 20, y: 20, w: 160, h: 80, fill: '#1e2a44' });
 
-const notepad = spawn('notepad.exe', [], { detached: true, stdio: 'ignore' });
-await sleep(2500);
-ps(`(New-Object -ComObject WScript.Shell).AppActivate(${notepad.pid}) | Out-Null`);
-await sleep(1000);
-
 for (const round of ['background', 'minimized']) {
-  if (round === 'minimized') { minimizeIllustrator(); await sleep(1500); }
+  showIllustrator(6); await sleep(1500); // minimized: something else is in front now
+  if (round === 'background') { showIllustrator(4); await sleep(1500); } // visible again, still not in front
   const fg = foreground();
   console.log(`— ${round}: foreground process is ${fg}`);
   if (/illustrator/i.test(fg)) { console.log('FAIL Illustrator is in front: the test cannot check the background case'); failures++; }
@@ -64,7 +63,7 @@ for (const round of ['background', 'minimized']) {
 }
 
 await call('documents', { action: 'close', discard: true });
-try { process.kill(notepad.pid); } catch {}
+showIllustrator(4); // leave the window shown (not activated), as before the test
 await client.close();
 console.log(failures ? `${failures} FAILED` : `save/export work without activation · files in ${dir} (document ${name})`);
 process.exit(failures ? 1 : 0);

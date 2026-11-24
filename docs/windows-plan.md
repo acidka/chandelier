@@ -292,8 +292,10 @@ Node 26.13 ARM64, Illustrator 31.0.0, no document open:
 - **5-min call:** `$.sleep(300000)` completes and returns through the bridge (364 s: ExtendScript's sleep runs ~20 %
   long on Windows — 70 s took 82 s too). Same run on the idle VM: 9.6 ms median per call, 1 MB script 74 ms.
 - **Activation (macOS A10) is not needed on Windows:** [test/live-w1-activate.mjs](../test/live-w1-activate.mjs) runs
-  with `configure {activate:false}`, Notepad in front, then Illustrator minimized: PNG, PDF/X-4, SVG and `save_as .ai`
-  all write valid files, and Notepad stays in front. So `activate` now defaults to **false on Windows** (true on
+  with `configure {activate:false}`, Illustrator visible but not in front, then minimized: PNG, PDF/X-4, SVG and
+  `save_as .ai` all write valid files, and Illustrator stays in the background. (The first version put Notepad in
+  front; Windows 11's Notepad hands off to an existing window, so the test left Notepad tabs on the owner's desktop.
+  The test now opens no windows: it minimizes Illustrator and shows it again without activating it.) So `activate` now defaults to **false on Windows** (true on
   macOS): activating would only steal the user's focus and cost 0.2–1.3 s per save/export.
 - **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM).
 
@@ -310,6 +312,15 @@ and by image capture, the 5 000-item scan. The first run found three problems:
 | `path_ops` unite / minus front returned the untouched group; `menu_command group` returned the old selection | On Windows a menu command acts on the selection Illustrator last **drew**, not the one the script just set: Live Pathfinder on a fresh selection failed 10/10 without a redraw, worked 10/10 with `app.redraw()` after selecting. The first run passed only because the VM was slow | `A.syncSelection()` (runtime): `app.redraw()` on Windows after a selection change, before every menu command (`path_ops`, `menu_command`); no-op on macOS |
 | A `run_script` with `timeout: 2` ran its 7 s to the end | macOS' bridge times out inside the Apple event; Windows' can't cancel a COM call, so the only deadline was the transport's: timeout + **10 s** grace | Transport grace 1 s on Windows: 1 s after the timeout the bridge is killed and the call returns the timeout error with its hint; Illustrator finishes the script, the next call starts a new bridge |
 | `styles list` once showed a paragraph style's old size right after an update (`live-edit`, first run, slow VM) | Not reproduced in 3 later runs nor in a replay of the same steps with pauses | Watch; if it returns, re-read the XMP after writing it |
+
+**Illustrator's links dialog blocks scripts.** With a document open that links a missing or changed file
+(`live-print` places a broken link on purpose), Illustrator asks "Some files are missing or modified in the Links
+panel. Would you like to update them now?" whenever its window is activated — by the user clicking into it, or by a
+test moving windows — and every call waits until someone answers. A real-world modal-dialog case for the open W1 check
+and the hang hint (phase 5). The owner saw several during these runs (screenshot in the git-ignored `tmp/`).
+
+**Desktop noise from test runs:** `run-interactive.ps1` ran each command as a visible `cmd.exe`, so every live run
+opened a terminal window on the owner's desktop; it now starts `conhost.exe --headless`, and output still comes back.
 
 MCP `run_script` round trip in the full run: p50 **42 ms**, p95 70 ms — against 8–10 ms for the bare bridge (§ 12) and
 5.7 ms on macOS. Where the other ~30 ms go is W7's first question.
