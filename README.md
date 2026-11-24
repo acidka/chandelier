@@ -206,10 +206,11 @@ behind them: [plan](docs/plan.md).
 
 ## Status
 
-Current release: **0.4.1** (2026-11-24) on macOS and Windows — npm, MCP Registry, Claude Code plugin and Claude Desktop bundle.
+Current release: **0.5.0** (2026-11-24) on macOS and Windows — npm, MCP Registry, Claude Code plugin and Claude Desktop bundle.
 
 | Release | Date | What it added |
 |---------|------|---------------|
+| **0.5** | 2026-11-24 | **Chandelier panel** (experimental): chat with the agent inside Illustrator, selection events, wake-up through Claude Code channels; fixes: finished documents stay open, batch `@n` sees every item, longer MRAP retry |
 | **0.4.1** | 2026-11-24 | Listed in the MCP Registry; README rewritten |
 | **0.4** | 2026-11-24 | Look and print depth: live effects, spread traps, colour conversion, PDF/X output intents, a visual diff that says what moved (and by how much), what's missing and what's extra |
 | **0.3** | 2026-11-24 | Production automation: `data_merge`, `batch {files}`, `swatches {recolor, import}`, the `lean` tool profile |

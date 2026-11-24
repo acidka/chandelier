@@ -9,7 +9,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const spec = process.env.CHANDELIER_MCP_SPEC || 'chandelier-mcp@^0.4.0';
+const spec = process.env.CHANDELIER_MCP_SPEC || 'chandelier-mcp@^0.5.0';
 // --package + the bin name: works for a registry range and for a .tgz path alike
 const args = ['-y', '--prefix', root, '--package', spec, 'chandelier-mcp'];
 // Windows: npx.cmd runs through cmd, as ONE command line (separate args with shell:true are deprecated, DEP0190).

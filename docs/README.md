@@ -4,8 +4,9 @@ Chandelier is an MCP server that lets AI agents work in Adobe Illustrator **fast
 ~5 ms per call), with **few calls** (batches, one-call checks and finishes) and with **full scripting power** when the
 tools aren't enough. The [README](../README.md) is the short tour; this folder is the source of truth.
 
-> Status: **0.4.1 released** (2026-11-24): npm `chandelier-mcp`, MCP Registry, Claude Code plugin, Claude Desktop bundle;
-> macOS and Windows. Next: the Chandelier panel (events, on a branch). See the [roadmap](roadmap.md).
+> Status: **0.5.0** (2026-11-24): npm `chandelier-mcp`, MCP Registry, Claude Code plugin, Claude Desktop bundle;
+> macOS and Windows; new: the experimental [Chandelier panel](panel-plan.md) (chat, events, channel wake-up). See the
+> [roadmap](roadmap.md).
 
 ## Use it
 

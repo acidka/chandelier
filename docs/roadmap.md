@@ -350,6 +350,31 @@ Items 8, 10 and 12 of the [gap review](research/feature-gaps.md#recommended-orde
 - [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 134/134; `live-look` green by parts (effects, print, diff), `live` and `live-print` green. Found and fixed there: ICC folders when the Program Files variables are missing (a scheduled task's environment), and the diff counting only dark pixels as content (a mid green rendered at grey 152 came out `changed` instead of `extra`)
 - [x] ✅ Release 0.4.0 (2026-11-24): npm `chandelier-mcp@0.4.0` (owner), plugin and marketplace 0.4.0 (launcher `^0.4.0`), `main` fast-forwarded, tag `v0.4.0`, GitHub release with `chandelier-0.4.0.mcpb`
 
+## Milestone 🎯 0.5 — Chandelier panel 🔄 (release prepared 2026-11-24)
+
+Gap item 16 (phase 8). Owner, 2026-11-24: "do everything needed to close this milestone". Design, trials and limits:
+[panel plan](panel-plan.md).
+
+- [x] ✅ Chandelier panel (experimental, opt-in `CHANDELIER_TRANSPORT=panel`; CEP, Illustrator 2021+): scripts through
+  the panel (1.6 ms vs 7.0 ms over the OS bridge), **events** (selection with uuids, document, saved, edited) and the
+  `events` tool (long poll), **chat** in the panel (one per document, kept in `~/.chandelier/chats.json`; the agent
+  answers with `events {say}`), an activity line (waiting / thinking / working), **channel mode**
+  (`CHANDELIER_CHANNEL=1`: a panel message wakes a Claude Code session, research preview); the default tool list is
+  unchanged (`events` only in panel mode)
+- [x] ✅ Install: `npx chandelier-mcp install-panel [--uninstall]`; README and plugin skill sections
+- [x] ✅ Trials on macOS (Illustrator 29.1): live suite 23/23 through the panel; pairing trial with the owner; fresh
+  agent 3/3 (headless); channel wake-up of an idle interactive session (10 s)
+- [x] ✅ Fixes found on the way, for every user: agents leave a finished document open; a batch `@n` sees every item
+  of a long step result (was the first 100); MRAP gets a fourth retry after 1 s
+- [x] ✅ Unit tests on Windows (VM, 2026-11-24): 171 tests; found and fixed a race there — pausing sharing while a look was running still sent that look's state
+- [x] ✅ Windows: on x64 Illustrator expected to work (not tested: no x64 machine); on Windows ARM Illustrator 2027
+  loads only Adobe's own CEP panels (by design), and Illustrator has no third-party UXP yet — the panel is not
+  offered there (the installer says so)
+- [ ] ⏳ Release 0.5.0: version bumped everywhere; owner publishes npm and the MCP Registry entry, then `main`
+  fast-forward, tag `v0.5.0`, GitHub release with `chandelier-0.5.0.mcpb`
+- Open after 0.5 (not blocking): signed ZXP (needs Adobe's ZXPSignCmd and a certificate), a test on x64 Windows, the
+  hidden-panel check (owner)
+
 ## Candidates from the 2026-11-23 gap review 🧊
 
 Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
@@ -496,3 +521,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Panel P5: shipped as experimental for 0.5 — `npx chandelier-mcp install-panel`, README and plugin skill sections; merged into `develop` |
 | 2026-11-24 | Panel later items: x64 Windows test needs hardware (open); UXP port blocked — Illustrator has no third-party UXP yet (Adobe NDA prerelease only), revisit when it opens |
 | 2026-11-24 | Panel: one chat per document (owner's request) — keyed by file path, switches with the document in front, answers go to the chat they answer; `~/.chandelier/chats.json`; live-checked |
+| 2026-11-24 | Fix (found on the Windows VM): pausing sharing while the panel's look was running still sent that look's state; now checked again after the look |
