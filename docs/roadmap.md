@@ -306,6 +306,21 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 - [ ] 🧊 Visual diff: compare a preview with a reference image and report misaligned regions
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
 
+## Milestone 🎯 0.2.1 — quick wins 🔄
+
+The 0.1.x / quick-win items of the [gap review](research/feature-gaps.md#recommended-order) plus the two 0.2 extras that
+didn't make 0.2.0 (owner, 2026-11-24: "finish all 0.2.x"). New features go in as options on existing tools where they
+fit, to keep the tool list under its 50 KB budget.
+
+- [x] ✅ Safe restart `status {restart}` + `CHANDELIER_LOG` debug log (phase 5 items, below)
+- [x] ✅ Brand and accessibility checks as `preflight` options: `contrast: true` (WCAG AA in CMYK documents too), `tokens {colors, fonts, sizes}` → `off_token` warnings (one per item, all its off-token colours/fonts/sizes in the detail); `test/live-checks.mjs`
+- [x] ✅ Bug found on the way: a tinted swatch colour (`swatch:Navy@50`) set the tint on the **swatch itself**, so every later `swatch:Navy` came out at 50 % (both platforms, since phase 2). `A.color` now returns a new SpotColor per use; regression check in `test/live-checks.mjs`
+- [ ] ⏳ `export` options: layer variants (one file per layer set), screen assets (per item, 1x/2x/3x, naming)
+- [ ] ⏳ Symbols: list, create from items, place, replace, remove
+- [ ] ⏳ Image trace: raster → vector paths (presets), on `place` and for placed images
+- [ ] ⏳ Recipe library: ready builders (calendar month, labels sheet, business cards, style guide, colour chips) via `run_script {recipe}`
+- [ ] ⏳ W1 modal-dialog check on Windows (needs the owner at the VM)
+
 ## Candidates from the 2026-11-23 gap review 🧊
 
 Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
@@ -416,3 +431,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | **0.2.0 released**: npm `chandelier-mcp@0.2.0` (darwin + win32; registry install checked on macOS and in the Windows VM through the plugin launcher), plugin 0.2.0, GitHub Release v0.2.0 with `chandelier-0.2.0.mcpb`; CI green on macOS and Windows |
 | 2026-11-24 | 0.2.1 (1/6): `status {restart}` safe restart (refused while unsaved; quit + relaunch + reopen) and `CHANDELIER_LOG` per-call debug log |
 | 2026-11-24 | Tool list 49.96 → 48.13 KB to make room for 0.2.1: `refs` has no per-tool description (the server instructions list the forms; it repeated 15×), `blend` is a checked string instead of a 16-name enum, shorter `layer`/`parent` hints |
+| 2026-11-24 | 0.2.1 (2/6): `preflight {contrast, tokens}` → `off_token`; fixed: a tinted swatch colour changed the swatch's own tint (every later plain use came out tinted) |

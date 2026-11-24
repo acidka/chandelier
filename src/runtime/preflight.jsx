@@ -4,7 +4,7 @@
 (function (A) {
   var SEV = { missing_font: 'error', broken_link: 'error', rgb_in_cmyk: 'error', overset_text: 'error', white_overprint: 'error',
     registration_color: 'warning', low_res: 'warning', empty_text: 'warning', default_text: 'warning', off_artboard: 'warning',
-    small_text: 'warning', hairline: 'warning', no_bleed: 'warning', low_contrast: 'warning',
+    small_text: 'warning', hairline: 'warning', no_bleed: 'warning', low_contrast: 'warning', off_token: 'warning',
     spot_color: 'info', overprint: 'info', transparency: 'info', live_text: 'info', empty_group: 'info' };
   var RASTER_EXT = /\.(png|jpe?g|tiff?|psd|gif|bmp|webp)$/i;
 
@@ -55,7 +55,33 @@
     if (a.ignore) for (i = 0; i < a.ignore.length; i++) ignore[a.ignore[i]] = true;
     var linked = [], checks = {}, skipped = 0, plates = { C: 0, M: 0, Y: 0, K: 0 }, spotsUsed = {}, edgeItems = 0, live = 0;
     // contrast (RGB documents): items in walk order = top to bottom; texts and opaque filled shapes under them
-    var order = 0, texts = [], grounds = [], doContrast = !cmyk && !ignore.low_contrast;
+    var order = 0, texts = [], grounds = [], doContrast = (!cmyk || a.contrast === true) && a.contrast !== false && !ignore.low_contrast;
+    // brand tokens (0.2.1): colours (swatch names or colour specs; tints of an allowed swatch pass), fonts, text sizes
+    var tok = null, offs = [];
+    if (a.tokens && !ignore.off_token) {
+      tok = { swatch: {}, spec: {}, fonts: null, sizes: a.tokens.sizes || null, colors: !!a.tokens.colors };
+      var tc0 = a.tokens.colors || [];
+      for (i = 0; i < tc0.length; i++) {
+        var ts = String(tc0[i]);
+        if (/^swatch:/.test(ts)) tok.swatch[ts.slice(7).replace(/@\d+$/, '')] = true;
+        else { try { tok.spec[A.colorStr(A.color(ts))] = true; } catch (e) { tok.spec[ts] = true; } }
+      }
+      if (a.tokens.fonts) {
+        tok.fonts = {};
+        for (i = 0; i < a.tokens.fonts.length; i++) { var tf = a.tokens.fonts[i]; try { tf = A.font(tf).name; } catch (e) {} tok.fonts[tf] = true; }
+      }
+    }
+    function colorOk(c) {
+      var s = A.colorStr(c);
+      if (!s || s === 'none') return true;
+      if (/^swatch:/.test(s)) {
+        if (tok.swatch[s.slice(7).replace(/@\d+$/, '')]) return true;
+        try { if (tok.spec[A.colorStr(c.spot.color)]) return true; } catch (e) {}
+        return false;
+      }
+      return !!tok.spec[s];
+    }
+    function off(what) { for (var q = 0; q < offs.length; q++) if (offs[q] === what) return; offs.push(what); }
     function hit(cat, it, detail) {
       if (ignore[cat]) return;
       var c = checks[cat];
@@ -100,6 +126,7 @@
         var c = all[k];
         if (!c) continue;
         inks(c);
+        if (tok && tok.colors && !colorOk(c)) off((k < fills.length ? 'fill ' : 'stroke ') + A.colorStr(c));
         if (cmyk && (c.typename === 'RGBColor' || c.typename === 'LabColor')) hit('rgb_in_cmyk', it, (k < fills.length ? 'fill ' : 'stroke ') + A.colorStr(c));
         if (c.typename === 'SpotColor') { try { if (c.spot.colorType === ColorModel.REGISTRATION) hit('registration_color', it, k < fills.length ? 'fill' : 'stroke'); } catch (e) {} }
       }
@@ -126,6 +153,11 @@
     A.walk(function (it) {
       order++;
       if (!a.include_non_printing && nonPrinting(it)) { skipped++; return; }
+      offs = [];
+      walkOne(it);
+      if (offs.length) hit('off_token', it, offs.join('; '));
+    });
+    function walkOne(it) {
       var t = it.typename;
       if (doContrast && (t === 'PathItem' || t === 'CompoundPathItem')) {
         try {
@@ -155,7 +187,8 @@
         for (k = 0; k < n; k++) {
           var ca = tr[k].characterAttributes, fname;
           try { fname = ca.textFont.name; } catch (e) { fname = '?'; }
-          if (!fonts[fname]) { fonts[fname] = true; if (!fontOk(fname)) hit('missing_font', it, fname); }
+          if (!fonts[fname]) { fonts[fname] = true; if (!fontOk(fname)) hit('missing_font', it, fname); if (tok && tok.fonts && !tok.fonts[fname]) off('font ' + fname); }
+          if (tok && tok.sizes) { var sok = false; for (var sq = 0; sq < tok.sizes.length; sq++) if (Math.abs(tok.sizes[sq] - ca.size) < 0.01) sok = true; if (!sok) off('size ' + (Math.round(ca.size * 100) / 100) + ' pt'); }
           if (!(ca.size === 12 && /^MyriadPro-Regular$/.test(fname))) allDefault = false;
           if (minText && ca.size < minText && (small === null || ca.size < small)) small = ca.size;
           if (k === 0 || k === n - 1) paint(it, ca, true);
@@ -173,7 +206,7 @@
         // embedding converts RGB images to the document colour space, so this only catches older files
         try { if (cmyk && it.imageColorSpace === ImageColorSpace.RGB) hit('rgb_in_cmyk', it, 'RGB image'); } catch (e) {}
       }
-    });
+    }
     // each text against the nearest opaque filled shape below it that covers it (none: white paper)
     if (doContrast && texts.length && texts.length * (grounds.length + 1) <= 2000000) {
       for (i = 0; i < texts.length; i++) {

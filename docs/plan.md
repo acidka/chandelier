@@ -221,7 +221,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 28 | `place` | Place/embed raster, PDF, AI; import **SVG markup** as editable art | 2 |
 | 29 | `history` | `undo` / `redo` with count | 2 |
 | 30 | `export` | PNG/JPG/SVG/PDF/WebP per artboard, items or document; scale/DPI; **PDF bleed with real Trim/Bleed boxes** | 3 |
-| 31 | `preflight` | RGB in CMYK, missing fonts, broken links, low-res images, overset text, default-12 pt orphans, items off artboard, real spot colours only, non-printing layers skipped | 3 |
+| 31 | `preflight` | RGB in CMYK, missing fonts, broken links, low-res images, overset text, default-12 pt orphans, items off artboard, real spot colours only, non-printing layers skipped; `contrast` (WCAG AA in any colour space), `tokens {colors, fonts, sizes}` → `off_token` brand check (0.2.1) | 3 |
 | 32 | `menu_command` | `app.executeMenuCommand` on refs (escape hatch for effects and anything without an API) | 2 |
 | 33 | `symbols` | `list`, `create` from items, `place` | 8 |
 

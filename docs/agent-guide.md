@@ -80,7 +80,9 @@ The `recreate_design` MCP prompt walks through these steps.
   unstyled text, overset, empty groups).
 - `preflight` — must show **0 errors**. In RGB documents it also warns about text below WCAG AA contrast
   (`low_contrast`) against the shape under it. Hidden and non-printing content is skipped; only real spot inks are
-  listed; live text is one info line. `ignore` drops categories you accept.
+  listed; live text is one info line. `ignore` drops categories you accept. `contrast: true` runs the contrast check
+  in CMYK documents too. For brand work give `tokens {colors: ["swatch:Navy", "cmyk(…)"], fonts: ["Arial"], sizes: [9, 12, 28]}`:
+  every item with another colour, font or size comes back under `off_token` (tints of an allowed swatch pass).
 - `preview` shows what prints: non-printing layers (e.g. a photo placeholder) are hidden while it renders.
 - `preview` the hardest artboards (most rows, longest title, the last one), not only the first.
 - **One check call:** `preview {artboard: 0, reference, more: [7, 11], preflight: true, info: true}` returns the

@@ -183,7 +183,9 @@ $.global.AIA = (function () {
       var sw;
       try { sw = A.doc().swatches.getByName(rest); } catch (e) { throw new Error('No swatch named "' + rest + '".'); }
       c = sw.color;
-      if (tint !== null && c.typename === 'SpotColor') c.tint = tint;
+      // A NEW SpotColor: setting .tint on sw.color changed the swatch itself, so every later "swatch:Name" came out at
+      // that tint (found by the 0.2.1 contrast test). A plain "swatch:Name" is always 100 %.
+      if (c.typename === 'SpotColor') { var sc = new SpotColor(); sc.spot = c.spot; sc.tint = tint !== null ? tint : 100; return sc; }
       return c;
     }
     if (spec.indexOf('gradient:') === 0) {

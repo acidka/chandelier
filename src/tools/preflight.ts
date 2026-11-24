@@ -7,13 +7,13 @@ import { imageColorMode } from '../imagefile.js';
 import { J } from './types.js';
 
 const CATS = ['missing_font', 'broken_link', 'rgb_in_cmyk', 'overset_text', 'white_overprint', 'registration_color', 'low_res', 'empty_text', 'default_text',
-  'off_artboard', 'small_text', 'hairline', 'no_bleed', 'low_contrast', 'spot_color', 'overprint', 'transparency', 'live_text', 'empty_group'] as const;
+  'off_artboard', 'small_text', 'hairline', 'no_bleed', 'low_contrast', 'off_token', 'spot_color', 'overprint', 'transparency', 'live_text', 'empty_group'] as const;
 
 export const preflight: ToolDef = {
   name: 'preflight',
   description: `Print checks of the active document in one pass. Hidden items and hidden/non-printing layers are skipped (counted in skipped_non_printing) unless include_non_printing.
 errors: missing_font, broken_link, rgb_in_cmyk (paths, text, RGB images), overset_text, white_overprint ·
-warnings: registration_color (art painted with [Registration]), low_res (< min_dpi, default 300), empty_text, default_text (unnamed 12 pt Myriad leftovers), off_artboard, small_text (< min_text_pt, default 5), hairline (< hairline_pt, default 0.25), no_bleed (art at an artboard edge, document without bleed), low_contrast (RGB documents: text below WCAG AA on what lies under it) ·
+warnings: registration_color (art painted with [Registration]), low_res (< min_dpi, default 300), empty_text, default_text (unnamed 12 pt Myriad leftovers), off_artboard, small_text (< min_text_pt, default 5), hairline (< hairline_pt, default 0.25), no_bleed (art at an artboard edge, document without bleed), low_contrast (text below WCAG AA on what lies under it; RGB documents, any with contrast:true), off_token (colours, fonts or sizes outside tokens {colors: swatch:Name or specs, fonts, sizes}: brand check) ·
 info: spot_color (real spot inks only — global process swatches are not spots), overprint, transparency, live_text (one count line), empty_group.
 Also returns inks (process plates, spot inks) and the bleed. ignore: categories to skip; max_items per category (default 20).`,
   shape: {
@@ -23,6 +23,8 @@ Also returns inks (process plates, spot inks) and the bleed. ignore: categories 
     min_text_pt: z.number().min(0).optional(),
     hairline_pt: z.number().min(0).optional(),
     max_items: z.number().min(0).max(500).optional(),
+    contrast: z.boolean().optional(),
+    tokens: z.object({ colors: z.array(z.string()).optional(), fonts: z.array(z.string()).optional(), sizes: z.array(z.number()).optional() }).optional(),
   },
   step: (a) => ({ cmd: 'preflight', args: a }),
   async run(a, { rt }) {
