@@ -35,6 +35,26 @@
     });
     return out;
   }
+  // export {variants} (0.2.1): show/hide layers by name for one variant and return their previous state; {restore}
+  // puts it back. Hidden layers are also made non-printing so they can't end up in a PDF as hidden content.
+  A.cmd.layer_state = function (a) {
+    var doc = A.doc(), prev = [], i, L;
+    if (a.restore) {
+      for (i = 0; i < a.restore.length; i++) {
+        try { L = A.layerByName(a.restore[i].name, doc); L.visible = a.restore[i].visible; L.printable = a.restore[i].printable; } catch (e) {}
+      }
+      return { restored: a.restore.length };
+    }
+    // resolve every name first: a wrong one must fail before anything changed
+    var todo = [], lists = [[a.show, true], [a.hide, false]];
+    for (i = 0; i < lists.length; i++) for (var k = 0; lists[i][0] && k < lists[i][0].length; k++) todo.push([A.layerByName(lists[i][0][k], doc), lists[i][1]]);
+    for (i = 0; i < todo.length; i++) {
+      L = todo[i][0];
+      prev.push({ name: L.name, visible: L.visible, printable: L.printable });
+      L.visible = todo[i][1]; L.printable = todo[i][1];
+    }
+    return { prev: prev };
+  };
   // first step: what will be exported, and what we know about bleed
   A.cmd.export_prep = function (a) {
     var doc = A.doc(), idx = indices(doc, a), boards = [];

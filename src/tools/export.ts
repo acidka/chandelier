@@ -43,6 +43,8 @@ export const export_tool: ToolDef = {
   description: `Export the active document (it stays unchanged).
 format: "pdf" | "png" | "jpg" | "svg" | "webp". artboards: [indices] | "all" (default: the active artboard). refs: export just these items (png only).
 path: a file, or a folder (several outputs: <document>-<artboard>.<ext>; with a file path <stem>-<artboard>.<ext>).
+variants: [{name, show:[layer names], hide:[…]}] → one export per variant (file <stem>-<name>, or a <name> subfolder); layers are restored after (the document counts as changed).
+Screen assets (png + refs): each:true → one file per item, named after it, into the folder path; scales:[1,2,3] → name@2x.png….
 PDF: preset (default "[PDF/X-4:2008]"; any name from Illustrator's PDF presets), pages "one_file" (default) | "per_artboard",
 bleed: "document" (default: its bleed if known) | number | [left, top, right, bottom] in session units → pages grow by it, TrimBox = artboard, BleedBox = page. Warns about variable fonts (B10).
 Raster: scale (factor, default 1) | dpi | width (px); background "white" | "transparent" (png, webp); jpg is quality 80. SVG is clipped to the artboard; svg_text "outline" | "text".
@@ -58,30 +60,85 @@ Returns {files:[{path, artboards, bytes, pages?, pdfx?, boxes?}]}.`,
     scale: z.number().positive().optional(), dpi: z.number().positive().optional(), width: z.number().positive().optional(),
     background: z.enum(['white', 'transparent']).optional(),
     svg_text: z.enum(['outline', 'text']).optional(),
+    variants: z.array(z.object({ name: z.string(), show: z.array(z.string()).optional(), hide: z.array(z.string()).optional() })).optional(),
+    each: z.boolean().optional(),
+    scales: z.array(z.number().positive()).optional(),
   },
-  async run(a, { T, rt, tmp, settings }) {
+  async run(a, ctx) {
+    const { T, rt, tmp, settings } = ctx;
     const target = resolve(a.path);
     const ext = EXT[a.format];
     const warnings: string[] = [];
     if (settings.activate) await T.call('activate');
 
-    // items → PNG via the preview capture
+    // layer variants: set the layers, export as usual, always restore
+    if (a.variants?.length) {
+      const files: any[] = [];
+      const isFile = extname(target).toLowerCase() === ext;
+      for (const v of a.variants as { name: string; show?: string[]; hide?: string[] }[]) {
+        const st = await rt.cmd<any>('layer_state', { show: v.show, hide: v.hide });
+        if (!st.ok) return { content: [{ type: 'text', text: `variant ${J(v.name)}: ` + errorText(st) }], isError: true };
+        try {
+          const path = isFile ? join(dirname(target), `${basename(target, ext)}-${safe(v.name)}${ext}`) : join(target, safe(v.name));
+          const r = await export_tool.run!({ ...a, variants: undefined, path }, ctx);
+          if (r.isError) return r;
+          const out = JSON.parse((r.content[0] as { text: string }).text);
+          for (const f of out.files) files.push({ variant: v.name, ...f });
+          if (out.warnings) warnings.push(...out.warnings);
+        } finally {
+          await rt.cmd('layer_state', { restore: st.data.prev });
+        }
+      }
+      return text({ files, ...(warnings.length ? { warnings: [...new Set(warnings)] } : {}) });
+    }
+
+    // items → PNG via the preview capture (one image, or each item and/or several scales: screen assets)
     if (a.refs !== undefined) {
       if (a.format !== 'png') return fail('refs export works for png only (use artboards for other formats).');
-      const file = extname(target) ? target : join(target, 'items.png');
-      mkdirSync(dirname(file), { recursive: true });
-      const env = await rt.cmd<any>('preview', { refs: a.refs, path: file, dpi: a.dpi ?? 72 * (a.scale ?? 1), background: a.background, pad: 0 });
-      if (!env.ok) return { content: [{ type: 'text', text: errorText(env) }], isError: true };
-      if (env.data.resize_to) {
-        const px = env.data.px as number[];
-        try {
-          const got = shrinkPngFile(file, env.data.resize_to);
-          env.data.px = [got.w, got.h];
-          env.data.scale = Math.round(env.data.scale * got.w / px[0] * 1000) / 1000;
-        } catch { /* keep the larger image */ }
-        delete env.data.resize_to;
+      const capture = async (ref: unknown, file: string, dpi: number) => {
+        mkdirSync(dirname(file), { recursive: true });
+        const env = await rt.cmd<any>('preview', { refs: ref, path: file, dpi, background: a.background, pad: 0 });
+        if (!env.ok) return env;
+        if (env.data.resize_to) {
+          const px = env.data.px as number[];
+          try {
+            const got = shrinkPngFile(file, env.data.resize_to);
+            env.data.px = [got.w, got.h];
+            env.data.scale = Math.round(env.data.scale * got.w / px[0] * 1000) / 1000;
+          } catch { /* keep the larger image */ }
+          delete env.data.resize_to;
+        }
+        return { ok: true, data: { path: file, bytes: statSync(file).size, ...env.data } };
+      };
+      const baseDpi = a.dpi ?? 72 * (a.scale ?? 1);
+      if (!a.each && !a.scales) {
+        const r = await capture(a.refs, extname(target) ? target : join(target, 'items.png'), baseDpi);
+        if (!r.ok) return { content: [{ type: 'text', text: errorText(r as any) }], isError: true };
+        return text({ files: [r.data] });
       }
-      return text({ files: [{ path: file, bytes: statSync(file).size, ...env.data }] });
+      const scales: number[] = a.scales ?? [1];
+      const suffix = (k: number) => (k === 1 ? '' : `@${k}x`);
+      let jobs: { ref: unknown; stem: string; dir: string }[];
+      if (a.each) {
+        const got = await rt.cmd<any>('get_items', { refs: a.refs, limit: 1000, runs: false });
+        if (!got.ok) return { content: [{ type: 'text', text: errorText(got) }], isError: true };
+        const dir = extname(target) ? dirname(target) : target, seen = new Set<string>();
+        jobs = (got.data.items as { uuid: string; name?: string }[]).map((it) => {
+          let stem = safe(it.name || 'item-' + it.uuid);
+          if (seen.has(stem)) stem = `${stem}-${it.uuid}`;
+          seen.add(stem);
+          return { ref: it.uuid, stem, dir };
+        });
+      } else {
+        jobs = [{ ref: a.refs, stem: extname(target) ? basename(target, extname(target)) : 'items', dir: extname(target) ? dirname(target) : target }];
+      }
+      const files: any[] = [];
+      for (const j of jobs) for (const k of scales) {
+        const r = await capture(j.ref, join(j.dir, `${j.stem}${suffix(k)}.png`), baseDpi * k);
+        if (!r.ok) return { content: [{ type: 'text', text: `${j.stem}@${k}x: ` + errorText(r as any) }], isError: true };
+        files.push({ ...r.data, scale_factor: k });
+      }
+      return text({ files });
     }
 
     const prep = await rt.cmd<any>('export_prep', { artboards: a.artboards, format: a.format });

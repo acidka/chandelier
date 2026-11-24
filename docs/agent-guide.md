@@ -98,6 +98,10 @@ and closes; if an export fails the document stays open and the result says what 
 session units) and returns the measured trim and bleed boxes of every page. It never rebinds the document to the
 PDF. PNG/JPG/SVG/WebP the same way. Crop marks: `artboards {action: "crop_marks"}`. The `print_export` prompt
 does preflight + export.
+- **Variants:** `export {format: "pdf", path, variants: [{name: "print", hide: ["Dieline"]}, {name: "dieline", show: ["Dieline"], hide: ["Art"]}]}`
+  writes one file per layer set and restores the layers.
+- **Screen assets:** `export {format: "png", refs: "layer:Icons", each: true, scales: [1, 2, 3], path: <folder>}` → `name.png`,
+  `name@2x.png`, `name@3x.png` per item (name the items first).
 
 ## 7. When something goes wrong
 
