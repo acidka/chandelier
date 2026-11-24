@@ -479,3 +479,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | README refined: quick start moved up (setup notes folded), features regrouped, release history as a table, npm badge; per-call overhead of the ie3 MCP corrected to ~330 ms (benchmarks § micro) |
 | 2026-11-24 | **0.4.1 released** (registry metadata, README): plugin 0.4.1, tag `v0.4.1`, GitHub release with the `.mcpb`; npm and the registry entry are published by the owner |
 | 2026-11-24 | `chandelier-mcp@0.4.1` on npm (owner; `npx` from the registry starts, 35 tools, `status` answers — Illustrator was not running, so no live round trip) and **listed in the MCP Registry** as `io.github.acidka/chandelier` |
+| 2026-11-24 | Agents leave a finished document open (owner's request): server instructions, plugin skill, agent guide, README, `recreate_design` prompt; close only when asked or for many-file jobs (`batch {files}` closes each itself) |

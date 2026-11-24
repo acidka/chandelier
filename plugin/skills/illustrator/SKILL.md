@@ -10,7 +10,8 @@ The server's own instructions carry the conventions; this skill is how to use th
 
 ## Ground rules
 
-- **Only touch documents you created** or that the user asked you to change. Close what you created.
+- **Only touch documents you created** or that the user asked you to change. Leave a finished document open for the user to look at; close it only when they ask or when a job goes
+  through many files (`batch {files}` closes each itself).
 - **Never launch Illustrator yourself** unless the user asks; any tool says when it isn't running.
 - Coordinates everywhere: `[x, y, w, h]` from the artboard's top-left, y down, in the session's units
   (`documents new {units: "mm"}` sets them). Point text: `y` is the baseline.
@@ -30,7 +31,8 @@ The server's own instructions carry the conventions; this skill is how to use th
    `AIA.fresh("Layer")` so a re-run replaces instead of adding.
 4. **One check call:** `preview {reference?, more: [other artboards], preflight: true}`. Fix what it shows (one
    batch), check once more.
-5. **One finish call:** `documents save {path, export: [{format: "pdf", path}, {format: "png", path, artboards: [0]}], close: true}`.
+5. **One finish call:** `documents save {path, export: [{format: "pdf", path}, {format: "png", path, artboards: [0]}]}`. Leave the document open
+   (add `close: true` only when the user asks).
 
 Name layers and groups. Keep scripts re-runnable.
 
