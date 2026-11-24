@@ -171,6 +171,7 @@ describe('panel socket', () => {
 
 describe('panel chat', () => {
   it('the designer writes from the panel; the agent gets a message event (UTF-8 intact)', async () => {
+    await until(() => panel.info().doc === 'A.ai'); // the panel's first look at the document (start-up)
     expect(panel.message('make it bolder')).toBe(false); // no agent connected: nothing sent
     makeT();
     await T!.ensure();
@@ -182,6 +183,7 @@ describe('panel chat', () => {
   });
 
   it("the agent's say shows in the panel only", async () => {
+    await until(() => panel.info().doc === 'A.ai');
     makeT();
     expect(await T!.say('Done — the headline is bold. Ціль досягнута.')).toBe(true);
     expect(panel.info().chat.at(-1)).toMatchObject({ type: 'agent', text: 'Done — the headline is bold. Ціль досягнута.' });
@@ -209,19 +211,46 @@ describe('panel chat', () => {
   });
 });
 
-describe('chat history', () => {
-  it('survives a panel restart (kept in ~/.chandelier/chat.json, private)', async () => {
+describe('chat history, one per document', () => {
+  it('each document has its own chat; the answer goes to the document it answers; kept across restarts', async () => {
     makeT();
     await T!.ensure();
-    panel.message('make it red');
-    await T!.say('Done.');
-    const f = join(home, '.chandelier', 'chat.json');
+    await until(() => panel.info().doc === 'A.ai');
+    panel.message('make it red');                       // about A.ai
+    world.doc = 'B.ai'; world.docs = 2;                 // the designer switches before the agent answers
+    panel.poke();
+    await until(() => panel.info().doc === 'B.ai');
+    expect(panel.info().chat).toEqual([]);              // B.ai has its own (empty) chat
+    await T!.say('Done: A is red.');                    // answers the message about A.ai
+    expect(panel.info().chat).toEqual([]);
+    panel.message('and here?');
+    expect(panel.info().chat.map((e: any) => e.text)).toEqual(['and here?']);
+    world.doc = 'A.ai'; panel.poke();
+    await until(() => panel.info().doc === 'A.ai');
+    expect(panel.info().chat.map((e: any) => e.text)).toEqual(['make it red', 'Done: A is red.']);
+
+    const f = join(home, '.chandelier', 'chats.json');
     expect(await until(() => existsSync(f))).toBe(true);
     if (process.platform !== 'win32') expect(statSync(f).mode & 0o777).toBe(0o600);
     T!.stop(); T = null;
     panel.stop();
     panel = createPanel({ evalScript: fakeEval, snapshot: SNAP, home, pollMs: 20 });
-    expect(panel.info().chat.map((e: any) => e.text)).toEqual(['make it red', 'Done.']);
+    await panel.start();                                // looks at the document once, with no agent connected
+    expect(await until(() => panel.info().doc === 'A.ai')).toBe(true);
+    expect(panel.info().chat.map((e: any) => e.text)).toEqual(['make it red', 'Done: A is red.']);
+  });
+
+  it('a saved document is keyed by its file, so two files with the same name keep separate chats', async () => {
+    (world as any).path = '/jobs/one/Poster.ai'; world.doc = 'Poster.ai';
+    panel.poke();
+    await until(() => panel.info().doc === 'Poster.ai');
+    makeT(); await T!.ensure();
+    panel.message('first poster');
+    (world as any).path = '/jobs/two/Poster.ai';
+    panel.poke();
+    await until(() => panel.info().chat.length === 0);
+    expect(panel.info().doc).toBe('Poster.ai');
+    expect(panel.info().chat).toEqual([]);
   });
 });
 
@@ -361,7 +390,7 @@ describe('events tool', () => {
 describe('snapshot.jsx (runs inside Illustrator every poll tick)', () => {
   const src = readFileSync(fileURLToPath(new URL('../../src/cep/host/snapshot.jsx', import.meta.url)), 'utf8');
   const run = (app: object) => JSON.parse(require('node:vm').runInNewContext(src, { app }));
-  it('no document', () => expect(run({ documents: { length: 0 } })).toEqual({ doc: null, docs: 0, saved: true, count: 0, items: [] }));
+  it('no document', () => expect(run({ documents: { length: 0 } })).toEqual({ doc: null, path: '', docs: 0, saved: true, count: 0, items: [] }));
   it('selected items: first 10, with uuids, names and text', () => {
     const items = Array.from({ length: 12 }, (_, i) => ({ uuid: String(100 + i), typename: i ? 'PathItem' : 'TextFrame', name: i ? '' : 'Заголовок "1"', contents: 'Hello\nworld' }));
     const s = run({ documents: { length: 2 }, activeDocument: { name: 'Poster.ai', saved: false, selection: items } });

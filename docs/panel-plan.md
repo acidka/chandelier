@@ -66,8 +66,13 @@ agent ──MCP──▶ Chandelier server ── PanelTransport ──TCP 127.0
 - **Two tabs (2026-11-24, owner's request):** *Chat* (opens first) holds only the message log (oldest first, scrolled
   to the newest), the text box and Send; *Status* holds the connection, the agent count, the sharing switch and recent
   events, with a connection dot on its tab. The chat history (100 messages) is kept apart from events, so selection
-  changes don't push messages out; it is saved to `~/.chandelier/chat.json` (0600, last 100), so it survives a panel
-  reload or an Illustrator restart.
+  changes don't push messages out. **One chat per document** (owner's request): keyed by the file path (the name while
+  never saved, so two `Poster.ai` files keep separate chats); the Chat tab shows the chat of the document in front
+  ("Chat about Poster.ai") and switches with it — the panel looks at the document at start-up and on Illustrator's
+  document events even with no agent connected. An agent's answer goes to the chat of the message it answers, even if
+  the designer switched documents meanwhile. Saved in `~/.chandelier/chats.json` (0600; 100 messages per document, the
+  50 most recently used documents), so chats survive a panel reload or an Illustrator restart. The snapshot now also
+  reports `path`.
 - **Activity line (2026-11-24, owner's request)** under the chat: "Sent · waiting for the agent to pick it up" (a
   message no agent has read), "Agent is thinking…" (the `events` tool handed the message to the agent; protocol op
   `activity` {state: thinking}), "Agent is working in Illustrator…" (its scripts run through the panel; held 1.5 s

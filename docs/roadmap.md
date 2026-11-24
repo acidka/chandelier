@@ -495,3 +495,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Panel chat history saved to `~/.chandelier/chat.json` (survives a panel reload) |
 | 2026-11-24 | Panel P5: shipped as experimental for 0.5 — `npx chandelier-mcp install-panel`, README and plugin skill sections; merged into `develop` |
 | 2026-11-24 | Panel later items: x64 Windows test needs hardware (open); UXP port blocked — Illustrator has no third-party UXP yet (Adobe NDA prerelease only), revisit when it opens |
+| 2026-11-24 | Panel: one chat per document (owner's request) — keyed by file path, switches with the document in front, answers go to the chat they answer; `~/.chandelier/chats.json`; live-checked |

@@ -49,7 +49,7 @@
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
-  var chatShown = 0;
+  var chatShown = '';
   function render(info) {
     $('dot').className = 'dot' + (info.clients ? ' on' : '');
     $('dot').title = info.clients ? 'Agent connected' : 'No agent connected';
@@ -57,14 +57,16 @@
     $('agents').textContent = info.clients ? (info.clients + (info.clients === 1 ? ' agent connected' : ' agents connected')) : 'No agent connected';
     var list = info.recent.slice().reverse();
     $('events').innerHTML = list.length ? list.map(function (e) { return '<li>' + describe(e) + '</li>'; }).join('') : '<li class="muted">Nothing yet</li>';
-    // chat: oldest first, scrolled to the newest when a message arrives
-    if (info.chat.length !== chatShown) {
-      chatShown = info.chat.length;
+    // chat of the document in front: oldest first, scrolled to the newest when a message arrives or the document changes
+    $('chat-doc').textContent = info.doc ? 'Chat about ' + info.doc : 'No document open';
+    var sig = (info.doc || '') + '|' + info.chat.length + '|' + (info.chat.length ? info.chat[info.chat.length - 1].t : 0);
+    if (sig !== chatShown) {
+      chatShown = sig;
       $('log').innerHTML = info.chat.map(function (e) {
         var me = e.type === 'message';
         return '<li class="' + (me ? 'me' : 'agent') + '"><b>' + (me ? 'You' : 'Agent') + '</b> <span class="muted">' +
           new Date(e.t).toLocaleTimeString() + '</span>\n' + escapeHtml(e.text) + '</li>';
-      }).join('');
+      }).join('') || '<li class="empty">Write to the agent below. With something selected, "this" means the selection.</li>';
       $('log').scrollTop = $('log').scrollHeight;
     }
     clients = info.clients;

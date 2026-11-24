@@ -11,7 +11,8 @@
 //   pushed to every client as {"event":{type, t, …}}: document (active document changed, opened, closed), saved,
 //   edited, selection (count, first 10 items with uuids, text cursor). after_agent:true marks a change seen right
 //   after an agent request (probably the agent's own doing). The designer can pause sharing from the panel.
-// - Chat: the designer's text from the panel goes to every client as {"event":{type:"message", text}};
+// - Chat, one per document (key: the file path, or the name while never saved; kept in ~/.chandelier/chats.json):
+//   the designer's text from the panel goes to every client as {"event":{type:"message", text}};
 //   a client's {"id","op":"say","text"} is shown in the panel (the agent's answer) → {"id","ok":true}.
 // - Activity for the panel's "thinking" line: {"id","op":"activity","state":"thinking"|"listening"} from a client
 //   (thinking = it has read the designer's message; listening = it waits for the next one); "working" while its
@@ -63,16 +64,22 @@ function createPanel(opts) {
   let last = null;
   const recent = [];
 
-  // the designer's messages and the agent's answers, apart from events so selections don't push them out; kept in
-  // ~/.chandelier/chat.json (0600) so a panel reload or an Illustrator restart doesn't clear the conversation
-  const chatFile = path.join(path.dirname(file), 'chat.json');
-  const chat = (() => { try { const c = JSON.parse(fs.readFileSync(chatFile, 'utf8')); return Array.isArray(c) ? c.slice(-100) : []; } catch (e) { return []; } })();
+  // the designer's messages and the agent's answers, one conversation per document, apart from events so selections
+  // don't push them out; kept in ~/.chandelier/chats.json (0600: {key: {name, t, items}}; 100 messages per document,
+  // the 50 most recently used documents) so a panel reload or an Illustrator restart doesn't clear them
+  const chatFile = path.join(path.dirname(file), 'chats.json');
+  const chats = (() => { try { const c = JSON.parse(fs.readFileSync(chatFile, 'utf8')); return c && typeof c === 'object' && !Array.isArray(c) ? c : {}; } catch (e) { return {}; } })();
+  let doc = { key: '', name: null }; // the active document, known even while no agent is connected
+  let replyKey = null; // the document of the designer's latest message: the agent's answer goes there
+  const chatOf = (key) => (chats[key] ? chats[key].items : []);
   let saveTimer = null;
   const saveChat = () => {
     if (saveTimer) return;
     saveTimer = setTimeout(() => {
       saveTimer = null;
-      try { fs.mkdirSync(path.dirname(chatFile), { recursive: true, mode: 0o700 }); fs.writeFileSync(chatFile, JSON.stringify(chat), { mode: 0o600 }); } catch (e) { /* the chat still works in memory */ }
+      const keys = Object.keys(chats).sort((a, b) => chats[b].t - chats[a].t);
+      for (const k of keys.slice(50)) delete chats[k];
+      try { fs.mkdirSync(path.dirname(chatFile), { recursive: true, mode: 0o700 }); fs.writeFileSync(chatFile, JSON.stringify(chats), { mode: 0o600 }); } catch (e) { /* the chat still works in memory */ }
     }, 200);
     if (saveTimer.unref) saveTimer.unref();
   };
@@ -81,9 +88,20 @@ function createPanel(opts) {
   let unread = false, lastJobEnd = 0, holdTimer = null;
   const activity = () => (busy || Date.now() - lastJobEnd < WORKING_HOLD_MS) && clients.size ? 'working'
     : (thinking.size ? 'thinking' : (unread && clients.size ? 'unread' : ''));
-  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), chat: chat.slice(), activity: activity() });
+  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), doc: doc.name, chat: chatOf(doc.key).slice(), activity: activity() });
   const remember = (e) => { recent.push(e); if (recent.length > 50) recent.shift(); };
-  const talk = (e) => { chat.push(e); if (chat.length > 100) chat.shift(); saveChat(); };
+  const talk = (key, name, e) => {
+    const c = chats[key] || (chats[key] = { name, t: 0, items: [] });
+    c.items.push(e); if (c.items.length > 100) c.items.shift();
+    c.t = e.t; if (name) c.name = name;
+    saveChat();
+  };
+  /** A snapshot tells which document is in front: switch the chat shown. */
+  const setDoc = (cur) => {
+    const key = cur.doc ? (cur.path || cur.doc) : '';
+    if (key !== doc.key || cur.doc !== doc.name) { doc = { key, name: cur.doc }; return true; }
+    return false;
+  };
   const MAX_TEXT = 2000;
   const changed = () => { if (opts.onChange) try { opts.onChange(info()); } catch (e) { /* UI errors never stop the server */ } };
   const send = (sock, obj) => { try { sock.write(JSON.stringify(obj) + '\n'); } catch (e) { /* closed */ } };
@@ -112,12 +130,16 @@ function createPanel(opts) {
     pump();
   }
 
-  async function poll() {
-    if (polling || busy || !clients.size || !sharing || !opts.snapshot) return;
+  // force: look even with no agent connected (start-up, host events) — only to know the document for the chat
+  async function poll(force) {
+    const share = clients.size && sharing;
+    if (polling || busy || !opts.snapshot || (!share && !force)) return;
     polling = true;
     try {
       let cur;
       try { cur = JSON.parse(await evalScript(opts.snapshot)); } catch (e) { cur = { error: 'snapshot: ' + e.message }; }
+      if (!cur.error && setDoc(cur)) changed();
+      if (!share) return;
       const events = diff(last, cur);
       // the first good snapshot (after a connect or a resume) is the baseline: send it as the current state
       const baseline = !last && !cur.error;
@@ -166,7 +188,8 @@ function createPanel(opts) {
         else if (m.op === 'ping') send(sock, { id: m.id, ok: true, result: 'pong' });
         else if (m.op === 'say') {
           // the agent's words for the designer: shown in the panel only
-          talk({ type: 'agent', text: String(m.text || '').slice(0, MAX_TEXT), t: Date.now() });
+          const key = replyKey !== null ? replyKey : doc.key;
+          talk(key, chats[key] ? chats[key].name : doc.name, { type: 'agent', text: String(m.text || '').slice(0, MAX_TEXT), t: Date.now() });
           thinking.delete(sock); // an answer ends "thinking"
           changed();
           send(sock, { id: m.id, ok: true, result: 'shown' });
@@ -197,6 +220,7 @@ function createPanel(opts) {
           timer = setInterval(poll, pollMs);
           if (timer.unref) timer.unref();
           changed();
+          poll(true); // which document is in front: its chat
           resolve({ port });
         });
       });
@@ -215,14 +239,15 @@ function createPanel(opts) {
       text = String(text || '').trim().slice(0, MAX_TEXT);
       if (!text || !clients.size) return false;
       const e = { type: 'message', text, t: Date.now() };
-      talk(e);
+      talk(doc.key, doc.name, e);
+      replyKey = doc.key;
       unread = true;
       broadcast({ event: e });
       changed();
       return true;
     },
     /** Something happened in Illustrator (a CSXS event): look now instead of at the next tick. */
-    poke() { setTimeout(poll, 30); },
+    poke() { setTimeout(() => poll(true), 30); },
     setSharing(on) {
       sharing = !!on;
       if (!sharing) last = null; // resume starts from a fresh state, no stale diff

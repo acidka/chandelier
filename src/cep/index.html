@@ -19,6 +19,7 @@
   .dot.err { background: #d9534f; }
   .muted { color: #999; }
   /* Chat */
+  #chat-doc { flex: none; margin-bottom: 4px; color: #999; font-size: 11px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   #log { flex: 1; min-height: 0; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
   #log li { padding: 5px 0; border-bottom: 1px solid #3c3c3c; white-space: pre-wrap; overflow-wrap: anywhere; }
   #log li b { font-weight: 600; }
@@ -55,6 +56,7 @@
   </nav>
 
   <section class="page active" id="page-chat">
+    <div id="chat-doc"></div>
     <ol id="log"><li class="empty">Write to the agent below. With something selected, "this" means the selection.</li></ol>
     <div id="activity"><span class="dots"><i></i><i></i><i></i></span><span id="activity-text"></span></div>
     <div id="compose">

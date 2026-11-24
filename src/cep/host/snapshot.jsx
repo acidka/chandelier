@@ -1,6 +1,7 @@
 // Chandelier panel: what the designer has in front of them, as one JSON string (ES3, no JSON object).
 // Run by the panel every poll tick through evalScript; must stay cheap: no item walks, at most 10 selected items read.
-// Fields: doc (active document name or null), docs (open documents), saved, count (selected items), items
+// Fields: doc (active document name or null), path (its file, "" while never saved), docs (open documents), saved,
+// count (selected items), items
 // [{uuid, type, name, text?}], text (when the selection is a text cursor or range: {uuid of the frame, text}).
 (function () {
   function q(s) {
@@ -16,8 +17,9 @@
   }
   function uuidOf(it) { try { return it.uuid; } catch (e) { return ''; } }
   try {
-    if (app.documents.length === 0) return '{"doc":null,"docs":0,"saved":true,"count":0,"items":[]}';
-    var d = app.activeDocument, s = d.selection, items = [], n = 0, i, it, e, tx = '';
+    if (app.documents.length === 0) return '{"doc":null,"path":"","docs":0,"saved":true,"count":0,"items":[]}';
+    var d = app.activeDocument, s = d.selection, items = [], n = 0, i, it, e, tx = '', p = '';
+    try { if (String(d.path) !== '') p = d.fullName.fsName; } catch (e2) {}
     if (s && s.typename === 'TextRange') {
       var frame = null;
       try { frame = s.story.textFrames[0]; } catch (e1) {}
@@ -33,7 +35,7 @@
         items.push(e + '}');
       }
     }
-    return '{"doc":' + q(d.name) + ',"docs":' + app.documents.length + ',"saved":' + (d.saved ? 'true' : 'false') +
+    return '{"doc":' + q(d.name) + ',"path":' + q(p) + ',"docs":' + app.documents.length + ',"saved":' + (d.saved ? 'true' : 'false') +
       ',"count":' + n + ',"items":[' + items.join(',') + ']' + tx + '}';
   } catch (err) {
     return '{"error":' + q(err.message || err) + '}';
