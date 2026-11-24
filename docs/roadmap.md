@@ -316,8 +316,8 @@ fit, to keep the tool list under its 50 KB budget.
 - [x] ✅ Brand and accessibility checks as `preflight` options: `contrast: true` (WCAG AA in CMYK documents too), `tokens {colors, fonts, sizes}` → `off_token` warnings (one per item, all its off-token colours/fonts/sizes in the detail); `test/live-checks.mjs`
 - [x] ✅ Bug found on the way: a tinted swatch colour (`swatch:Navy@50`) set the tint on the **swatch itself**, so every later `swatch:Navy` came out at 50 % (both platforms, since phase 2). `A.color` now returns a new SpotColor per use; regression check in `test/live-checks.mjs`
 - [x] ✅ `export` options: `variants: [{name, show, hide}]` → one file per layer set (`<stem>-<name>`, or a subfolder), hidden layers also non-printing, every layer restored in a `finally` (the document counts as changed), a wrong layer name fails before anything changes; screen assets `{refs, each: true, scales: [1, 2, 3]}` → one PNG per item named after it, `@2x`/`@3x` copies; `test/live-checks.mjs`
-- [ ] ⏳ Symbols: list, create from items, place, replace, remove
-- [ ] ⏳ Image trace: raster → vector paths (presets), on `place` and for placed images
+- [x] ✅ Symbols: new tool `symbols` — `list` (instances per symbol), `create` (items → symbol, replaced by one instance in place, `keep` leaves them; a taken name is refused), `place` (x, y, w/h, layer), `replace`, `expand` (break link), `remove` (refused while instances exist, `force` deletes them); `test/live-checks.mjs`
+- [x] ✅ Image trace: `path_ops {op: "trace", refs, preset}` — placed or embedded images → Image Trace + expand → a group named like the image, the image removed; non-images refused; `test/live-checks.mjs` (a generated PNG). Preset names follow the UI language
 - [ ] ⏳ Recipe library: ready builders (calendar month, labels sheet, business cards, style guide, colour chips) via `run_script {recipe}`
 - [ ] ⏳ W1 modal-dialog check on Windows (needs the owner at the VM)
 
@@ -433,3 +433,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Tool list 49.96 → 48.13 KB to make room for 0.2.1: `refs` has no per-tool description (the server instructions list the forms; it repeated 15×), `blend` is a checked string instead of a 16-name enum, shorter `layer`/`parent` hints |
 | 2026-11-24 | 0.2.1 (2/6): `preflight {contrast, tokens}` → `off_token`; fixed: a tinted swatch colour changed the swatch's own tint (every later plain use came out tinted) |
 | 2026-11-24 | 0.2.1 (3/6): `export {variants}` (layer sets) and screen assets `{each, scales}` |
+| 2026-11-24 | 0.2.1 (4–5/6): `symbols` tool, `path_ops {op: "trace"}`; Windows: an `Illustrator.exe` without a COM object (a crash clone Windows Error Reporting holds) now gets its own message (0x80080005) instead of "not running"; tool list 49.8 KB |

@@ -43,8 +43,8 @@ export const export_tool: ToolDef = {
   description: `Export the active document (it stays unchanged).
 format: "pdf" | "png" | "jpg" | "svg" | "webp". artboards: [indices] | "all" (default: the active artboard). refs: export just these items (png only).
 path: a file, or a folder (several outputs: <document>-<artboard>.<ext>; with a file path <stem>-<artboard>.<ext>).
-variants: [{name, show:[layer names], hide:[…]}] → one export per variant (file <stem>-<name>, or a <name> subfolder); layers are restored after (the document counts as changed).
-Screen assets (png + refs): each:true → one file per item, named after it, into the folder path; scales:[1,2,3] → name@2x.png….
+variants: [{name, show:[layers], hide}] → one export each (<stem>-<name>); layers restored after.
+Screen assets (png, refs): each:true → a file per item named after it; scales:[1,2,3] → name@2x.png….
 PDF: preset (default "[PDF/X-4:2008]"; any name from Illustrator's PDF presets), pages "one_file" (default) | "per_artboard",
 bleed: "document" (default: its bleed if known) | number | [left, top, right, bottom] in session units → pages grow by it, TrimBox = artboard, BleedBox = page. Warns about variable fonts (B10).
 Raster: scale (factor, default 1) | dpi | width (px); background "white" | "transparent" (png, webp); jpg is quality 80. SVG is clipped to the artboard; svg_text "outline" | "text".

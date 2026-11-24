@@ -73,7 +73,7 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
 
 ## Tools
 
-32 tools; every tool that changes a document can also be a step inside `batch`.
+33 tools; every tool that changes a document can also be a step inside `batch`.
 
 | Group | Tools |
 |-------|-------|

@@ -211,7 +211,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 18 | `duplicate_items` | Offset copies, grids (rows × cols), **copy to other artboards at the same relative position** | 2 |
 | 19 | `arrange_items` | Group/ungroup, clipping mask, compound path, z-order, move into layer/group | 2 |
 | 20 | `align_items` | Align/distribute relative to selection, artboard or key object; fixed spacing | 2 |
-| 21 | `path_ops` | Pathfinder (unite, minus front, intersect, exclude, divide, trim, merge, crop), outline stroke, offset path, expand, create outlines | 2 |
+| 21 | `path_ops` | Pathfinder (unite, minus front, intersect, exclude, divide, trim, merge, crop), outline stroke, offset path, expand, create outlines; `trace` (Image Trace + expand, preset; 0.2.1) | 2 |
 | 22 | `delete_items` | Delete by refs/query; returns count | 2 |
 | 23 | `layers` | `list`, `add`, `update` (name, visible, locked, printable, colour), `remove`, `reorder`, sublayers | 2 |
 | 24 | `artboards` | `list`, `add`, `update`, `remove`, `activate`, `fit_to_art`, `grid_layout` — **top-left rect everywhere** | 2 |
@@ -223,10 +223,10 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 30 | `export` | PNG/JPG/SVG/PDF/WebP per artboard, items or document; scale/DPI; **PDF bleed with real Trim/Bleed boxes**; `variants` (layer sets, one file each, layers restored); screen assets `{refs, each, scales}` → `name@2x.png` (0.2.1) | 3 |
 | 31 | `preflight` | RGB in CMYK, missing fonts, broken links, low-res images, overset text, default-12 pt orphans, items off artboard, real spot colours only, non-printing layers skipped; `contrast` (WCAG AA in any colour space), `tokens {colors, fonts, sizes}` → `off_token` brand check (0.2.1) | 3 |
 | 32 | `menu_command` | `app.executeMenuCommand` on refs (escape hatch for effects and anything without an API) | 2 |
-| 33 | `symbols` | `list`, `create` from items, `place` | 8 |
+| 33 | `symbols` | `list`, `create` from items (they become one instance, or `keep`), `place`, `replace`, `expand`, `remove` (`force` for instances) — done in 0.2.1 | 2 |
 
 Tool descriptions are kept short; the conventions (refs, colours, coordinates) live in the MCP server
-`instructions`, sent once per session instead of being repeated in 32 schemas.
+`instructions`, sent once per session instead of being repeated in 33 schemas.
 
 ## 7. Risks
 

@@ -63,6 +63,21 @@
       select(items);
       app.executeMenuCommand('expandStyle');
       out = selected();
+    } else if (op === 'trace') {
+      // Image Trace (0.2.1): placed or embedded images -> expanded vector art (a group per image), the image removed
+      for (i = 0; i < items.length; i++) {
+        var im = items[i], tt = im.typename;
+        if (tt !== 'PlacedItem' && tt !== 'RasterItem') throw new Error('Item ' + (im.name || im.uuid) + ' is a ' + A.kindOf(tt) + ': trace works on placed or embedded images.');
+      }
+      for (i = 0; i < items.length; i++) {
+        var nmT = items[i].name, tr = items[i].trace();
+        if (a.preset) { try { tr.tracing.tracingOptions.loadFromPreset(a.preset); } catch (e) { tr.remove(); throw new Error('No Image Trace preset "' + a.preset + '" (e.g. "[Default]", "[High Fidelity Photo]", "[Black and White Logo]", "[Silhouettes]"; names follow the UI language).'); } }
+        app.redraw(); // the trace finishes before it can be expanded
+        var g = tr.tracing.expandTracing();
+        if (nmT) g.name = nmT;
+        A.track(g);
+        out.push(g);
+      }
     } else if (op === 'outline_text') {
       var frames = [];
       for (i = 0; i < items.length; i++) {

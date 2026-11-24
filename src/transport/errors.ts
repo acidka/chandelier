@@ -20,6 +20,7 @@ export const ERRNO: Record<string, string> = {
   // Windows (COM)
   '0x800401E3': NOT_RUNNING, // MK_E_UNAVAILABLE
   '0x800401F3': 'Illustrator is not installed or its COM server is not registered (start it once as this user).', // CO_E_CLASSSTRING
+  '0x80080005': 'An Illustrator process exists but does not answer: it may still be starting (retry in a few seconds), or it crashed and an error report holds it (close the report, or end Illustrator and "Windows Error Reporting" in Task Manager), then status {launch:true}.', // bridge-win: no COM object
   '0x80010108': GONE, // RPC_E_DISCONNECTED
   '0x800706BA': GONE, // RPC_S_SERVER_UNAVAILABLE
   '0x800706BE': GONE, // RPC_S_CALL_FAILED: the call in flight when Illustrator died (W1)

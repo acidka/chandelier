@@ -118,6 +118,7 @@ does preflight + export.
 | `preflight` RGB on a linked image | Convert the image to CMYK, or embed it (Illustrator converts on embed) |
 | Windows: "Path too long for Illustrator" | Illustrator can't save or open a path of 260+ characters (it would open a dialog and wait): save to a shorter folder. Exports to long paths work |
 | Windows: calls hang after the user clicks into Illustrator | A dialog is waiting, often "Some files are missing or modified in the Links panel" (a document with a broken or changed link). Ask the user to answer it; then `status` |
+| Windows: "An Illustrator process exists but does not answer" | Illustrator is still starting (retry in a few seconds), or it crashed and Windows Error Reporting holds a frozen copy: ask the user to close the error report (or end Illustrator and "Windows Error Reporting" in Task Manager), then `status {launch: true}` |
 | Windows: "Illustrator runs as another user or elevated" | Illustrator and the MCP client run at different levels (one "as administrator"): restart one so both match |
 
 ## 8. What to tell the user when done

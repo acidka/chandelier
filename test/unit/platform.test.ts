@@ -58,6 +58,7 @@ describe('Windows error map', () => {
     expect(explain(-600, 'x')).toMatch(/^Illustrator is not running/);
     expect(explain(hr('80010108'), 'x')).toMatch(/quit or crashed/);
     expect(explain(hr('800706BE'), 'x')).toMatch(/quit or crashed/); // W1: call in flight during a crash
+    expect(explain(hr('80080005'), 'x')).toMatch(/process exists but does not answer.*error report/); // crash clone
     expect(explain(hr('8001010A'), 'x')).toMatch(/modal dialog/);
     expect(explain(hr('80070005'), 'x')).toMatch(/administrator/);
     expect(explain(-2147216503, 'Error 17')).toMatch(/^ExtendScript error \(often.*0x80041389: Error 17/); // W1: what DoJavaScript throws

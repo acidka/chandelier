@@ -19,6 +19,80 @@
       A.setGeometry(it, { x: ab[0] + (ab[2] - b[2]) / 2, y: ab[1] + (ab[3] - b[3]) / 2 });
     }
   }
+  A.fitPlaced = fit;
+
+  // symbols (0.2.1): list / create (items -> symbol, replaced by one instance unless keep) / place / replace / expand / remove
+  function symbolByName(doc, name) {
+    try { return doc.symbols.getByName(name); } catch (e) { throw new Error('No symbol named "' + name + '".'); }
+  }
+  function instancesOf(doc, sym) {
+    var o = [];
+    for (var i = 0; i < doc.symbolItems.length; i++) { try { if (doc.symbolItems[i].symbol === sym || doc.symbolItems[i].symbol.name === sym.name) o.push(doc.symbolItems[i]); } catch (e) {} }
+    return o;
+  }
+  A.cmd.symbols = function (a) {
+    var doc = A.doc(), act = a.action || 'list', i, sym, items, out = [];
+    if (act === 'list') {
+      var counts = {};
+      for (i = 0; i < doc.symbolItems.length; i++) { try { var nm = doc.symbolItems[i].symbol.name; counts[nm] = (counts[nm] || 0) + 1; } catch (e) {} }
+      for (i = 0; i < doc.symbols.length; i++) out.push({ name: doc.symbols[i].name, instances: counts[doc.symbols[i].name] || 0 });
+      return { symbols: out };
+    }
+    if (act === 'create') {
+      if (!a.name) throw new Error('create needs name.');
+      items = A.refs(a.refs);
+      if (!items.length) throw new Error('create needs refs (the art for the symbol).');
+      try { doc.symbols.getByName(a.name); throw new Error('A symbol named "' + a.name + '" exists: pick another name or remove it first.'); } catch (e) { if (/exists/.test(e.message)) throw e; }
+      var src = items.length === 1 ? items[0] : A.groupOf(items);
+      var b = A.rectOf(src, 'geometric'), parent = src.parent;
+      sym = doc.symbols.add(src);
+      sym.name = a.name;
+      if (a.keep) return { symbol: sym.name, kept: true };
+      var inst = parent.symbolItems.add(sym);
+      inst.move(src, ElementPlacement.PLACEBEFORE);
+      A.setGeometry(inst, { x: b[0], y: b[1] });
+      src.remove();
+      A.track(inst);
+      return { symbol: sym.name, instance: A.out(inst) };
+    }
+    if (act === 'place') {
+      sym = symbolByName(doc, a.name);
+      var c = A.container(a), it = c.symbolItems.add(sym);
+      A.track(it);
+      fit(it, a);
+      return A.out(it);
+    }
+    if (act === 'replace') {
+      sym = symbolByName(doc, a.name);
+      items = A.refs(a.refs);
+      for (i = 0; i < items.length; i++) {
+        if (items[i].typename !== 'SymbolItem') throw new Error('Item ' + (items[i].name || items[i].uuid) + ' is not a symbol instance.');
+        items[i].symbol = sym;
+        out.push(A.out(items[i]));
+      }
+      return { count: out.length, items: out };
+    }
+    if (act === 'expand') {
+      items = A.refs(a.refs);
+      for (i = 0; i < items.length; i++) {
+        if (items[i].typename !== 'SymbolItem') continue;
+        var p = items[i].parent, n = p.pageItems.length;
+        items[i].breakLink();
+        out.push(n);
+      }
+      return { expanded: out.length };
+    }
+    if (act === 'remove') {
+      sym = symbolByName(doc, a.name);
+      var ins = instancesOf(doc, sym);
+      if (ins.length && !a.force) throw new Error('Symbol "' + a.name + '" has ' + ins.length + ' instance(s): pass force:true to delete them too, or expand them first.');
+      for (i = ins.length - 1; i >= 0; i--) ins[i].remove();
+      sym.remove();
+      return { removed: a.name, instances_removed: ins.length };
+    }
+    throw new Error('Unknown symbols action "' + act + '".');
+  };
+
   A.cmd.place = function (a) {
     var f = new File(a.path);
     if (!f.exists) throw new Error('File not found: ' + a.path);

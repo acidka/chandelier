@@ -84,6 +84,7 @@ $FAKE = $env:CHANDELIER_FAKE_COM -eq '1'
 $PROGID = 'Illustrator.Application'
 $HR_NOT_RUNNING = [Convert]::ToInt32('800401E3', 16)   # MK_E_UNAVAILABLE
 $HR_NOT_INSTALLED = [Convert]::ToInt32('800401F3', 16) # CO_E_CLASSSTRING
+$HR_UNREACHABLE = [Convert]::ToInt32('80080005', 16)   # CO_E_SERVER_EXEC_FAILURE: a process exists, COM has no Illustrator
 # Illustrator quit or crashed; 800706BE (RPC_S_CALL_FAILED) is what the call in flight gets (W1)
 $HR_GONE = @('80010108', '800706BA', '800706BE', '80010007', '80010012') | ForEach-Object { [Convert]::ToInt32($_, 16) }
 $script:app = $null
@@ -106,7 +107,13 @@ function Is-Running {
 function Get-App {
   if (-not (Is-Running)) { $script:app = $null; Fail $HR_NOT_RUNNING 'not running' } # drop a dead object before a relaunch
   if ($script:app) { return $script:app }
-  $script:app = [System.Runtime.InteropServices.Marshal]::GetActiveObject($PROGID)
+  try { $script:app = [System.Runtime.InteropServices.Marshal]::GetActiveObject($PROGID) }
+  catch {
+    # an Illustrator.exe without a COM object: still starting, or the frozen copy Windows Error Reporting keeps of a
+    # crashed Illustrator (seen 2026-11-24) - "not running" would be wrong and launch would not help
+    if ($_.Exception.HResult -eq $HR_NOT_RUNNING) { Fail $HR_UNREACHABLE 'Illustrator.exe is running but does not answer' }
+    throw
+  }
   return $script:app
 }
 

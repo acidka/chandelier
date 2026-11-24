@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Live checks for 0.2.1 (needs a running Illustrator; works only in documents it creates, closes them unsaved):
-// preflight {tokens, contrast} brand checks; export {variants} (layer sets) and screen assets {each, scales}.
+// preflight {tokens, contrast} brand checks; export {variants} (layer sets) and screen assets {each, scales};
+// symbols; path_ops trace.
 //   npm run build && node test/live-checks.mjs
-import { mkdtempSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
+import { encodePng } from '../dist/image.js';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { connect, assert } from './live-lib.mjs';
@@ -74,6 +76,37 @@ await call('export', { format: 'png', refs: ['name:icon-a', 'name:icon-b'], each
   assert(a2 === 2 * a1 && Math.abs(a1 - 20) <= 1, `@2x is twice as wide: ${a1} → ${a2}`);
   assert(existsSync(join(dir, 'icons', 'icon-b@2x.png')), 'icon-b@2x written');
 } });
+await call('documents', { action: 'close', discard: true });
+
+// ── symbols ──
+await call('documents', { action: 'new', width: 200, height: 100, title: 'aia-checks-symbols' });
+await call('create_shape', { items: [{ x: 10, y: 10, w: 20, h: 20, fill: '#1e2a44', name: 'star-art' }, { x: 40, y: 10, w: 20, h: 20, shape: 'ellipse', fill: '#c0392b', name: 'dot-art' }] });
+await call('symbols', { action: 'create', refs: 'name:star-art', name: 'Square' }, { check: (v) => assert(v.symbol === 'Square' && v.instance?.type === 'symbol', 'square symbol + instance ' + JSON.stringify(v)) });
+await call('symbols', { action: 'create', refs: 'name:dot-art', name: 'Dot', keep: true }, { check: (v) => assert(v.kept, 'kept') });
+await call('symbols', { action: 'create', refs: 'name:dot-art', name: 'Dot' }, { expectError: true }); // name taken
+let inst;
+await call('symbols', { action: 'place', name: 'Square', x: 100, y: 50, w: 40 }, { check: (v) => { inst = v.uuid; assert(Math.round(v.box[2]) === 40 && v.box[0] === 100, 'placed and sized ' + JSON.stringify(v)); } });
+await call('symbols', { action: 'list' }, { check: (v) => {
+  const m = Object.fromEntries(v.symbols.map((s) => [s.name, s.instances]));
+  assert(m.Square === 2 && m.Dot === 0, 'instances per symbol ' + JSON.stringify(m));
+} });
+await call('symbols', { action: 'replace', refs: inst, name: 'Dot' }, { check: (v) => assert(v.count === 1, 'replaced') });
+await call('symbols', { action: 'remove', name: 'Square' }, { expectError: true, check: (v) => assert(/instance/.test(v.error), 'refused with instances: ' + JSON.stringify(v)) });
+await call('symbols', { action: 'expand', refs: inst }, { check: (v) => assert(v.expanded === 1, 'expanded') });
+await call('symbols', { action: 'remove', name: 'Square', force: true }, { check: (v) => assert(v.removed === 'Square' && v.instances_removed === 1, 'removed with force ' + JSON.stringify(v)) });
+await call('documents', { action: 'close', discard: true });
+
+// ── image trace ──
+const W = 120, H = 80, rgb = new Uint8Array(W * H * 3).fill(255);
+for (let y = 20; y < 60; y++) for (let x = 20; x < 100; x++) rgb.fill(0, (y * W + x) * 3, (y * W + x) * 3 + 3); // black block on white
+const png = join(dir, 'block.png');
+writeFileSync(png, encodePng({ w: W, h: H, rgb }));
+await call('documents', { action: 'new', width: 200, height: 150, title: 'aia-checks-trace', color: 'rgb' });
+await call('place', { path: png, x: 10, y: 10, name: 'Logo' });
+await call('path_ops', { op: 'trace', refs: 'name:Logo' }, { check: (v) => assert(v.count === 1 && v.items[0].type === 'group' && v.items[0].name === 'Logo', 'traced into a named group ' + JSON.stringify(v)) });
+await call('find_items', { type: ['placed', 'raster'] }, { check: (v) => assert(v.total === 0, 'image gone') });
+await call('find_items', { type: 'path', count_only: true }, { check: (v) => assert(v.total > 0, 'vector paths: ' + v.total) });
+await call('path_ops', { op: 'trace', refs: 'name:Logo' }, { expectError: true }); // not an image any more
 await call('documents', { action: 'close', discard: true });
 
 process.exit((await done()) ? 1 : 0);

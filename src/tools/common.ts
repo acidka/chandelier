@@ -37,6 +37,6 @@ export const placeShape = {
 /** "Many at once": each item takes the same props as the top level (validated in Illustrator, with the item's index
  * in any error). Declared loosely on purpose: repeating the full schema here doubled the tool list's size. */
 export const itemsSchema = (max: number, extra = '') =>
-  z.array(z.record(z.string(), z.any())).max(max).optional().describe(`many at once: objects with the same props as above${extra}; top-level props are shared defaults`);
+  z.array(z.record(z.string(), z.any())).max(max).optional().describe(`many at once: props as above${extra}; top-level ones are shared defaults`);
 
 export const STYLE_HELP = 'Appearance: fill, stroke (colour or "none"), stroke_width (pt), dash (pt; [] = solid), cap, join, opacity, blend, graphic_style (applied first); name, note, hidden, locked.';
