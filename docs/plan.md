@@ -205,11 +205,22 @@ The tool list is re-read on every agent request. With the 0.3 tools it is 53.6 K
 
 `CHANDELIER_TOOLS=lean`, or a comma-separated list of tool names to show.
 
+### D14 — Live effects through LiveEffect XML ✅ decided (0.4)
+
+| Option | Pros | Cons |
+|--------|------|------|
+| Graphic styles only (`styles apply`) | Documented API | Only styles that already exist in the document; no parameters |
+| Menu commands (`Live Drop Shadow`…) | Real UI | Open a dialog: a script can't fill or confirm it |
+| **`applyEffect(LiveEffect XML)`** (chosen) | Any parameter; live and editable afterwards; ~20 ms per call | Undocumented (quirk C26): wrong keys are ignored silently, so every effect type was checked live by its render and bounds; effects can't be read back; removing them needs the `[Default]` style trick (C27) |
+
+The `effects` tool knows 11 types plus raw `{xml}`. Lengths are session units, colours the usual specs (CMYK, RGB,
+gray or a swatch of one).
+
 ## 6. Tool catalogue
 
 Every mutating tool can also be a `batch` step: `{"tool": "create_shape", "args": {...}}`.
-Status 2026-11-24: tools 1–35 are built (crop marks are an `artboards` action; `symbols` in 0.2.1; `data_merge` and the
-`tools` meta-tool in 0.3).
+Status 2026-11-24: tools 1–36 are built (crop marks are an `artboards` action; `symbols` in 0.2.1; `data_merge` and the
+`tools` meta-tool in 0.3; `effects` in 0.4).
 MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` for many objects in one call.
 
 | # | Tool | Actions / what it does | Phase |
@@ -224,7 +235,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 8 | `get_items` | Full detail by refs: geometry, appearance, text runs and styles, path points (opt-in) | 1 |
 | 9 | `get_tree` | Layers → groups → items outline with depth/limit | 1 |
 | 10 | `selection` | `get`, `set`, `add`, `clear`, `all` (optionally per artboard/layer) | 1 |
-| 11 | `preview` | PNG of an artboard, items or region returned as an image (what prints: non-printing layers hidden); `max_px`, background; `reference` comparison; one check call: `more` (other artboards), `preflight: true`, `info: true` | 1 |
+| 11 | `preview` | PNG of an artboard, items or region returned as an image (what prints: non-printing layers hidden); `max_px`, background; `reference` comparison with `differences` (0.4: blobs classified shifted — with the measured shift — / missing / extra / changed, and the items in each); one check call: `more` (other artboards), `preflight: true`, `info: true` | 1 |
 | 12 | `create_shape` | `rect`, `rounded_rect`, `ellipse`, `polygon`, `star`, `line` + style | 2 |
 | 13 | `create_path` | Points with handles **or an SVG path `d` string**; open/closed; compound | 2 |
 | 14 | `create_text` | Point / area / path text; font (fuzzy name match), size, colour, alignment, leading, tracking, paragraph/character style; atomic | 2 |
@@ -234,21 +245,22 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 18 | `duplicate_items` | Offset copies, grids (rows × cols), **copy to other artboards at the same relative position** | 2 |
 | 19 | `arrange_items` | Group/ungroup, clipping mask, compound path, z-order, move into layer/group | 2 |
 | 20 | `align_items` | Align/distribute relative to selection, artboard or key object; fixed spacing | 2 |
-| 21 | `path_ops` | Pathfinder (unite, minus front, intersect, exclude, divide, trim, merge, crop), outline stroke, offset path, expand, create outlines; `trace` (Image Trace + expand, preset; 0.2.1) | 2 |
+| 21 | `path_ops` | Pathfinder (unite, minus front, intersect, exclude, divide, trim, merge, crop), outline stroke, offset path, expand, create outlines; `trace` (Image Trace + expand, preset; 0.2.1); `trap` (0.4: spread trap = an overprinting stroke of the item's own fill colour) | 2 |
 | 22 | `delete_items` | Delete by refs/query; returns count | 2 |
 | 23 | `layers` | `list`, `add`, `update` (name, visible, locked, printable, colour), `remove`, `reorder`, sublayers | 2 |
 | 24 | `artboards` | `list`, `add`, `update`, `remove`, `activate`, `fit_to_art`, `grid_layout` — **top-left rect everywhere** | 2 |
-| 25 | `swatches` | `list`, `add` (global process / spot / plain), `update`, `remove`, gradients, groups, `clean_defaults`; `import` an `.ase` swatch library; `recolor` (0.3): every fill, stroke, text run and gradient stop → the nearest target swatch within a ΔE tolerance, or an explicit `map`; tints stay tints; `dry_run` | 2 |
+| 25 | `swatches` | `list`, `add` (global process / spot / plain), `update`, `remove`, gradients, groups, `clean_defaults`; `import` an `.ase` swatch library; `recolor` (0.3): every fill, stroke, text run and gradient stop → the nearest target swatch within a ΔE tolerance, or an explicit `map`; tints stay tints; `dry_run`; `convert` (0.4): to CMYK / RGB / grayscale through the colour profiles, the document mode too | 2 |
 | 26 | `styles` | Paragraph, character and graphic styles: `list`, `create`, `update`, `apply`, `remove` | 2 |
 | 27 | `fonts` | Search installed fonts (family/style/PostScript name) | 2 |
 | 28 | `place` | Place/embed raster, PDF, AI; import **SVG markup** as editable art | 2 |
 | 29 | `history` | `undo` / `redo` with count | 2 |
-| 30 | `export` | PNG/JPG/SVG/PDF/WebP per artboard, items or document; scale/DPI; **PDF bleed with real Trim/Bleed boxes**; `variants` (layer sets, one file each, layers restored); screen assets `{refs, each, scales}` → `name@2x.png` (0.2.1) | 3 |
+| 30 | `export` | PNG/JPG/SVG/PDF/WebP per artboard, items or document; scale/DPI; **PDF bleed with real Trim/Bleed boxes**; `variants` (layer sets, one file each, layers restored); screen assets `{refs, each, scales}` → `name@2x.png` (0.2.1); `output_intent` (0.4): an installed CMYK profile by name or an .icc → the PDF/X output intent, read back per file | 3 |
 | 31 | `preflight` | RGB in CMYK, missing fonts, broken links, low-res images, overset text, default-12 pt orphans, items off artboard, real spot colours only, non-printing layers skipped; `contrast` (WCAG AA in any colour space), `tokens {colors, fonts, sizes}` → `off_token` brand check (0.2.1) | 3 |
 | 32 | `menu_command` | `app.executeMenuCommand` on refs (escape hatch for effects and anything without an API) | 2 |
 | 33 | `symbols` | `list`, `create` from items (they become one instance, or `keep`), `place`, `replace`, `expand`, `remove` (`force` for instances) — done in 0.2.1 | 2 |
 | 34 | `data_merge` | Variable data (0.3): a template (artboard or refs) with `{{field}}` placeholders in text and items named `{{field}}` (text, linked image, symbol, colour) or `{{?field}}` (shown if set), filled from CSV/TSV/JSON rows → one artboard per row, an n-up `grid`, or one exported file per row; `dry_run` matches fields and columns ([D12](#d12--data-merge-template-copies-not-illustrator-variables--decided-03)) | 0.3 |
 | 35 | `tools` | Only in a tool profile (`CHANDELIER_TOOLS=lean` or a list): catalog, `query`, full schema by `name`, `call` + `args` for the tools left out of the list ([D13](#d13--tool-profiles-full-by-default-lean-on-request--decided-03)) | 0.3 |
+| 36 | `effects` | Live effects (0.4) through LiveEffect XML: drop shadow, outer / inner glow (colours), round corners, feather, blur, offset, roughen, zigzag, pucker & bloat, transform (copies), raw XML; `clear` ([D14](#d14--live-effects-through-liveeffect-xml--decided-04)) | 0.4 |
 
 Tool descriptions are kept short; the conventions (refs, colours, coordinates) live in the MCP server
 `instructions`, sent once per session instead of being repeated in 33 schemas.

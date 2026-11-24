@@ -21,7 +21,7 @@ Build a document (aim for ~8 Illustrator calls; no status call first):
 1. documents new (size, units — they become the session units, bleed, artboards, artboard_names, title).
 2. One batch: swatches (global, one per colour role) + styles (one paragraph style per text role); give every text its paragraph_style, so the file can be restyled.
 3. One batch of create_text / create_shape / create_path with items[] or grid (many objects per step; step artboard for other pages), duplicate_items to_artboards for repeated parts — or one run_script builder (.jsx file + args) when logic is easier in code; start it with AIA.fresh(layer) so a re-run replaces instead of adding.
-4. One check call: preview {reference (when rebuilding from an image), more: [other artboards], preflight: true}; fix what content_box, regions and preflight show (one batch), check once more.
+4. One check call: preview {reference (when rebuilding from an image), more: [other artboards], preflight: true}; fix what content_box, differences and preflight show (one batch), check once more.
 5. One finish call: documents save {path, export: [{format, path, …}], close: true}.
 Only touch documents you created or were asked to change; close what you created.`;
 
@@ -85,7 +85,7 @@ function registerPrompts(server: McpServer): void {
 2. List the parts (titles, rules, grids, repeated blocks, photo areas) and the colour and text roles. Copy the structure, not the artwork: leave photos, logos and brand names out (named placeholder boxes instead) and fix obvious mistakes in the reference.
 3. Measure in image pixels and convert with one factor (page width in points ÷ page width in pixels). Font size ≈ cap height in px ÷ 0.7 × factor.
 4. documents new; one batch of global swatches (one per colour role) and paragraph styles (one per text role); then build with batches (items[] / grid) or one run_script builder. Every text gets its paragraph style; name layers and groups.
-5. preview {reference: "${image}", reference_crop: the page's pixel box, preflight: true}; fix what content_box, regions and preflight show; compare once more.
+5. preview {reference: "${image}", reference_crop: the page's pixel box, preflight: true}; fix what content_box and differences show (each: kind shifted/missing/extra/changed, shift, items) and what preflight shows; compare once more.
 6. documents save {path: "${output}", close: true}. Report what differs from the reference and why.${notes ? '\nNotes: ' + notes : ''}` } }] }));
   server.registerPrompt('print_export', {
     title: 'Print check and export',

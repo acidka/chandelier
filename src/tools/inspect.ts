@@ -10,7 +10,7 @@ const TYPES = ['path', 'text', 'group', 'compound', 'raster', 'placed', 'symbol'
 export const find_items: ToolDef = {
   name: 'find_items',
   description: `Find items in the active document (all depths) in one pass. All filters are optional and combine (AND):
-type ("path"|"text"|"group"|"compound"|"raster"|"placed"|"symbol"|"plugin"|"mesh"|"graph" or an array), name (glob: * and ?), text (substring of text contents, case-insensitive), font (substring of the PostScript or "Family Style" name), size (font size, or [min,max]), fill / stroke (colour, same syntax as everywhere: "cmyk(…)", "swatch:Name", "none"…), layer (name, includes sublayers), in (ref of a layer or group), artboard (index: touching it), within ([x,y,w,h]: touching it), top_level (direct children of layers only), hidden / locked / selected (booleans), guides (true = only guides, false = no guides).
+type (one or an array), name (glob: * and ?), text (substring of text contents, case-insensitive), font (substring of the PostScript or "Family Style" name), size (font size, or [min,max]), fill / stroke (colour), layer (name, includes sublayers), in (ref of a layer or group), artboard (index: touching it), within ([x,y,w,h]: touching it), top_level (direct children of layers only), hidden / locked / selected (booleans), guides (true = only guides, false = no guides).
 Returns {total, by_type, items:[…fields], more?}. fields default ["uuid","type","name","box"]; also: layer, parent, text, font, size, fill, stroke, sw, opacity, hidden, locked, selected, artboard. limit default 50, offset for paging, count_only for just the counts.`,
   shape: {
     type: z.union([z.enum(TYPES), z.array(z.enum(TYPES))]).optional(),

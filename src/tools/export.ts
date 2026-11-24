@@ -6,7 +6,8 @@ import { text, fail, J } from './types.js';
 import { refSchema } from './common.js';
 import { errorText } from './respond.js';
 import { readAiBleed, type Bleed } from '../aifile.js';
-import { mergePdfs, setBleedBoxes, pdfInfo } from '../pdf.js';
+import { mergePdfs, setBleedBoxes, pdfInfo, setOutputIntent } from '../pdf.js';
+import { findProfile, type Icc } from '../icc.js';
 import { shrinkPngFile } from '../image.js';
 
 /** Clip an exported SVG to its viewBox (= the artboard): Illustrator keeps art that lies outside it, and renderers
@@ -46,9 +47,9 @@ path: a file, or a folder (several outputs: <document>-<artboard>.<ext>; with a 
 variants: [{name, show:[layers], hide}] → one export each (<stem>-<name>); layers restored after.
 Screen assets (png, refs): each:true → a file per item named after it; scales:[1,2,3] → name@2x.png….
 PDF: preset (default "[PDF/X-4:2008]"; any name from Illustrator's PDF presets), pages "one_file" (default) | "per_artboard",
-bleed: "document" (default: its bleed if known) | number | [left, top, right, bottom] in session units → pages grow by it, TrimBox = artboard, BleedBox = page. Warns about variable fonts (B10).
+bleed: "document" (default: its bleed if known) | number | [left, top, right, bottom] in session units → pages grow by it, TrimBox = artboard, BleedBox = page; output_intent: an installed CMYK profile by name ("FOGRA39", "GRACoL") or an .icc path → the PDF/X output intent. Warns about variable fonts (B10).
 Raster: scale (factor, default 1) | dpi | width (px); background "white" | "transparent" (png, webp); jpg is quality 80. SVG is clipped to the artboard; svg_text "outline" | "text".
-Returns {files:[{path, artboards, bytes, pages?, pdfx?, boxes?}]}.`,
+Returns {files:[{path, artboards, bytes, pages?, pdfx?, output_intent?, boxes?}]}.`,
   shape: {
     format: z.enum(['pdf', 'png', 'jpg', 'svg', 'webp']),
     path: z.string(),
@@ -60,6 +61,7 @@ Returns {files:[{path, artboards, bytes, pages?, pdfx?, boxes?}]}.`,
     scale: z.number().positive().optional(), dpi: z.number().positive().optional(), width: z.number().positive().optional(),
     background: z.enum(['white', 'transparent']).optional(),
     svg_text: z.enum(['outline', 'text']).optional(),
+    output_intent: z.string().optional(),
     variants: z.array(z.object({ name: z.string(), show: z.array(z.string()).optional(), hide: z.array(z.string()).optional() })).optional(),
     each: z.boolean().optional(),
     scales: z.array(z.number().positive()).optional(),
@@ -141,6 +143,11 @@ Returns {files:[{path, artboards, bytes, pages?, pdfx?, boxes?}]}.`,
       return text({ files });
     }
 
+    let icc: Icc | null = null;
+    if (a.output_intent) {
+      if (a.format !== 'pdf') return fail('output_intent goes with format "pdf"');
+      try { icc = findProfile(a.output_intent); } catch (e) { return fail('output_intent: ' + (e as Error).message); }
+    }
     const prep = await rt.cmd<any>('export_prep', { artboards: a.artboards, format: a.format });
     if (!prep.ok) return { content: [{ type: 'text', text: errorText(prep) }], isError: true };
     const P = prep.data;
@@ -195,9 +202,10 @@ Returns {files:[{path, artboards, bytes, pages?, pdfx?, boxes?}]}.`,
       copyFileSync(o.src, dest);
       // always normalise PDF boxes: also removes a document bleed a preset added when bleed 0 was asked for
       if (a.format === 'pdf') await setBleedBoxes(dest, bleed ?? { left: 0, top: 0, right: 0, bottom: 0 });
+      if (icc) await setOutputIntent(dest, icc);
       if (a.format === 'svg') writeFileSync(dest, clipSvgToViewBox(readFileSync(dest, 'utf8')));
       const r: any = { path: dest, artboards: o.artboards, bytes: statSync(dest).size };
-      if (a.format === 'pdf') { const info = await pdfInfo(dest); Object.assign(r, { pages: info.pages, pdfx: info.pdfx, boxes: info.boxes }); }
+      if (a.format === 'pdf') { const info = await pdfInfo(dest); Object.assign(r, { pages: info.pages, pdfx: info.pdfx, output_intent: info.output_intent ?? undefined, boxes: info.boxes }); }
       results.push(r);
     }
     rmSync(dir, { recursive: true, force: true });

@@ -301,9 +301,9 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 
 - [ ] 🧊 CEP panel transport (WebSocket inside Illustrator): sub-millisecond calls, **events** (selection changed, document saved) pushed to the agent
 - [ ] 🧊 UXP plugin transport when Illustrator UXP is public (~Q2 2027 beta, ~Q4 2027 GA)
-- [ ] 🧊 Live effects via LiveEffect XML (drop shadow, round corners, feather, blur)
+- [x] ✅ Live effects via LiveEffect XML (drop shadow, round corners, feather, blur) — done in 0.4 (`effects`)
 - [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
-- [ ] 🧊 Visual diff: compare a preview with a reference image and report misaligned regions
+- [x] ✅ Visual diff: compare a preview with a reference image and report misaligned regions — done in 0.4 (`preview` `differences`)
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
 
 ## Milestone 🎯 0.2.1 — quick wins ✅ (released 2026-11-24)
@@ -338,6 +338,18 @@ repeat, done in one call each. Owner, 2026-11-24: "finish 0.3"; the tool-list si
 - [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 127/127; `live-production` green by parts — merge and recolor in a full run, files on a fresh Illustrator (`ONLY=files`); Illustrator crashed twice at a new/opened document late in full runs (the 0.2.1 known issue; a 4× save-close-open loop alone doesn't reproduce it)
 - [x] ✅ Release 0.3.0 (2026-11-24): npm `chandelier-mcp@0.3.0` (owner), plugin and marketplace 0.3.0 (launcher `^0.3.0`), `main` fast-forwarded, tag `v0.3.0`, GitHub release with `chandelier-0.3.0.mcpb`
 
+## Milestone 🎯 0.4 — look and print depth 🔄 (features done; Windows check and release open)
+
+Items 8, 10 and 12 of the [gap review](research/feature-gaps.md#recommended-order). Owner, 2026-11-24: "finish 0.4".
+
+- [x] ✅ Live effects: new tool `effects` — drop shadow, outer / inner glow (with colours), round corners, feather, Gaussian blur, offset path, roughen, zigzag, pucker & bloat, transform (copies), raw `{xml}`; lengths in session units, colours as everywhere; `clear` ([plan D14](plan.md#d14--live-effects-through-liveeffect-xml--decided-04); quirks C26, C27). The XML forms come from the art styles Illustrator writes into uncompressed .ai files and from MIT-licensed community work; each type checked live by render and bounds
+- [x] ✅ Prepress: `path_ops {op: "trap"}` (spread: overprinting stroke of the item's own fill, 2 × width; paths and text; stroked / gradient fills skipped with a warning; not counted as "created", so a batch rollback keeps the items); `export {output_intent}` (installed CMYK profile by name — "FOGRA39", "GRACoL" — or an .icc → the PDF/X OutputIntent with the profile embedded; `output_intent` read back per PDF; quirk C29); `swatches {action: "convert", mode: cmyk|rgb|gray}` (Edit Colors through the document's profiles; without refs cmyk/rgb also switch the document mode; quirk C28)
+- [x] ✅ Visual diff: `preview {reference}` → `differences` (up to 6): difference blobs classified `shifted` (with the measured shift in session units) / `missing` / `extra` / `changed`, with the items in each; rendering noise (< 3 % mean difference) ignored; replaces the 4 × 4 grid `regions`
+- [x] ✅ Tool list: full 55.0 KB (budget 56 KB: duplicated colour syntax trimmed from `run_script` and `find_items`), lean unchanged at 15.4 KB
+- [x] ✅ Tests: unit (effect XML, diff on synthetic pages, ICC profiles, output intent round trip) and `test/live-look.mjs` (macOS, Illustrator 29.1 ru_RU, 2026-11-24: green); all 10 macOS live suites green
+- [ ] ⏳ Windows: `test/live-look.mjs` in the VM
+- [ ] ⏳ Release 0.4.0: version bump, npm (owner), `main`, tag, GitHub release with the `.mcpb`
+
 ## Candidates from the 2026-11-23 gap review 🧊
 
 Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
@@ -345,7 +357,7 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 - [x] ✅ 0.1.x → shipped in 0.2.1: safe restart + logs, recipe library, contrast/token checks as `preflight` options, layer-variant and screen-asset `export` options
 - [x] ✅ 0.2: Windows (phase 7, 0.2.0) + `symbols` + image trace (0.2.1)
 - [x] ✅ 0.3: `data_merge` (CSV/JSON rows → variations), multi-file jobs with dry run, recolor to a swatch library
-- [ ] 🧊 0.4: live effects, prepress extras (trap stroke, PDF/X output intents), visual diff
+- [x] ✅ 0.4: live effects, prepress extras (trap stroke, PDF/X output intents, colour conversion), visual diff
 
 ## Rejected ❌
 
@@ -459,3 +471,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | 0.3 features: `data_merge`, `batch {files}`, `swatches {recolor, import}`, tool profiles (`CHANDELIER_TOOLS=lean`, `tools` meta-tool); plan D12, D13; `test/live-production.mjs` green on macOS |
 | 2026-11-24 | 0.3 Windows check (live-production by parts; Illustrator 2027 VM crashes late in long runs, as in 0.2.1); version 0.3.0, plugin launcher `^0.3.0` |
 | 2026-11-24 | **0.3.0 released**: npm, plugin 0.3.0, tag `v0.3.0`, GitHub release with the `.mcpb` |
+| 2026-11-24 | 0.4 features: `effects` tool (11 live effects + raw XML, clear), `path_ops {trap}`, `export {output_intent}`, `swatches {convert}`, `preview` `differences`; plan D14; quirks C26–C29; `test/live-look.mjs` green on macOS |

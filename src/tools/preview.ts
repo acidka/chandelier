@@ -7,7 +7,7 @@ import { J, fail, ArgError } from './types.js';
 import { runStep, respond } from './respond.js';
 import { refSchema } from './common.js';
 import { errorText } from './respond.js';
-import { decodePng, encodePng, compare, crop, resize, readImage, shrinkPngFile } from '../image.js';
+import { decodePng, encodePng, compare, crop, resize, readImage, shrinkPngFile, diffRegions } from '../image.js';
 
 let n = 0;
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -21,7 +21,7 @@ async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolRes
 export const preview: ToolDef = {
   name: 'preview',
   description: `Look at the active document: renders a PNG and returns it as an image. One of: artboard (index, default active), refs (items, framed with pad, default 5%), region ([x,y,w,h] from artboard's top-left if given, else the active one's; may lie off it). max_px = longest side (default 1024) or width = exact px. background "white" | "transparent". save_to copies the PNG (with reference: the comparison, and the render as <name>.preview.png).
-reference: an image (PNG/JPEG) to compare with → ONE image [reference | preview | difference in red] (600 px panels) + rmse (0 = same), content_box in both (shift/scale show an offset or wrong size) and the 3 most different regions [x,y,w,h]. reference_crop: [x,y,w,h] in image pixels to cut the page out first.
+reference: an image (PNG/JPEG) to compare with → ONE image [reference | preview | difference in red] (600 px panels) + rmse (0 = same), content_box in both (shift/scale show an offset or wrong size) and differences: up to 6 regions {rect, kind: shifted (with shift [dx, dy] = preview − reference) | missing | extra | changed, items there}. reference_crop: [x,y,w,h] in image pixels to cut the page out first.
 One check call: more [artboards] → extra renders (default 500 px); preflight:true, info:true (document_info) add those results.`,
   shape: {
     artboard: z.number().min(0).optional(),
@@ -77,6 +77,7 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   try { data = readFileSync(file); } catch { return fail('Illustrator did not write the preview image.'); }
   if (a.save_to && !reference) { const p = resolve(a.save_to); mkdirSync(dirname(p), { recursive: true }); copyFileSync(file, p); v.saved_to = p; }
   if (!reference) {
+    delete v.doc_bounds;
     rmSync(file, { force: true });
     return { content: [{ type: 'image', data: data.toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(v) }] };
   }
@@ -93,9 +94,20 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   // fractions of the rendered area → session coordinates
   const [rx, ry, rw, rh] = v.rect as number[];
   const toRect = (f: number[]) => [r2(rx + f[0] * rw), r2(ry + f[1] * rh), r2(f[2] * rw), r2(f[3] * rh)];
+  // differences (0.4): blobs, each classified (shifted by [dx, dy] / missing / extra / changed) with the items there
+  const regions = diffRegions(ref, prev);
+  const db = v.doc_bounds as number[];
+  let at: { uuid: string; name?: string; type: string; text?: string }[][] = [];
+  if (regions.length && db) {
+    const W = db[2] - db[0], H = db[1] - db[3];
+    const docRect = (f: number[]) => [db[0] + f[0] * W, db[1] - f[1] * H, db[0] + (f[0] + f[2]) * W, db[1] - (f[1] + f[3]) * H];
+    const env2 = await rt.cmd<typeof at>('items_at', { rects: regions.map((g) => docRect(g.box)) });
+    if (env2.ok) at = env2.data!;
+  }
+  delete v.doc_bounds;
   const stats: Record<string, unknown> = {
     ...v, compared_with: reference, rmse: c.rmse,
-    regions: c.regions.map((g) => ({ rect: toRect([g.cell[0] / 4, g.cell[1] / 4, 0.25, 0.25]), diff: g.diff })),
+    differences: regions.map((g, i) => ({ rect: toRect(g.box), kind: g.kind, ...(g.shift ? { shift: [r2(g.shift[0] * rw), r2(g.shift[1] * rh)] } : {}), diff: g.diff, items: at[i]?.length ? at[i] : undefined })),
   };
   if (c.ink) {
     const R = toRect(c.ink.reference), P = toRect(c.ink.preview);

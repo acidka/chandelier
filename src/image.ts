@@ -212,3 +212,84 @@ export function shrinkPngFile(path: string, max: number): { w: number; h: number
   writeFileSync(path, encodePng(img));
   return { w: img.w, h: img.h };
 }
+
+/** A difference between reference and preview (0.4 visual diff). box: fractions [x, y, w, h] of the page. */
+export interface DiffRegion {
+  box: number[];
+  kind: 'shifted' | 'missing' | 'extra' | 'changed'; // shifted: the same content, moved by shift; missing: only in the reference; extra: only in the preview
+  shift?: [number, number];                          // fractions of the page width / height (preview − reference)
+  diff: number;                                      // mean difference in the box, 0…1
+}
+
+/** Find the regions where two same-size images differ: 8-connected blobs of different blocks, each classified, and
+ * for moved content the local shift (search ±5 % of the page, coarse to fine). Largest first. */
+export function diffRegions(ref: Img, prev: Img, max = 6): DiffRegion[] {
+  const { w, h } = ref;
+  if (prev.w !== w || prev.h !== h) throw new Error('images differ in size');
+  const gray = (img: Img) => { const g = new Float32Array(w * h); for (let i = 0; i < w * h; i++) g[i] = (img.rgb[i * 3] * 0.299 + img.rgb[i * 3 + 1] * 0.587 + img.rgb[i * 3 + 2] * 0.114); return g; };
+  const A = gray(ref), Bg = gray(prev);
+  const B = Math.max(4, Math.round(Math.max(w, h) / 80)), bw = Math.ceil(w / B), bh = Math.ceil(h / B);
+  const mx = Math.max(2, Math.round(w / 100)), my = Math.max(2, Math.round(h / 100));
+  const on = new Uint8Array(bw * bh), sum = new Float64Array(bw * bh);
+  for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) {
+    const d = Math.abs(A[y * w + x] - Bg[y * w + x]), k = Math.floor(y / B) * bw + Math.floor(x / B);
+    sum[k] += d;
+    if (d > 48) on[k]++;
+  }
+  const lit = new Uint8Array(bw * bh);
+  for (let k = 0; k < bw * bh; k++) if (on[k] > B * B * 0.03) lit[k] = 1;
+  // blobs: 8-connected, one block of gap bridged (letters of a word, parts of a block)
+  const seen = new Int32Array(bw * bh).fill(-1), blobs: { x0: number; y0: number; x1: number; y1: number; n: number; s: number }[] = [];
+  for (let k = 0; k < bw * bh; k++) {
+    if (!lit[k] || seen[k] >= 0) continue;
+    const id = blobs.length, st = [k], b = { x0: bw, y0: bh, x1: -1, y1: -1, n: 0, s: 0 };
+    seen[k] = id;
+    while (st.length) {
+      const c = st.pop()!, cx = c % bw, cy = Math.floor(c / bw);
+      b.x0 = Math.min(b.x0, cx); b.y0 = Math.min(b.y0, cy); b.x1 = Math.max(b.x1, cx); b.y1 = Math.max(b.y1, cy); b.n++; b.s += sum[c];
+      for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx < 0 || ny < 0 || nx >= bw || ny >= bh) continue;
+        const q = ny * bw + nx;
+        if (lit[q] && seen[q] < 0) { seen[q] = id; st.push(q); }
+      }
+    }
+    blobs.push(b);
+  }
+  const ink = (g: Float32Array, x0: number, y0: number, x1: number, y1: number) => { let n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (g[y * w + x] < INK) n++; return n; };
+  const S = Math.max(2, Math.min(60, Math.round(Math.max(w, h) * 0.05)));
+  const sad = (x0: number, y0: number, x1: number, y1: number, dx: number, dy: number, step: number) => {
+    let s = 0, n = 0;
+    for (let y = y0; y < y1; y += step) {
+      const py = y + dy; if (py < 0 || py >= h) { n++; s += 255; continue; }
+      for (let x = x0; x < x1; x += step) { const px = x + dx; s += px < 0 || px >= w ? 255 : Math.abs(A[y * w + x] - Bg[py * w + px]); n++; }
+    }
+    return n ? s / n : 0;
+  };
+  const out: (DiffRegion & { weight: number })[] = [];
+  for (const b of blobs) {
+    if (b.n < 2) continue;
+    const x0 = b.x0 * B, y0 = b.y0 * B, x1 = Math.min(w, (b.x1 + 1) * B), y1 = Math.min(h, (b.y1 + 1) * B);
+    const meanD = b.s / ((x1 - x0) * (y1 - y0)) / 255;
+    if (meanD < 0.03) continue; // anti-aliasing and rendering noise (export vs screen capture), not a difference
+    const iR = ink(A, x0, y0, x1, y1), iP = ink(Bg, x0, y0, x1, y1);
+    // local shift: the reference content (box) against the preview moved by (dx, dy)
+    const base = sad(x0, y0, x1, y1, 0, 0, 1);
+    let best = base, bx = 0, by = 0;
+    const st = Math.max(1, Math.round(S / 12));
+    for (let dy = -S; dy <= S; dy += st) for (let dx = -S; dx <= S; dx += st) { const v = sad(x0, y0, x1, y1, dx, dy, 2); if (v < best) { best = v; bx = dx; by = dy; } }
+    const cx = bx, cy = by;
+    for (let dy = cy - st; dy <= cy + st; dy++) for (let dx = cx - st; dx <= cx + st; dx++) { const v = sad(x0, y0, x1, y1, dx, dy, 1); if (v < best) { best = v; bx = dx; by = dy; } }
+    let kind: DiffRegion['kind'];
+    // a shift only when the content is on both sides in similar amounts (else moving the window off it also 'helps')
+    if ((bx || by) && best < base * 0.45 && iR > 0 && iP > 0 && Math.min(iR, iP) > Math.max(iR, iP) * 0.5) kind = 'shifted';
+    else if (iR > 0 && iP < iR * 0.25) kind = 'missing';
+    else if (iP > 0 && iR < iP * 0.25) kind = 'extra';
+    else kind = 'changed';
+    const f = (v: number) => Math.round(v * 1000) / 1000;
+    const r: DiffRegion & { weight: number } = { box: [f(x0 / w), f(y0 / h), f((x1 - x0) / w), f((y1 - y0) / h)], kind, diff: f(meanD), weight: b.n * meanD };
+    if (kind === 'shifted') r.shift = [f(bx / w), f(by / h)];
+    out.push(r);
+  }
+  return out.sort((a, b) => b.weight - a.weight).slice(0, max).map(({ weight: _w, ...r }) => r);
+}

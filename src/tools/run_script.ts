@@ -19,7 +19,7 @@ export const HELPERS = `Helpers (global AIA, always loaded; positions/sizes in s
   AIA.at(k, fn) → run fn with coordinates from artboard k's top-left (multi-artboard builders)
   AIA.P(x,y) → document coordinates [x, y-up] for raw API calls · AIA.u(v) session units → pt · AIA.warn(msg)
 Font size, leading, tracking and stroke width are always pt.
-Colours: "cmyk(100,85,30,25)", "gray(60)" (= K60 in CMYK documents), "swatch:Navy", "swatch:Navy@50", "none", "#1e2a44" (RGB: avoid in CMYK documents).`;
+Colours as in every tool; "gray(60)" is K60 in CMYK documents.`;
 
 // Recipes (0.2.1): ready builders shipped in dist/recipes/<name>.jsx; the first two comment lines name and describe them.
 const RECIPES = asset('recipes');

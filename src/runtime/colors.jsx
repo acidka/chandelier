@@ -156,6 +156,26 @@
       return { added: made, updated: upd, group: a.group || undefined };
     }
     if (act === 'recolor') return recolor(a, doc);
+    if (act === 'convert') {
+      // Edit > Edit Colors > Convert to Grayscale / CMYK / RGB on the items (the document's colour profiles convert);
+      // without refs cmyk / rgb also switch the document colour mode (File > Document Color Mode)
+      var CMD = { gray: 'Colors7', cmyk: 'Colors8', rgb: 'Colors9' }, m = a.mode, sw0 = false;
+      if (!CMD[m]) throw new Error('convert needs mode: "cmyk", "rgb" or "gray".');
+      if ((a.refs === undefined || a.refs === null) && m !== 'gray') {
+        var want = m === 'cmyk' ? DocumentColorSpace.CMYK : DocumentColorSpace.RGB;
+        if (doc.documentColorSpace !== want) { app.executeMenuCommand(m === 'cmyk' ? 'doc-color-cmyk' : 'doc-color-rgb'); sw0 = true; }
+      }
+      var its = a.refs !== undefined && a.refs !== null ? A.refs(a.refs) : A.topLevel(doc), sel = 0, skip = 0;
+      doc.selection = null;
+      for (i = 0; i < its.length; i++) { try { its[i].selected = true; sel++; } catch (e) { skip++; } }
+      A.syncSelection();
+      if (sel) app.executeMenuCommand(CMD[m]);
+      doc.selection = null;
+      var res = { converted: sel, mode: m, color_space: doc.documentColorSpace === DocumentColorSpace.CMYK ? 'CMYK' : 'RGB' };
+      if (sw0) res.document_mode_changed = true;
+      if (skip) res.skipped_locked = skip;
+      return res;
+    }
     throw new Error('Unknown swatches action "' + act + '".');
   };
 

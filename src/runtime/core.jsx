@@ -635,7 +635,7 @@ $.global.AIA = (function () {
       } catch (e) {}
     }
   };
-  var READ_ONLY = { ping: 1, status: 1, document_info: 1, find_items: 1, get_items: 1, get_tree: 1, preflight: 1, fonts: 1, export_prep: 1 };
+  var READ_ONLY = { ping: 1, status: 1, document_info: 1, find_items: 1, get_items: 1, get_tree: 1, preflight: 1, fonts: 1, export_prep: 1, items_at: 1 };
   // req = {cmd, args, settings}
   A.dispatch = function (req) {
     var env, lvl = null;
@@ -1243,6 +1243,35 @@ $.global.AIA = (function () {
   // -- preview: PNG of an artboard, items or a region ----------------------------------
   // doc.imageCapture renders any rectangle (also off the artboard) without switching the active artboard.
   // Fallback for artboards: exportFile(PNG24) with artboard clipping. The document's saved flag is restored.
+  // items_at (0.4 visual diff): for each document rect [l, t, r, b], the leaf items that lie mostly inside it (by the
+  // share of the item's visible area inside the rect, so a page background doesn't win every region)
+  A.cmd.items_at = function (a) {
+    var leaves = [], out = [], i, j;
+    A.walk(function (it) {
+      if (it.typename === 'GroupItem') return;
+      try { if (it.hidden) return; leaves.push({ it: it, b: A.vb(it) }); } catch (e) {}
+    });
+    for (i = 0; i < a.rects.length; i++) {
+      var r = a.rects[i], hits = [];
+      for (j = 0; j < leaves.length; j++) {
+        var b = leaves[j].b, ow = Math.min(b[2], r[2]) - Math.max(b[0], r[0]), oh = Math.min(b[1], r[1]) - Math.max(b[3], r[3]);
+        if (ow <= 0 || oh <= 0) continue;
+        var area = Math.max(1e-6, (b[2] - b[0]) * (b[1] - b[3]));
+        hits.push({ it: leaves[j].it, share: ow * oh / area });
+      }
+      hits.sort(function (p, q) { return q.share - p.share; });
+      var list = [];
+      for (j = 0; j < hits.length && list.length < 3; j++) {
+        if (j > 0 && hits[j].share < 0.25) break;
+        var it = hits[j].it, o = { uuid: it.uuid, type: A.kindOf(it.typename) };
+        if (it.name) o.name = it.name;
+        if (it.typename === 'TextFrame') { var c = it.contents; o.text = c.length > 40 ? c.slice(0, 40) + '...' : c; }
+        list.push(o);
+      }
+      out.push(list);
+    }
+    return out;
+  };
   A.cmd.preview = function (a) {
     var doc = A.doc(), wasSaved = doc.saved, bounds, what, i;
     // a region is measured from the given artboard (else the session's reference artboard, usually the active one)
@@ -1295,7 +1324,7 @@ $.global.AIA = (function () {
       }
     } finally { A.restoreLayers(hid); }
     if (wasSaved) { try { doc.saved = true; } catch (e) {} }
-    var out = { of: what, rect: inFrame(function () { return A.rectOut(bounds); }), px: [Math.round(w * res / 72), Math.round(h * res / 72)], scale: r2(res / 72), method: method };
+    var out = { of: what, doc_bounds: bounds, rect: inFrame(function () { return A.rectOut(bounds); }), px: [Math.round(w * res / 72), Math.round(h * res / 72)], scale: r2(res / 72), method: method };
     if (res > want * 1.01) out.resize_to = Math.round(Math.max(w, h) * want / 72);
     return out;
   };

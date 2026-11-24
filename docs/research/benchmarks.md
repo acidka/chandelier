@@ -500,12 +500,14 @@ This is the floor for an agent: it shows the tools can do the job in ≤ 20 call
 ## Tool list size
 
 The tool list (names, descriptions, input schemas) is re-read on every agent request. `node scripts/schema-size.mjs`
-(tokens ≈ characters / 3.5), 2026-11-24, Chandelier 0.3 on develop, Node 22.23:
+(tokens ≈ characters / 3.5), 2026-11-24, Node 22.23:
 
-| Profile | Tools | Schemas | Instructions | ≈ tokens per request |
-|---------|-------|---------|--------------|----------------------|
-| `full` (default) | 34 | 53 587 chars | 1 644 chars | 15.8 k |
-| `CHANDELIER_TOOLS=lean` | 9 (8 + `tools`) | 15 400 chars | 1 772 chars | 4.9 k |
+| Version | Profile | Tools | Schemas | Instructions | ≈ tokens per request |
+|---------|---------|-------|---------|--------------|----------------------|
+| 0.4 | `full` (default) | 35 | 54 979 chars | 1 648 chars | 16.2 k |
+| 0.4 | `CHANDELIER_TOOLS=lean` | 9 (8 + `tools`) | 15 407 chars | 1 789 chars | 4.9 k |
+| 0.3 | `full` | 34 | 53 587 chars | 1 644 chars | 15.8 k |
+| 0.3 | `lean` | 9 | 15 400 chars | 1 772 chars | 4.9 k |
 
 History of the full list: 61.6 KB before phase 4 slimming, 48.9 KB after it (2026-11-22), 49.9 KB in 0.2.1. Clients
 that defer tool loading (Claude Code, Claude Desktop) pay only for the names of tools they don't load.

@@ -63,8 +63,10 @@ top-left as their frame.
 4. Measure in pixels; convert with one factor `S = page width in pt ÷ page width in px`. Font size ≈ cap height
    in px ÷ 0.7 × S. Generate coordinates in a script (or `create_text {grid}`), never by hand.
 5. Build (section 3), then **compare**: `preview {reference: "<image>", reference_crop: [x, y, w, h]}` returns
-   one image [reference | yours | difference], `content_box.shift/scale` (everything offset or too big?) and the
-   3 most different regions. Fix (`modify_items`, `edit_text`, `styles update` — a style change moves every
+   one image [reference | yours | difference], `content_box.shift/scale` (everything offset or too big?) and up to
+   6 `differences`: `{rect, kind, shift?, items}` — `shifted` comes with the measured `shift` [dx, dy] (move the
+   listed items by minus that), `missing` (in the reference only), `extra` (yours only), `changed` (colour, size,
+   wording). Fix (`modify_items`, `edit_text`, `styles update` — a style change moves every
    text using it), compare once more. One or two rounds are normal.
 6. **Proofread the text against the reference** word by word: on a client's job the words are theirs, and a typo
    (or a "correction" of their wording) is the worst error a rebuild can have.
@@ -142,6 +144,27 @@ group and returns what it made.
 | `style-guide` | The document's global/spot swatches as chips and every paragraph style as a sample line, fitted to the width |
 
 Use a recipe as a starting point, then adjust with the normal tools (swatches, styles, `modify_items`).
+
+## Effects and prepress (0.4)
+
+`effects {refs, add: [...], clear?}` applies live effects (they stay editable in the Appearance panel). Types and
+their options (lengths in session units, opacity 0–100, colours as everywhere — CMYK, RGB, gray or a swatch of one):
+`drop_shadow {x, y, blur, color, opacity, blend}` · `outer_glow` / `inner_glow {blur, color, opacity, blend, from}` ·
+`round_corners {radius}` · `feather {radius}` · `blur {radius}` · `offset {distance, joins}` · `roughen {size, detail,
+smooth}` · `zigzag {size, ridges, smooth}` · `pucker_bloat {amount}` · `transform {x, y, scale, rotate, copies}` ·
+`{xml}` for anything else. Illustrator can't report effects back, so `get_items` doesn't show them; the returned `box`
+includes them. `clear: true` resets the appearance to the item's fill and stroke. `path_ops {op: "expand"}` turns
+them into plain art (needed by some print shops; raster effects become images).
+
+Prepress: `path_ops {op: "trap", refs, distance}` adds a spread trap (an overprinting stroke of each item's own fill:
+trap the lighter colour into the darker); `swatches {action: "convert", mode: "cmyk" | "rgb" | "gray", refs?}`
+converts colours through the document's profiles (no refs: the whole document, and its colour mode for cmyk / rgb);
+`export {format: "pdf", output_intent: "FOGRA39"}` sets the PDF/X output intent to an installed CMYK profile (name or
+part of it, or an .icc path; an ambiguous name lists the candidates). The CMYK numbers are not converted: the intent
+tells the press what they were made for.
+
+Visual diff: `preview {reference}` lists `differences` — `shifted` (with `shift` [dx, dy]: move the `items` by the
+opposite), `missing`, `extra`, `changed` — so fixes go straight to the right items.
 
 ## Production runs (0.3)
 

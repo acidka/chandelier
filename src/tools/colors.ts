@@ -12,10 +12,10 @@ export const swatches: ToolDef = {
   description: `Swatches of the active document. kind: "global" (global process — edit once, every use updates; default for add) | "spot" | "process" (plain) | "gradient".
 action: "list" (kind, group filters) · "add" (name, color; updates the swatch if it exists, so batches can be re-run; gradient: type linear|radial, stops [{color, at 0-100, opacity, midpoint}]; group) · "update" (name → color / stops / new_name / group) · "remove" (name or names) ·
 "clean_defaults" (remove the default process swatches, unused default gradients/patterns and empty groups; keeps [None], [Registration], global and spot swatches and "keep" names) ·
-"import" (path: an .ase swatch library; kind and group override the file's) · "recolor" (refs? default all: every fill, stroke, text run and gradient stop → the nearest of to [swatch names, "group:Name"; default all global/spot] within tolerance (ΔE, default 20), or map {"cmyk(…)": "swatch:X"}; tints stay tints; dry_run → report only) → {colors [{from, to, de, uses}], unmatched}.
+"import" (path: an .ase swatch library; kind and group override the file's) · "recolor" (refs? default all: every fill, stroke, text run and gradient stop → the nearest of to [swatch names, "group:Name"; default all global/spot] within tolerance (ΔE, default 20), or map {"cmyk(…)": "swatch:X"}; tints stay tints; dry_run → report only) → {colors [{from, to, de, uses}], unmatched} · "convert" (mode cmyk|rgb|gray through the colour profiles; refs, default all — then cmyk/rgb also switch the document mode).
 Use them as colours: "swatch:Name", "swatch:Name@50" (tint), "gradient:Name@45" (angle).`,
   shape: {
-    action: z.enum(['list', 'add', 'update', 'remove', 'clean_defaults', 'import', 'recolor']).optional(),
+    action: z.enum(['list', 'add', 'update', 'remove', 'clean_defaults', 'import', 'recolor', 'convert']).optional(),
     name: z.string().optional(), names: z.array(z.string()).optional(), new_name: z.string().optional(),
     kind: z.enum(['global', 'spot', 'process', 'gradient', 'pattern', 'none', 'registration']).optional(),
     color: z.string().optional(),
@@ -26,7 +26,7 @@ Use them as colours: "swatch:Name", "swatch:Name@50" (tint), "gradient:Name@45" 
     limit: z.number().min(1).optional(),
     path: z.string().optional(),
     refs: refSchema.optional(), to: z.array(z.string()).optional(), map: z.record(z.string(), z.string()).optional(),
-    tolerance: z.number().min(0).optional(), dry_run: z.boolean().optional(),
+    tolerance: z.number().min(0).optional(), dry_run: z.boolean().optional(), mode: z.enum(['cmyk', 'rgb', 'gray']).optional(),
   },
   step(a) {
     if (a.action !== 'import') return { cmd: 'swatches', args: a };

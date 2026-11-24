@@ -78,6 +78,24 @@
         A.track(g);
         out.push(g);
       }
+    } else if (op === 'trap') {
+      // spread trap (0.4): an overprinting stroke in the item's own fill colour; the stroke is centred on the path, so
+      // 2 x width puts "width" outside, into the colour below. Trap the lighter colour into the darker one.
+      var tw = 2 * (a.distance === undefined ? 0.25 : A.u(a.distance)), skipped = 0;
+      for (i = 0; i < items.length; i++) {
+        var ps = A.paintables(items[i]);
+        for (var q = 0; q < ps.length; q++) {
+          var p = ps[q];
+          if (p.typename === 'TextFrame') {
+            var ch = p.textRanges;
+            for (var c = 0; c < ch.length; c++) { var ca = ch[c].characterAttributes; ca.strokeColor = ca.fillColor; ca.strokeWeight = tw; ca.overprintStroke = true; }
+          } else if (!p.filled || p.stroked || p.fillColor.typename === 'GradientColor' || p.fillColor.typename === 'PatternColor') skipped++;
+          else { p.stroked = true; p.strokeColor = p.fillColor; p.strokeWidth = tw; p.strokeOverprint = true; p.strokeJoin = StrokeJoin.ROUNDENDJOIN; }
+        }
+        out.push(items[i]);
+      }
+      if (skipped) A.warn(skipped + ' path(s) not trapped: no fill, a gradient or pattern fill, or already stroked.');
+      return A.outList(out); // the same items, changed: not tracked as created (a batch rollback must not delete them)
     } else if (op === 'outline_text') {
       var frames = [];
       for (i = 0; i < items.length; i++) {

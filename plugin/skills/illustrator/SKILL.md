@@ -41,7 +41,7 @@ Name layers and groups. Keep scripts re-runnable.
    placeholder. Fix obvious mistakes and say so.
 3. Measure in pixels; one factor `S = page width in pt ÷ page width in px`; font size ≈ cap height px ÷ 0.7 × S.
 4. Build with the loop above, then `preview {reference: "<image>", reference_crop: [x, y, w, h]}`: fix what
-   `content_box` (shift/scale) and the regions show; one or two rounds.
+   `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); one or two rounds.
 5. **Proofread every word against the reference** — on a client's job the words are theirs.
 6. Missing font? Pick the closest installed one (`fonts {query}`) and match widths with the style's `hscale` so lines
    break where the reference breaks; put body copy in area text.
@@ -61,6 +61,17 @@ Name layers and groups. Keep scripts re-runnable.
   ["group:Brand"], dry_run: true}`; read `colors` and `unmatched`, adjust `tolerance` or add a `map`, then run it.
 - With `CHANDELIER_TOOLS=lean` only eight tools are listed: `tools {query}` finds the others, `tools {call, args}`
   runs them, and they also work as `batch` steps.
+
+## Effects and prepress
+
+- `effects {refs, add: [{type: "drop_shadow", x: 2, y: 2, blur: 3, color: "gray(60)", opacity: 60}, {type: "round_corners", radius: 4}]}`
+  — live and editable in Illustrator; `clear: true` removes them; `path_ops {op: "expand"}` bakes them. Effects
+  can't be read back, so keep track of what you applied. Raster effects (shadows, glows, blur, feather) print at the
+  document's raster resolution.
+- Traps: `path_ops {op: "trap", refs: <the lighter objects>, distance}` (trap width in session units; default 0.25 pt).
+- `swatches {action: "convert", mode: "cmyk"}` turns an RGB document into CMYK; `mode: "gray"` for one-colour versions.
+- Press condition: `export {format: "pdf", output_intent: "FOGRA39"}` (or "GRACoL", "SWOP", an .icc path); the result
+  lists the `output_intent` of each PDF.
 
 ## Print checks
 

@@ -50,7 +50,7 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
   PDF/X-4 export with exact trim and bleed boxes, and a preflight that checks what matters (RGB in CMYK, missing
   fonts, overset text, hairlines, low-res images, white overprint…) and skips non-printing layers.
 - **It looks at its work.** `preview` returns an image of an artboard, items or a region; given a reference image it
-  returns a side-by-side difference, how far the content is shifted or scaled, and the regions that differ most.
+  returns a side-by-side difference, how far the content is shifted or scaled, and each difference: moved (by how much), missing, extra or changed, with the items there.
 - **Short build loop.** Create a document, one batch for swatches and styles, one for content, one check
   (`preview {reference, preflight: true}`), one finish (`documents save {export: [...], close: true}`) — about eight
   calls to Illustrator for a page.
@@ -64,6 +64,9 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
   colours, optional parts) into one artboard per row, n-up sheets, or one PDF/PNG per row; `batch {files}` runs the
   same steps over a folder of files and saves copies; `swatches {recolor}` snaps every colour to a brand palette
   (also from an `.ase` swatch library).
+- **Effects and prepress.** Live effects that stay editable (drop shadow, glows, round corners, feather, blur,
+  offset, roughen, zigzag, transform copies…), spread traps, colour conversion to CMYK or grayscale, and PDF/X
+  output intents from your installed press profiles (FOGRA39, GRACoL…).
 - **Agent-friendly.** Compact responses with limits, conventions sent once in the server instructions, errors that
   say what to do next, and two ready-made prompts: `recreate_design` and `print_export`.
 
@@ -80,11 +83,13 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
 
 > Make a certificate for every row of `attendees.csv` and export one PDF per person, named after them.
 
+> Give the product cards a soft drop shadow and rounded corners, then export a PDF/X-4 for a FOGRA39 press.
+
 > Open every `.ai` in `~/jobs/spring`, snap all colours to the swatches in `brand.ase`, and save copies to `~/jobs/out`.
 
 ## Tools
 
-34 tools; every tool that changes a document can also be a step inside `batch`.
+35 tools; every tool that changes a document can also be a step inside `batch`.
 
 | Group | Tools |
 |-------|-------|
@@ -92,7 +97,7 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
 | Inspect | `find_items` · `get_items` · `get_tree` · `selection` · `fonts` |
 | Create | `create_text` · `create_shape` · `create_path` · `place` |
 | Edit | `edit_text` · `modify_items` · `transform_items` · `duplicate_items` · `arrange_items` · `align_items` · `path_ops` · `delete_items` |
-| Structure and colour | `layers` · `artboards` · `swatches` · `styles` |
+| Structure, colour and effects | `layers` · `artboards` · `swatches` · `styles` · `effects` |
 | Build | `batch` (also over many files) · `run_script` · `data_merge` · `menu_command` · `symbols` |
 | Look, check, output | `preview` · `preflight` · `export` |
 
@@ -155,7 +160,7 @@ the full path of a newer `node` as the command, then restart your MCP client.
 
 **Smaller tool list:** MCP clients that load every tool schema up front (no deferred tool loading) can set
 `CHANDELIER_TOOLS=lean`: the eight tools a build uses plus a `tools` tool that lists, explains and calls the rest
-(about 4.9 k tokens per request instead of 15.8 k, [benchmarks](docs/research/benchmarks.md#tool-list-size)). A
+(about 4.9 k tokens per request instead of 16.2 k, [benchmarks](docs/research/benchmarks.md#tool-list-size)). A
 comma-separated list of tool names works too.
 
 **Debug log:** set `CHANDELIER_LOG=debug` in the server's environment for one JSON line per tool call (tool, time,
@@ -178,6 +183,10 @@ behind them: [plan](docs/plan.md).
 ## Status
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
+
+**0.4** (2026-11-24): look and print depth — live effects (`effects`), spread traps, colour conversion, PDF/X
+output intents, and a visual diff that says what moved (and by how much), what's missing and what's extra. Release
+pending.
 
 **0.3 released** (2026-11-24): production automation — `data_merge` (variable data into artboards, n-up sheets or files),
 `batch {files}` (the same steps over many files, copies saved), `swatches {recolor, import}` (snap colours to a
