@@ -57,6 +57,9 @@ bleed. Methods, every run and the caveats (one run per arm for the latest number
 - **Safe by design.** Never launches Illustrator unless asked, never touches documents it didn't create or wasn't
   asked to change, removes what a failed call created, retries Illustrator's transient errors, and explains crashes
   and timeouts in plain words.
+- **Ready-made and checked.** Recipes for a calendar month, a labels sheet, a business card, a style guide and colour
+  chips (`run_script {recipe}`); brand checks in `preflight` (allowed colours, fonts and sizes; contrast); exports per
+  layer set (with and without the dieline) and screen assets at 1x/2x/3x; symbols and image trace.
 - **Agent-friendly.** Compact responses with limits, conventions sent once in the server instructions, errors that
   say what to do next, and two ready-made prompts: `recreate_design` and `print_export`.
 
@@ -162,6 +165,9 @@ behind them: [plan](docs/plan.md).
 ## Status
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
+
+**0.2.1** (2026-11-24): recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart
+and a debug log; a fix for tinted swatches (a tint changed the swatch itself). Release pending.
 
 **0.2 released** (2026-11-24): **Windows** — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)): all live suites pass
 with Illustrator 2027 on Windows 11 (ARM64, in a Parallels VM); npm package, plugin and Claude Desktop bundle run on
