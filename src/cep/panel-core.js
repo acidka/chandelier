@@ -139,7 +139,8 @@ function createPanel(opts) {
       let cur;
       try { cur = JSON.parse(await evalScript(opts.snapshot)); } catch (e) { cur = { error: 'snapshot: ' + e.message }; }
       if (!cur.error && setDoc(cur)) changed();
-      if (!share) return;
+      // checked again after the look: sharing paused (or the agent left) meanwhile → nothing goes out
+      if (!share || !clients.size || !sharing) return;
       const events = diff(last, cur);
       // the first good snapshot (after a connect or a resume) is the baseline: send it as the current state
       const baseline = !last && !cur.error;
