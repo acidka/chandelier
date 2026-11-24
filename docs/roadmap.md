@@ -378,7 +378,8 @@ Gap item 16 (phase 8). Owner, 2026-11-24: "do everything needed to close this mi
   usage instead of installing; its instructions give the Windows command (`cmd /c npx …`), warn that wake-up needs the
   channel flag on every start, say to re-run it after an upgrade, and spot Windows ARM under x64 emulation; CI actions
   v7 (Node 24); docs for 0.5. Released: npm `chandelier-mcp@0.5.1` (owner; checked from the registry), `main`
-  fast-forwarded, tag `v0.5.1`, GitHub release with `chandelier-0.5.1.mcpb`; MCP Registry: owner
+  fast-forwarded, tag `v0.5.1`, GitHub release with `chandelier-0.5.1.mcpb`; MCP Registry: 0.5.1 listed as latest
+  (owner; checked through the registry API)
 - Open after 0.5 (not blocking): signed ZXP (needs Adobe's ZXPSignCmd and a certificate), a test on x64 Windows, the
   hidden-panel check (owner)
 
