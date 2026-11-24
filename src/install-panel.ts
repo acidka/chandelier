@@ -30,6 +30,13 @@ export interface InstallOptions {
   /** runs `defaults write` / `reg add` (tests pass a recorder) */
   exec?: (cmd: string, args: string[]) => void;
   log?: (line: string) => void;
+  /** environment (tests); default process.env */
+  env?: Record<string, string | undefined>;
+}
+
+/** Windows on ARM, also when this Node is x64 under emulation (PROCESSOR_ARCHITEW6432 / the native architecture). */
+export function isArm(env: Record<string, string | undefined> = process.env, arch: string = process.arch): boolean {
+  return arch === 'arm64' || env.PROCESSOR_ARCHITECTURE === 'ARM64' || env.PROCESSOR_ARCHITEW6432 === 'ARM64';
 }
 
 export function extensionsDir(platform: NodeJS.Platform = process.platform, home = homedir(), appData = process.env.APPDATA): string {
@@ -87,14 +94,18 @@ export function installPanel(o: InstallOptions): number {
   }
   log(`PlayerDebugMode=1 for CSXS.${CSXS[0]}…${CSXS[CSXS.length - 1]} (lets Illustrator load this unsigned panel).`);
   log('');
+  const npx = win ? 'cmd /c npx -y chandelier-mcp' : 'npx -y chandelier-mcp';
   log('Next:');
   log('  1. Restart Illustrator, then open Window > Extensions > Chandelier.');
-  log('  2. Run the server in panel mode, e.g. for Claude Code:');
-  log('       claude mcp add chandelier-panel -e CHANDELIER_TRANSPORT=panel -- npx -y chandelier-mcp');
-  log('  3. To have panel messages wake the agent (Claude Code channels, research preview), add CHANDELIER_CHANNEL=1');
-  log('     to that server and start Claude Code with:');
+  log('  2. Add the server in panel mode (Claude Code; other MCP clients: the same command with CHANDELIER_TRANSPORT=panel):');
+  log(`       claude mcp add chandelier-panel -e CHANDELIER_TRANSPORT=panel -- ${npx}`);
+  log('     Then tell the agent: "I\'ll write to you from the Chandelier panel."');
+  log('  3. Optional, Claude Code channels (research preview): to have a panel message wake an idle session, add');
+  log('     -e CHANDELIER_CHANNEL=1 to that command and always start Claude Code with');
   log('       claude --dangerously-load-development-channels server:chandelier-panel');
-  if (win && process.arch === 'arm64') log('Note: Illustrator on Windows ARM loads only Adobe\'s own CEP panels; this one needs x64 Illustrator.');
+  log('     (started without that flag, the session never receives panel messages).');
+  log('After upgrading chandelier-mcp, run install-panel again: the copied panel keeps its version.');
+  if (win && isArm(o.env ?? process.env)) log('Note: Illustrator on Windows ARM loads only Adobe\'s own CEP panels; this panel needs x64 Illustrator.');
   return 0;
 }
 

@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { installPanel, extensionsDir, PANEL_ID } from '../../src/install-panel.js';
+import { installPanel, extensionsDir, isArm, PANEL_ID } from '../../src/install-panel.js';
 
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), 'aia-install-'));
@@ -24,7 +24,7 @@ describe('install-panel', () => {
     expect(existsSync(join(target, 'CSXS', 'manifest.xml'))).toBe(true);
     expect(existsSync(join(target, '.debug'))).toBe(false);
     expect(calls.map((c) => c[2])).toEqual(['com.adobe.CSXS.9', 'com.adobe.CSXS.10', 'com.adobe.CSXS.11', 'com.adobe.CSXS.12', 'com.adobe.CSXS.13', 'com.adobe.CSXS.14']);
-    expect(lines.join('\n')).toMatch(/Window > Extensions > Chandelier[\s\S]*CHANDELIER_TRANSPORT=panel[\s\S]*dangerously-load-development-channels/);
+    expect(lines.join('\n')).toMatch(/Window > Extensions > Chandelier[\s\S]*CHANDELIER_TRANSPORT=panel -- npx -y chandelier-mcp[\s\S]*dangerously-load-development-channels[\s\S]*never receives panel messages[\s\S]*run install-panel again/);
     installPanel({ args: ['--uninstall'], src: f.src, platform: 'darwin', home: f.home, exec: () => {}, log: () => {} });
     expect(existsSync(target)).toBe(false);
     rmSync(f.root, { recursive: true, force: true });
@@ -32,7 +32,10 @@ describe('install-panel', () => {
   it('Windows: %APPDATA% extensions folder and reg add', () => {
     const f = fixture();
     const calls: string[][] = [];
-    installPanel({ args: ['--debug'], src: f.src, platform: 'win32', home: f.home, appData: join(f.root, 'AppData'), exec: (c, a) => calls.push([c, ...a]), log: () => {} });
+    const lines: string[] = [];
+    installPanel({ args: ['--debug'], src: f.src, platform: 'win32', home: f.home, appData: join(f.root, 'AppData'), env: { PROCESSOR_ARCHITECTURE: 'ARM64' }, exec: (c, a) => calls.push([c, ...a]), log: (l) => lines.push(l) });
+    expect(lines.join('\n')).toMatch(/-- cmd \/c npx -y chandelier-mcp/); // Windows has only npx.cmd
+    expect(lines.join('\n')).toMatch(/Windows ARM loads only Adobe's own CEP panels/);
     const target = join(f.root, 'AppData', 'Adobe', 'CEP', 'extensions', PANEL_ID);
     expect(existsSync(join(target, '.debug'))).toBe(true); // --debug writes it on purpose
     expect(calls[0]).toEqual(['reg', 'add', 'HKCU\\Software\\Adobe\\CSXS.9', '/v', 'PlayerDebugMode', '/t', 'REG_SZ', '/d', '1', '/f']);
@@ -48,6 +51,11 @@ describe('install-panel', () => {
     expect(existsSync(join(extensionsDir('darwin', f.home), PANEL_ID))).toBe(false);
     expect(calls).toEqual([]);
     rmSync(f.root, { recursive: true, force: true });
+  });
+  it('knows Windows on ARM also under x64 emulation', () => {
+    expect(isArm({}, 'arm64')).toBe(true);
+    expect(isArm({ PROCESSOR_ARCHITEW6432: 'ARM64', PROCESSOR_ARCHITECTURE: 'AMD64' }, 'x64')).toBe(true);
+    expect(isArm({ PROCESSOR_ARCHITECTURE: 'AMD64' }, 'x64')).toBe(false);
   });
   it('refuses without built panel files', () => {
     const lines: string[] = [];
