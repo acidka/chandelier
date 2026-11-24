@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.acidka/chandelier",
+  "title": "Chandelier",
+  "description": "Drive Adobe Illustrator fast: ~5 ms calls, batches, ExtendScript, preflight, PDF/X export.",
+  "repository": {
+    "url": "https://github.com/acidka/chandelier",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/acidka/chandelier",
+  "version": "0.4.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "chandelier-mcp",
+      "version": "0.4.1",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        { "name": "CHANDELIER_TOOLS", "description": "Tool profile: full (default), lean, or a comma-separated list of tool names", "isRequired": false, "format": "string" },
+        { "name": "CHANDELIER_LOG", "description": "debug: one JSON line per tool call on stderr", "isRequired": false, "format": "string" },
+        { "name": "CHANDELIER_LOG_FILE", "description": "Append the debug log to this file", "isRequired": false, "format": "filepath" }
+      ]
+    }
+  ]
+}

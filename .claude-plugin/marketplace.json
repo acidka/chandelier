@@ -12,7 +12,7 @@
       "name": "chandelier",
       "source": "./plugin",
       "description": "Adobe Illustrator for Claude Code: the Chandelier MCP server, an Illustrator skill, /ai-preview and /ai-preflight.",
-      "version": "0.4.0"
+      "version": "0.4.1"
     }
   ]
 }

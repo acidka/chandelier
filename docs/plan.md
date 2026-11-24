@@ -296,4 +296,4 @@ Tool descriptions are kept short; the conventions (refs, colours, coordinates) l
 2. ~~**Name**~~ ✅ decided 2026-11-22: **Chandelier** (npm `chandelier-mcp`, MCP server `chandelier`) — see the README.
 3. **Public or private repo?** Private for now (<https://github.com/acidka/chandelier>, made private again 2026-11-22; MIT licence kept for when it opens).
 4. **Windows:** needed at all, and when? → yes: roadmap phase 7, after the 0.1 release (as 0.2), tested on a Windows 11 ARM64 VM ([windows-plan.md](windows-plan.md)) ✅
-5. **Migration of the maintainer's production workflow:** switch it from `illustrator-mcp` to this server once phase 3 is done?
+5. ~~**Migration of the maintainer's production workflow**~~ ✅ done 2026-11-24 (roadmap phase 6).
