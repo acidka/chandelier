@@ -58,6 +58,7 @@
       doc.selection = null;
       for (var i = 0; i < items.length; i++) items[i].selected = true;
     }
+    A.syncSelection(); // the command acts on the current selection, also one an earlier call set (Windows)
     app.executeMenuCommand(a.command);
     var sel = app.documents.length ? app.activeDocument.selection : null, out = [];
     if (sel instanceof Array) out = sel;

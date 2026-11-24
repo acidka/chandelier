@@ -83,6 +83,11 @@ $.global.AIA = (function () {
     return app.activeDocument;
   };
   A.mm = function (v) { return v * 72 / 25.4; };
+  // Windows: a menu command acts on the selection Illustrator last drew, not the one a script just set, until a redraw
+  // (W6, Illustrator 31: Live Pathfinder on a fresh selection failed 10/10 without it, worked 10/10 with it).
+  // Call after changing the selection and before app.executeMenuCommand. macOS doesn't need it: no-op there.
+  A.WIN = String($.os || '').indexOf('Windows') >= 0;
+  A.syncSelection = function () { if (A.WIN) { try { app.redraw(); } catch (e) {} } };
 
   // -- units and coordinates (session settings) ---------------------------------
   A.unit = function () { return UNIT[A.S.units] || 1; };

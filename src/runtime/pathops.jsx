@@ -10,6 +10,7 @@
     var doc = A.doc();
     doc.selection = null;
     for (var i = 0; i < items.length; i++) items[i].selected = true;
+    A.syncSelection(); // the menu commands below act on this selection (Windows)
   }
   function selected() {
     var s = A.doc().selection, out = [];

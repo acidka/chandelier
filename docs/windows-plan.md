@@ -1,6 +1,6 @@
 # Windows version — plan
 
-Status: 🔄 in progress as 0.2 ([roadmap phase 7](roadmap.md#phase-7--windows-)): W3 done; the macOS-side parts of W2, W5 and W6 written 2026-11-23 (bridge, platform layer, error map, CI matrix, fake-COM test), live steps wait for the VM (§ 11). Owner's decisions in § 10. Last updated: 2026-11-23.
+Status: 🔄 in progress as 0.2 ([roadmap phase 7](roadmap.md#phase-7--windows-)): W0, W2, W3, W6 done; W1 done except the modal-dialog check (§ 12); W4 mostly done and all live suites green on Windows (§ 13); W5 nearly done; W7–W8 next.
 
 **Goal:** the same server, the same 32 tools and the same ExtendScript runtime on Windows 10/11 with Illustrator
 2025+ (29.x), with the same guarantees: one persistent connection (target < 10 ms per call), never launching
@@ -148,9 +148,9 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); crash ✅, 5-min call ✅, activation not needed ✅; modal dialog still open | 0.5 d | yes |
 | **W2** ✅ | Platform layer `src/platform.ts` (bridge command, script paths); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` — written 2026-11-23, ran live 2026-11-24 (§ 12) | 1 d | partly |
 | **W3** ✅ | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests — done 2026-11-23 | 0.5 d | no |
-| **W4** | Paths into ExtendScript; runtime checks from § 5 on Windows | 0.5 d | yes |
+| **W4** 🔄 | Paths into ExtendScript; runtime checks from § 5 on Windows — drive letters, exports, PDF presets, menu commands, fonts ✅ (§ 13); localised layer names, long paths open | 0.5 d | yes |
 | **W5** 🔄 | HRESULT error map ✅, `status` hints, launch from the registry path (written), activation (written), Windows `live-restart` | 0.5 d | yes |
-| **W6** 🔄 | CI matrix (macOS + Windows) ✅, fake-COM bridge test ✅, live suites green on Windows — in an **en_US** Illustrator UI (moved from 0.1) | 1 d | yes |
+| **W6** ✅ | CI matrix (macOS + Windows) ✅, fake-COM bridge test ✅, live suites green on Windows ✅ 2026-11-24 (§ 13) — in an **en_US** Illustrator UI (moved from 0.1) | 1 d | yes |
 | **W7** | Benchmarks on Windows (micro M, one M2 C2 run), results in `benchmarks.md` | 0.5 d | yes |
 | **W8** | Windows install in README, agent guide troubleshooting; `.mcpb` / plugin checked on Windows | 0.5 d | yes |
 
@@ -296,4 +296,21 @@ Node 26.13 ARM64, Illustrator 31.0.0, no document open:
   all write valid files, and Notepad stays in front. So `activate` now defaults to **false on Windows** (true on
   macOS): activating would only steal the user's focus and cost 0.2–1.3 s per save/export.
 - **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM).
+
+## 13. W4 / W6: live suites on Windows (2026-11-24)
+
+Same VM and versions as § 12. All live suites pass on Windows: `live`, `live-edit`, `live-print`, `live-release`,
+`live-layout`, `live-finish`, `verify-assumptions`, `live-restart` and `live-w1-activate`. That covers on Windows: file
+paths with drive letters (`C:\Users\…\AppData\Local\Temp`), exports (PNG, JPG, SVG, WebP, PDF/X-4 with presets and
+bleed), save/close, Pathfinder and other menu commands, fonts, styles, swatches, layers, artboards, preview by export
+and by image capture, the 5 000-item scan. The first run found three problems:
+
+| Problem | Cause | Fix |
+|---|---|---|
+| `path_ops` unite / minus front returned the untouched group; `menu_command group` returned the old selection | On Windows a menu command acts on the selection Illustrator last **drew**, not the one the script just set: Live Pathfinder on a fresh selection failed 10/10 without a redraw, worked 10/10 with `app.redraw()` after selecting. The first run passed only because the VM was slow | `A.syncSelection()` (runtime): `app.redraw()` on Windows after a selection change, before every menu command (`path_ops`, `menu_command`); no-op on macOS |
+| A `run_script` with `timeout: 2` ran its 7 s to the end | macOS' bridge times out inside the Apple event; Windows' can't cancel a COM call, so the only deadline was the transport's: timeout + **10 s** grace | Transport grace 1 s on Windows: 1 s after the timeout the bridge is killed and the call returns the timeout error with its hint; Illustrator finishes the script, the next call starts a new bridge |
+| `styles list` once showed a paragraph style's old size right after an update (`live-edit`, first run, slow VM) | Not reproduced in 3 later runs nor in a replay of the same steps with pauses | Watch; if it returns, re-read the XMP after writing it |
+
+MCP `run_script` round trip in the full run: p50 **42 ms**, p95 70 ms — against 8–10 ms for the bare bridge (§ 12) and
+5.7 ms on macOS. Where the other ~30 ms go is W7's first question.
 

@@ -7,7 +7,7 @@
 //   considered stuck: killed, the call fails with a "may still be running" error, and the next call respawns it.
 // - If the bridge process dies, pending calls fail at once with the exit reason; the next call respawns it.
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { bridgeCommand } from '../platform.js';
+import { bridgeCommand, osOf } from '../platform.js';
 import { ascii } from './ascii.js';
 import { explain } from './errors.js';
 
@@ -18,7 +18,8 @@ export interface TransportOptions {
   args?: string[];
   /** ms to wait for the bridge's ready line */
   readyTimeoutMs?: number;
-  /** ms added to a request's own timeout before the bridge is declared stuck */
+  /** ms added to a request's own timeout before the bridge is declared stuck. macOS: 10 s (the bridge's Apple event
+   *  times out first). Windows: 1 s — a COM call can't be cancelled, so this deadline IS the call's timeout (W6). */
   graceMs?: number;
 }
 
@@ -37,7 +38,7 @@ export class Transport {
       command: opt.command ?? bridgeCommand().command,
       args: opt.args ?? (opt.command ? [] : bridgeCommand().args),
       readyTimeoutMs: opt.readyTimeoutMs ?? (Number(process.env.CHANDELIER_BRIDGE_START_MS) || 15_000), // env: slow machines (emulated VMs)
-      graceMs: opt.graceMs ?? 10_000,
+      graceMs: opt.graceMs ?? (osOf() === 'win' ? 1_000 : 10_000),
     };
   }
 
