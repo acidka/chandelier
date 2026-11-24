@@ -568,6 +568,25 @@ Illustrator 29.1.0 (CEP 11), macOS 27.2.1, Node 22.23.3, Apple M1; one run per a
   requests (9.0 s, 17.1 s, 1.9 s from Send to answer; 15 turns, $0.28). Channel wake-up of an idle interactive
   session: work started 6 s and the answer arrived 10 s after Send.
 
+## 2g. Recreate training: photographed box front with wave ribbons — 2026-11-25
+
+A real job (files in the git-ignored `tmp/`): a photo of a kraft box front with five overlapping translucent wave
+ribbons, rebuilt as print artwork (97.8 × 132.2 mm, 3 mm bleed) by the agent in an interactive session; the method
+it produced is [recreate.md](../../plugin/skills/illustrator/recreate.md). Illustrator 29.1, macOS 27.2, Node 22,
+Chandelier 0.5.1 + `develop`. RMSE: `preview {reference, reference_crop: the panel's pixel box}`, 444 × 600 px.
+
+| Round | Change | RMSE |
+|-------|--------|------|
+| 1 | Hand-placed anchors (5 per edge), one orange, multiply + opacity | 0.116 |
+| 2 | Edges measured from column profiles, fitted (exact fit) | 0.100 |
+| 3–4 | Colour: second ink for the deep ribbon | 0.104 → 0.102 |
+| 5–6 | Designer anchors fitted to dense points (handle and curvature constraints), shared edges | 0.101 |
+| 7 | Shading: curve-following gradients per visible band | 0.097 → 0.091 → 0.096 |
+| **Final** | **Base opacities re-balanced under the shading** | **0.095** |
+
+What is left is mostly the photo itself (lid crease, curl, side face, paper grain), not artwork. Pixel RMSE is a rough
+guide here (JPEG photo vs flat render); the close-up and tone-profile checks decided each round.
+
 ## 3. Targets
 
 | Metric | Target | Status |
