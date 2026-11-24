@@ -69,6 +69,10 @@
     }
     clients = info.clients;
     updateSend();
+    // the "thinking" line under the chat
+    var act = { working: 'Agent is working in Illustrator…', thinking: 'Agent is thinking…', unread: 'Sent · waiting for the agent to pick it up' }[info.activity] || '';
+    $('activity').className = act ? 'on' + (info.activity === 'unread' ? '' : ' busy') : '';
+    $('activity-text').textContent = act;
   }
 
   var panel = core.createPanel({

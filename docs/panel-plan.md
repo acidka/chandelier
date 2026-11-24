@@ -67,6 +67,11 @@ agent ──MCP──▶ Chandelier server ── PanelTransport ──TCP 127.0
   to the newest), the text box and Send; *Status* holds the connection, the agent count, the sharing switch and recent
   events, with a connection dot on its tab. The chat history (100 messages) is kept apart from events, so selection
   changes don't push messages out; it lives in the panel's memory and is cleared when the panel reloads.
+- **Activity line (2026-11-24, owner's request)** under the chat: "Sent · waiting for the agent to pick it up" (a
+  message no agent has read), "Agent is thinking…" (the `events` tool handed the message to the agent; protocol op
+  `activity` {state: thinking}), "Agent is working in Illustrator…" (its scripts run through the panel; held 1.5 s
+  after the last one so quick calls don't flicker). Cleared by the agent's `say` or when it waits again
+  (`events {wait}` sends `listening`). Animated dots for thinking/working.
 
 ## 4. Try it (developer setup)
 

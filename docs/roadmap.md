@@ -488,3 +488,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Panel chat (owner's request): text box + Send in the panel → `message` events; `events {say}` answers in the panel; live round trip checked in Illustrator 29.1; unit tests 155 |
 | 2026-11-24 | Panel UI in two tabs: Chat (log, text box, Send) and Status (connection, sharing switch, events); chat history kept apart from events |
 | 2026-11-24 | Fix: a batch's `@n` referred only to the first 100 items of a long step result (results list ≤ 100); it now sees every item (found in the panel trial: 980 pattern dots, `@0` grouped 100); unit test |
+| 2026-11-24 | Panel activity line (owner's request): waiting to be read / thinking / working in Illustrator, with animated dots; live-checked in Illustrator 29.1 |

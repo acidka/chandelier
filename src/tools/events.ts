@@ -19,8 +19,11 @@ say = text shown to the designer in the panel (an answer, a question, "done"), s
     if (!(T instanceof PanelTransport)) return fail('Events need the Chandelier panel: start the server with CHANDELIER_TRANSPORT=panel and open Window > Extensions > Chandelier in Illustrator.');
     await T.ensure();
     const said = a.say ? await T.say(a.say) : undefined;
+    // the panel's "thinking" line: waiting = listening; handing over the designer's message = thinking
+    if (a.wait) await T.activity('listening');
     const since = a.since ?? T.events.last;
     const evs = await T.events.wait(since, (a.wait ?? 0) * 1000, a.types);
+    if (evs.some((e) => e.type === 'message')) await T.activity('thinking');
     const body: Record<string, unknown> = { ...(said === undefined ? {} : { said }), events: evs, next: evs.length ? evs[evs.length - 1].seq : Math.max(since, T.events.last), state: T.state, panel: T.connected ? 'connected' : 'not connected' };
     if (!T.connected) body.hint = 'Open Window > Extensions > Chandelier in Illustrator (install it once with node scripts/cep/install.mjs).';
     return text(body);

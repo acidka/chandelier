@@ -13,6 +13,10 @@
 //   after an agent request (probably the agent's own doing). The designer can pause sharing from the panel.
 // - Chat: the designer's text from the panel goes to every client as {"event":{type:"message", text}};
 //   a client's {"id","op":"say","text"} is shown in the panel (the agent's answer) → {"id","ok":true}.
+// - Activity for the panel's "thinking" line: {"id","op":"activity","state":"thinking"|"listening"} from a client
+//   (thinking = it has read the designer's message; listening = it waits for the next one); "working" while its
+//   scripts run (and WORKING_HOLD_MS after, so quick calls don't flicker). info().activity: working | thinking |
+//   unread (a message no agent has picked up yet) | "".
 'use strict';
 const net = require('net');
 const fs = require('fs');
@@ -60,7 +64,12 @@ function createPanel(opts) {
   const recent = [];
 
   const chat = []; // the designer's messages and the agent's answers, apart from events so selections don't push them out
-  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), chat: chat.slice() });
+  const WORKING_HOLD_MS = opts.workingHoldMs ?? 1500;
+  const thinking = new Set(); // clients that read a message and haven't answered or gone back to listening
+  let unread = false, lastJobEnd = 0, holdTimer = null;
+  const activity = () => (busy || Date.now() - lastJobEnd < WORKING_HOLD_MS) && clients.size ? 'working'
+    : (thinking.size ? 'thinking' : (unread && clients.size ? 'unread' : ''));
+  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), chat: chat.slice(), activity: activity() });
   const remember = (e) => { recent.push(e); if (recent.length > 50) recent.shift(); };
   const talk = (e) => { chat.push(e); if (chat.length > 100) chat.shift(); };
   const MAX_TEXT = 2000;
@@ -77,8 +86,13 @@ function createPanel(opts) {
     const job = queue.shift();
     if (!job) return;
     busy = true;
+    if (!lastJobEnd || Date.now() - lastJobEnd >= WORKING_HOLD_MS) changed(); // the panel shows "working"
     const r = await evalScript(job.code);
     busy = false;
+    lastJobEnd = Date.now();
+    if (holdTimer) clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => { holdTimer = null; changed(); }, WORKING_HOLD_MS + 50);
+    if (holdTimer.unref) holdTimer.unref();
     afterAgent = true;
     // CEP answers a script that threw with this literal string (no message, no line)
     if (r === 'EvalScript error.') send(job.sock, { id: job.id, ok: false, error: 'The script failed in Illustrator (no message from the panel engine).' });
@@ -114,7 +128,7 @@ function createPanel(opts) {
     sock.setEncoding('utf8');
     sock.setNoDelay(true);
     // nobody listening: forget the state, so the next agent starts from a fresh baseline instead of a stale diff
-    const drop = () => { if (clients.delete(sock)) { if (!clients.size) last = null; changed(); } };
+    const drop = () => { thinking.delete(sock); if (clients.delete(sock)) { if (!clients.size) last = null; changed(); } };
     sock.on('close', drop);
     sock.on('error', drop);
     sock.on('data', (d) => {
@@ -141,8 +155,13 @@ function createPanel(opts) {
         else if (m.op === 'say') {
           // the agent's words for the designer: shown in the panel only
           talk({ type: 'agent', text: String(m.text || '').slice(0, MAX_TEXT), t: Date.now() });
+          thinking.delete(sock); // an answer ends "thinking"
           changed();
           send(sock, { id: m.id, ok: true, result: 'shown' });
+        } else if (m.op === 'activity') {
+          if (m.state === 'thinking') { thinking.add(sock); unread = false; } else thinking.delete(sock);
+          changed();
+          send(sock, { id: m.id, ok: true, result: 'ok' });
         }
         else send(sock, { id: m.id, ok: false, error: 'The panel does not handle "' + m.op + '"' });
       }
@@ -172,6 +191,7 @@ function createPanel(opts) {
     },
     stop() {
       if (timer) clearInterval(timer);
+      if (holdTimer) clearTimeout(holdTimer);
       for (const c of clients) c.destroy();
       clients.clear();
       if (server) server.close();
@@ -184,6 +204,7 @@ function createPanel(opts) {
       if (!text || !clients.size) return false;
       const e = { type: 'message', text, t: Date.now() };
       talk(e);
+      unread = true;
       broadcast({ event: e });
       changed();
       return true;

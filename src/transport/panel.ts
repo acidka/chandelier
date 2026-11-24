@@ -166,14 +166,24 @@ export class PanelTransport extends Transport {
   }
 
   /** Show the agent's words in the panel (the chat). false when the panel isn't open. */
-  async say(text: string): Promise<boolean> {
+  say(text: string): Promise<boolean> {
+    return this.panelOp({ op: 'say', text }); // plain UTF-8: shown, not run as a script (no ascii escaping)
+  }
+
+  /** Tell the panel what the agent is doing, for its "thinking" line: it read a message, or it waits for the next. */
+  activity(state: 'thinking' | 'listening'): Promise<boolean> {
+    return this.panelOp({ op: 'activity', state });
+  }
+
+  /** A small request the panel answers at once (not queued behind scripts). */
+  private async panelOp(req: Record<string, unknown>): Promise<boolean> {
     if (!(await this.ensure()) || !this.sock) return false;
     const s = this.sock;
     const id = ++this.nextId;
     return new Promise<boolean>((resolve) => {
       const t = setTimeout(() => { this.pending.delete(id); resolve(false); }, 3000);
       this.pending.set(id, (m) => { clearTimeout(t); resolve(!!m.ok); });
-      s.write(JSON.stringify({ id, op: 'say', text }) + '\n'); // plain UTF-8: shown, not run as a script (no ascii escaping)
+      s.write(JSON.stringify({ id, ...req }) + '\n');
     });
   }
 

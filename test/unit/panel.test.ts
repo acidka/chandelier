@@ -209,6 +209,34 @@ describe('panel chat', () => {
   });
 });
 
+describe('panel activity (the "thinking" line)', () => {
+  it('unread → thinking when the agent gets the message → cleared by its answer; working while scripts run', async () => {
+    panel.stop();
+    panel = createPanel({ evalScript: fakeEval, snapshot: SNAP, home, pollMs: 20, version: '9.9.9', workingHoldMs: 60 });
+    await panel.start();
+    makeT();
+    const { server } = createServer({ transport: T! });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const client = new Client({ name: 'test', version: '0' });
+    await client.connect(b);
+    await T!.ensure();
+    expect(panel.info().activity).toBe('');
+    panel.message('make it red');
+    expect(panel.info().activity).toBe('unread');
+    await until(() => T!.events.since(0, ['message']).length > 0); // the message crossed the socket
+    expect(panel.info().activity).toBe('unread'); // delivered, but not yet handed to the agent
+    await client.callTool({ name: 'events', arguments: { since: 0, types: ['message'] } });
+    expect(panel.info().activity).toBe('thinking');
+    const run = T!.js('slow');
+    expect(await until(() => panel.info().activity === 'working')).toBe(true);
+    await run;
+    await client.callTool({ name: 'events', arguments: { say: 'Done', since: T!.events.last } });
+    expect(await until(() => panel.info().activity === '', 1000)).toBe(true); // the answer ended thinking, working hold expired
+    await client.close();
+  });
+});
+
 describe('event log', () => {
   it('long-polls until an event arrives, or times out empty', async () => {
     const log = new EventLog();
