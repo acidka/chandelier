@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { decodePng, encodePng, compare, resize, type Img } from '../../src/image.js';
+import { decodePng, encodePng, compare, resize, cropPad, type Img } from '../../src/image.js';
 
 const solid = (w: number, h: number, v: number): Img => ({ w, h, rgb: new Uint8Array(w * h * 3).fill(v) });
 
@@ -110,6 +110,7 @@ describe('preview {image} view (imageview)', async () => {
   it('samples a point and a rect', () => {
     const f = { img: page(), ox: 0, oy: 0, k: 1 };
     expect(sampleAt(f, [35, 25]).hex).toBe('#000000');
+    expect(sampleAt({ ...f, ox: 50 }, [10, 10])).toEqual({ at: [10, 10], outside: true });
     expect(sampleAt(f, [30, 20, 40, 10]).rgb).toEqual([64, 64, 64]); // half block, half page
   });
   it('shrinks big images and zooms small regions (≤ 8×, sharp)', () => {
@@ -136,5 +137,22 @@ describe('preview {image} view (imageview)', async () => {
     const withPhys = Buffer.concat([png.subarray(0, 33), len, Buffer.from('pHYs'), phys, Buffer.alloc(4), png.subarray(33)]);
     const f = join(tmpdir(), `ppi-${process.pid}.png`); writeFileSync(f, withPhys);
     expect(imagePpi(f)).toBe(300);
+  });
+});
+
+describe('fixes 2026-11-25 (docs/bugs.md)', async () => {
+  const { view } = await import('../../src/imageview.js');
+  it('#3 zooms by any factor up to 8× (not only whole steps)', () => {
+    const v = view({ img: solid(400, 200, 128), ox: 0, oy: 0, k: 1 }, { max_px: 1000 });
+    expect(v.shown_px).toEqual([1000, 500]);
+    expect(v.zoom).toBe(2.5);
+  });
+  it('#2 cropPad cuts a part that may lie outside, white there', () => {
+    const img = solid(10, 10, 0);
+    const c = cropPad(img, -2, 8, 4, 4);
+    expect([c.w, c.h]).toEqual([4, 4]);
+    expect(Array.from(c.rgb.subarray(0, 3))).toEqual([255, 255, 255]);             // (-2, 8): outside
+    expect(Array.from(c.rgb.subarray((0 * 4 + 2) * 3, (0 * 4 + 2) * 3 + 3))).toEqual([0, 0, 0]); // (0, 8): inside
+    expect(Array.from(c.rgb.subarray((3 * 4 + 3) * 3, (3 * 4 + 3) * 3 + 3))).toEqual([255, 255, 255]); // (1, 11): below
   });
 });

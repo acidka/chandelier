@@ -7,7 +7,7 @@ import { J, fail, ArgError } from './types.js';
 import { runStep, respond } from './respond.js';
 import { refSchema } from './common.js';
 import { errorText } from './respond.js';
-import { decodePng, encodePng, compare, crop, resize, readImage, shrinkPngFile, diffRegions } from '../image.js';
+import { decodePng, encodePng, compare, crop, cropPad, resize, readImage, shrinkPngFile, diffRegions } from '../image.js';
 import { view, type Frame } from '../imageview.js';
 import { imageColorMode, imagePpi } from '../imagefile.js';
 import { pdfInfo } from '../pdf.js';
@@ -23,10 +23,10 @@ async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolRes
 
 export const preview: ToolDef = {
   name: 'preview',
-  description: `Look at the active document: renders a PNG and returns it as an image. One of: artboard (index, default active), refs (items, framed with pad, default 5%), region ([x,y,w,h] from artboard's top-left if given, else the active one's; may lie off it). max_px = longest side (default 1024) or width = exact px. background "white" | "transparent". save_to copies the PNG (with reference: the comparison, and the render as <name>.preview.png).
-reference: an image (PNG/JPEG) to compare with → ONE image [reference | preview | difference in red] (600 px panels) + rmse (0 = same), content_box in both (shift/scale show an offset or wrong size) and differences: up to 6 regions {rect, kind: shifted (with shift [dx, dy] = preview − reference) | missing | extra | changed, items there}. reference_crop: [x,y,w,h] in image pixels to cut the page out first.
-One check call: more [artboards] → extra renders (default 500 px); preflight:true, info:true (document_info) add those results.
-image: look at a file instead, no Python/PIL/Swift needed (PNG, JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page default 1) → px, ppi, content_box, background. region crops and zooms it (image px; pages: session units); grid: true | step → labelled lines; sample: [[x,y] | [x,y,w,h]] → hex, rgb, cmyk.`,
+  description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it). max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG.
+reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
+more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
+image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] → hex, rgb, cmyk.`,
   shape: {
     artboard: z.number().min(0).optional(),
     refs: refSchema.optional(),
@@ -87,7 +87,7 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   try { data = readFileSync(file); } catch { return fail('Illustrator did not write the preview image.'); }
   if (a.save_to && !reference) { const p = resolve(a.save_to); mkdirSync(dirname(p), { recursive: true }); copyFileSync(file, p); v.saved_to = p; }
   if (!reference) {
-    delete v.doc_bounds;
+    delete v.doc_bounds; delete v.page_bounds;
     rmSync(file, { force: true });
     return { content: [{ type: 'image', data: data.toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(v) }] };
   }
@@ -97,6 +97,13 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   try {
     ref = await readImage(reference, join(tmp, `r${id}.png`));
     if (a.reference_crop) { const [cx, cy, cw, ch] = a.reference_crop; ref = crop(ref, cx, cy, cw, ch); }
+    // the reference is the page; a region or items render only part of it (or beyond it): cut the same part
+    const pg = v.page_bounds as number[] | undefined, db0 = v.doc_bounds as number[] | undefined;
+    if (pg && db0) {
+      const PW = pg[2] - pg[0], PH = pg[1] - pg[3];
+      const fx = (db0[0] - pg[0]) / PW, fy = (pg[1] - db0[1]) / PH, fw = (db0[2] - db0[0]) / PW, fh = (db0[1] - db0[3]) / PH;
+      if (Math.abs(fx) > 1e-3 || Math.abs(fy) > 1e-3 || Math.abs(fw - 1) > 1e-3 || Math.abs(fh - 1) > 1e-3) ref = cropPad(ref, fx * ref.w, fy * ref.h, fw * ref.w, fh * ref.h);
+    }
     ref = resize(ref, prev.w, prev.h);
   } catch (e) { return fail('Could not read the reference image: ' + (e as Error).message); }
   const c = compare(ref, prev);
@@ -114,7 +121,7 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
     const env2 = await rt.cmd<typeof at>('items_at', { rects: regions.map((g) => docRect(g.box)) });
     if (env2.ok) at = env2.data!;
   }
-  delete v.doc_bounds;
+  delete v.doc_bounds; delete v.page_bounds;
   const stats: Record<string, unknown> = {
     ...v, compared_with: reference, rmse: c.rmse,
     differences: regions.map((g, i) => ({ rect: toRect(g.box), kind: g.kind, ...(g.shift ? { shift: [r2(g.shift[0] * rw), r2(g.shift[1] * rh)] } : {}), diff: g.diff, items: at[i]?.length ? at[i] : undefined })),

@@ -6,7 +6,7 @@ import { resize, type Img } from './image.js';
 
 export interface Frame { img: Img; ox: number; oy: number; k: number }
 export interface ViewOpts { grid?: number | boolean; sample?: number[][]; max_px?: number }
-export interface Sample { at: number[]; hex: string; rgb: number[]; cmyk: number[] }
+export interface Sample { at: number[]; hex?: string; rgb?: number[]; cmyk?: number[]; outside?: true }
 export interface View { img: Img; shown_px: [number, number]; zoom: number; grid?: number; content_box?: number[]; background?: string; samples?: Sample[] }
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -32,6 +32,8 @@ function mean(img: Img, x0: number, y0: number, x1: number, y1: number): number[
 /** Colour at [x, y] (a 3 × 3 px mean, so JPEG noise doesn't decide) or the mean of [x, y, w, h], in frame units. */
 export function sampleAt(f: Frame, at: number[]): Sample {
   const px = (u: number, o: number) => (u - o) * f.k;
+  const X = px(at[0], f.ox), Y = px(at[1], f.oy);
+  if (X < 0 || Y < 0 || X >= f.img.w || Y >= f.img.h) return { at, outside: true }; // not in the shown region
   let c: number[];
   if (at.length >= 4) c = mean(f.img, px(at[0], f.ox), px(at[1], f.oy), px(at[0] + at[2], f.ox), px(at[1] + at[3], f.oy));
   else { const x = px(at[0], f.ox), y = px(at[1], f.oy); c = mean(f.img, x - 1, y - 1, x + 2, y + 2); }
@@ -100,9 +102,13 @@ export function view(f: Frame, o: ViewOpts = {}): View {
   let img: Img;
   if (z < 1) img = resize(src, src.w * z, src.h * z);
   else {
-    const W = Math.max(1, Math.round(src.w * Math.floor(z))), H = Math.max(1, Math.round(src.h * Math.floor(z))), zi = Math.floor(z);
+    // any zoom up to 8× (bugs.md #3), nearest neighbour so source pixels stay sharp
+    const W = Math.max(1, Math.round(src.w * z)), H = Math.max(1, Math.round(src.h * z));
     img = { w: W, h: H, rgb: new Uint8Array(W * H * 3) };
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) img.rgb.set(src.rgb.subarray(((Math.floor(y / zi)) * src.w + Math.floor(x / zi)) * 3, ((Math.floor(y / zi)) * src.w + Math.floor(x / zi)) * 3 + 3), (y * W + x) * 3);
+    for (let y = 0; y < H; y++) {
+      const sy = Math.min(src.h - 1, Math.floor(y * src.h / H));
+      for (let x = 0; x < W; x++) { const i = (sy * src.w + Math.min(src.w - 1, Math.floor(x * src.w / W))) * 3; img.rgb[(y * W + x) * 3] = src.rgb[i]; img.rgb[(y * W + x) * 3 + 1] = src.rgb[i + 1]; img.rgb[(y * W + x) * 3 + 2] = src.rgb[i + 2]; }
+    }
   }
   const zoom = img.w / src.w, K = f.k * zoom; // display px per source unit
   const out: View = { img, shown_px: [img.w, img.h], zoom: r2(zoom) };

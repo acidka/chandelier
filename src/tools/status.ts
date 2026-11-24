@@ -69,6 +69,9 @@ async function restart(ctx: Ctx) {
       documents: blocked.map((d) => ({ name: d.name, saved: d.saved, path: d.path, created_here: created.has(d.name) || undefined })),
     }));
   }
+  // alerts off first: a quit can otherwise stop at "Some files are missing or modified in the Links panel…" and wait
+  // for an answer (bugs.md #4); every document is saved at this point, so nothing is lost
+  await T.js('try { app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS; } catch (e) {} "ok"', 10);
   const q = await T.call('quit', { timeout: 60 });
   if (!q.ok) return fail('Could not quit Illustrator: ' + q.error);
   const until = Date.now() + 60_000;

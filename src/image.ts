@@ -96,6 +96,18 @@ export function crop(img: Img, x: number, y: number, w: number, h: number): Img 
   return a ? { w: cw, h: chh, rgb, a } : { w: cw, h: chh, rgb };
 }
 
+/** Cut [x, y, w, h] (pixels, may lie partly outside): the outside is white. */
+export function cropPad(img: Img, x: number, y: number, w: number, h: number): Img {
+  const W = Math.max(1, Math.round(w)), H = Math.max(1, Math.round(h)), X = Math.round(x), Y = Math.round(y);
+  const rgb = new Uint8Array(W * H * 3).fill(255);
+  for (let r = 0; r < H; r++) {
+    const sy = Y + r; if (sy < 0 || sy >= img.h) continue;
+    const x0 = Math.max(0, X), x1 = Math.min(img.w, X + W); if (x1 <= x0) continue;
+    rgb.set(img.rgb.subarray((sy * img.w + x0) * 3, (sy * img.w + x1) * 3), (r * W + (x0 - X)) * 3);
+  }
+  return { w: W, h: H, rgb };
+}
+
 /** Resize to exactly w × h: area averaging (each target pixel = the mean of the source area it covers), good for
  * downscaling and fine for the mild upscaling a reference may need. */
 export function resize(img: Img, w: number, h: number): Img {

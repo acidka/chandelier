@@ -79,7 +79,7 @@ effect what it is:
 | Seen in the image | What it usually is | Build it as |
 |---|---|---|
 | Tone changing across a curved shape, restarting at every edge | Artwork: soft shadow of the layer above (paper-cut, layered look) | A gradient **that follows the curve** (below) |
-| Tone changing in one straight direction | Artwork or lighting | Linear/radial gradient swatch (`swatches {add, kind: "gradient"}`); a fill re-assigned with the same gradient keeps its old angle — rotate it with `item.rotate(a, false, false, true, false)` |
+| Tone changing in one straight direction | Artwork or lighting | Linear/radial gradient swatch (`swatches {add, kind: "gradient"}`), fill `"gradient:Name@angle"` (Illustrator's convention: 90 = first stop at the bottom) |
 | A soft blob of shadow or glow | Artwork | Shape + `effects {blur}` (or `feather`), multiply, clipped to where it falls |
 | Thin light or dark line along an edge | Artwork: edge highlight / crease | Stroke on that edge, 0.25–0.5 pt, screen (light) or multiply (dark), low opacity |
 | Light falling across the whole object, folds, side faces, grain | Photo and material (the board itself) | Leave out of print artwork; a substrate preview goes on its own layer |

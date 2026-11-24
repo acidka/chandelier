@@ -41,14 +41,12 @@ const safe = (s: string) => s.replace(/[\/\\:*?"<>|]+/g, '_').trim() || 'artboar
 
 export const export_tool: ToolDef = {
   name: 'export',
-  description: `Export the active document (it stays unchanged).
-format: "pdf" | "png" | "jpg" | "svg" | "webp". artboards: [indices] | "all" (default: the active artboard). refs: export just these items (png only).
-path: a file, or a folder (several outputs: <document>-<artboard>.<ext>; with a file path <stem>-<artboard>.<ext>).
-variants: [{name, show:[layers], hide}] → one export each (<stem>-<name>); layers restored after.
-Screen assets (png, refs): each:true → a file per item named after it; scales:[1,2,3] → name@2x.png….
-PDF: preset (default "[PDF/X-4:2008]"; any name from Illustrator's PDF presets), pages "one_file" (default) | "per_artboard",
-bleed: "document" (default: its bleed if known) | number | [left, top, right, bottom] in session units → pages grow by it, TrimBox = artboard, BleedBox = page; output_intent: an installed CMYK profile by name ("FOGRA39", "GRACoL") or an .icc path → the PDF/X output intent. Warns about variable fonts (B10).
-Raster: scale (factor, default 1) | dpi | width (px); background "white" | "transparent" (png, webp); jpg is quality 80. SVG is clipped to the artboard; svg_text "outline" | "text".
+  description: `Export the active document (left unchanged).
+format: pdf | png | jpg | svg | webp. artboards: [indices] | "all" (default active). refs: just these items (png).
+path: a file or a folder (several outputs: <document or stem>-<artboard>.<ext>). variants: [{name, show:[layers], hide}] → one export each (<stem>-<name>).
+Screen assets (png, refs): each:true → a file per item by name; scales:[1,2,3] → name@2x.png….
+PDF: preset (default "[PDF/X-4:2008]" or any installed), pages "one_file" | "per_artboard", bleed: "document" (default) | number | [l, t, r, b] session units → TrimBox = artboard, BleedBox = page; output_intent: CMYK profile name ("FOGRA39", "GRACoL") or .icc path. Warns about variable fonts.
+Raster: scale (default 1) | dpi | width px; background white|transparent (png, webp); jpg quality 80. SVG clipped to the artboard; svg_text outline|text.
 Returns {files:[{path, artboards, bytes, pages?, pdfx?, output_intent?, boxes?}]}.`,
   shape: {
     format: z.enum(['pdf', 'png', 'jpg', 'svg', 'webp']),

@@ -407,10 +407,10 @@ a file, and the skill said "measure in pixels" without a way to.
 - [x] ✅ Shading in the method (recreate.md § 5b, same job: RMSE 0.100 → 0.095): shade visible bands, not objects;
   a gradient that follows a curve = stacked multiply steps between an edge and the next seen edge, clipped by the
   exact edge; ≥ 1.5 % opacity per step (smaller steps don't render); check with tone profiles at 1 px per px
-- [ ] Fix the bugs found on the way: [bugs.md](bugs.md) #1 (gradient angle), #2 (`preview {reference, region}`), #3 (fractional zoom)
+- [x] ✅ Bugs fixed (2026-11-25, [bugs.md](bugs.md)): gradient angles (#1), `preview {reference}` with region/refs (#2), any zoom in `preview {image}` (#3), restart past the links dialog (#4), tool-list headroom 54.1 KB (#6); PDF pages in `preview {image}` verified live (V1); live-release covers them. Open: #5 (Windows late-run crash, needs a repro)
 - [ ] Tool support so agents don't hand-write the method: edge profiles (`preview {image, profile}`) and a curve
   fit (`create_path {fit}`); then a fresh-agent trial on another image
-- [ ] Live check of PDF pages (needs Illustrator running) and a fresh-agent trial on a machine without Pillow
+- [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
 - [ ] Release 0.5.2
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -571,3 +571,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Recreate method (`plugin/skills/illustrator/recreate.md`), trained on a wave-ribbon box front: smooth free-form shapes, layers from tone steps, two-view compare |
 | 2026-11-25 | Recreate method § 5b: shading and gradients that follow curves (per visible band, stacked multiply steps, profile checks) |
 | 2026-11-25 | [bugs.md](bugs.md): one list of known bugs (6 open) and unverified parts (4) |
+| 2026-11-25 | Bug fixes #1–#4, #6, V1 verified (docs/bugs.md); live-release extended; tool list 55.5 → 54.1 KB |

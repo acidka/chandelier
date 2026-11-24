@@ -14,12 +14,11 @@ interface BatchData { completed: number; total: number; failed_step?: number; ro
 
 export const batch: ToolDef = {
   name: 'batch',
-  description: `Run many tool steps in ONE call (one round trip to Illustrator). steps: [{tool, args, artboard?}] — artboard: this step's coordinates start at that artboard's top-left; any tool except status, configure, preview, export and batch.
-Refer to an earlier step's items with "@n" (0-based step index) wherever a ref is accepted, e.g. {tool:"selection", args:{action:"set", refs:"@0"}}.
-stop_on_error (default true): stop at the first failing step. rollback (default false): if a step fails, delete the items created during the batch (not raw API creations in run_script) and close an empty new document.
-results: "all" (default) | "errors" (failures + counts, for big batches).
-steps_file: a JSON file with the steps (array or {steps}) instead of steps.
-files: run the steps on each file (paths, folders, globs like "jobs/*.ai"): open → steps → save → export → close. save: "copy" (default: into out_dir, originals untouched) | "in_place" (overwrites) | "none". export: [{format, path with {name} = file stem, …}]. Files already open are skipped. dry_run:true → open, run, report, close without saving or exporting.`,
+  description: `Run many tool steps in ONE call. steps: [{tool, args, artboard?}] (artboard: the step's coordinates start at its top-left); any tool except status, configure, preview, export, batch.
+"@n" = the items of step n (0-based) wherever a ref is accepted, e.g. {tool:"selection", args:{action:"set", refs:"@0"}}.
+stop_on_error (default true). rollback: on a failure delete what the batch created (not raw run_script API items) and close an empty new document.
+results: "all" (default) | "errors" (failures + counts). steps_file: a JSON file with the steps instead.
+files: run the steps on each file (paths, folders, globs "jobs/*.ai"): open → steps → save → export → close; save "copy" (default, into out_dir) | "in_place" | "none"; export [{format, path with {name}, …}]; open files are skipped; dry_run:true → report only.`,
   shape: {
     steps: z.array(z.object({ tool: z.string(), args: z.record(z.string(), z.any()).optional(), artboard: z.number().min(0).optional() })).min(1).max(1000).optional(),
     steps_file: z.string().optional(),

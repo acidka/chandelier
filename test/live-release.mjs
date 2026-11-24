@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Live checks for the 0.1 release (needs a running Illustrator; works only in a document it creates):
-// preview {region} measured from a given artboard, SVG export clipped to the artboard, preflight low_contrast.
+// preview {region} measured from a given artboard, SVG export clipped to the artboard, preflight low_contrast;
+// 0.5.2: gradient angles, region vs page reference, preview {image} of a PDF page (docs/bugs.md).
 //   npm run build && node test/live-release.mjs
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -52,6 +53,31 @@ await call('run_script', { code: 'var t = new Date().getTime(); while (new Date(
 await new Promise((r) => setTimeout(r, 7000));
 await call('status', {}, { check: (v) => assert(v.last_call && v.last_call.call === callNo && v.last_call.finished === true && v.last_call.cmd === 'script',
   'last_call shows the timed-out call finished: ' + JSON.stringify(v.last_call)) });
+
+// bugs.md #1: a gradient fill gets the asked angle (set, changed, read back; no angle = 0)
+await call('swatches', { action: 'add', kind: 'gradient', name: 'LiveG', type: 'linear', stops: [{ color: '#FFFFFF', at: 0 }, { color: '#000000', at: 100 }] });
+await call('create_shape', { x: 10, y: 10, w: 40, h: 40, fill: 'gradient:LiveG@90', name: 'grad' });
+for (const [spec, want] of [['gradient:LiveG@-45', 'gradient:LiveG@-45'], ['gradient:LiveG@180', 'gradient:LiveG@180'], ['gradient:LiveG', 'gradient:LiveG']]) {
+  await call('modify_items', { refs: 'name:grad', fill: spec });
+  await call('get_items', { refs: 'name:grad', props: ['fill'] }, { check: (v) => assert(v.items[0].fill === want, `gradient angle: ${spec} → ${v.items[0].fill}`) });
+}
+await call('delete_items', { refs: 'name:grad' });
+
+// bugs.md #2: a region compared with a page reference lines up (the same part of the reference is cut)
+await call('export', { format: 'png', artboards: [0], path: join(tmp, 'page.png'), scale: 2 });
+await call('preview', { artboard: 0, region: [100, 0, 100, 100], reference: join(tmp, 'page.png') }, { check: (v) =>
+  assert(v.rmse < 0.06, 'region vs page reference lines up: rmse ' + v.rmse) });
+
+// bugs.md V1: preview {image} of a PDF page renders through Illustrator, closes the PDF, leaves this document active
+await call('export', { format: 'pdf', artboards: [0], path: join(tmp, 'page.pdf') });
+await call('preview', { image: join(tmp, 'page.pdf'), grid: true, sample: [[150, 50], [500, 500]] }, { check: (v) => {
+  assert(v.pages === 1 && v.page_size.join() === '200,100', 'pdf page size in session units: ' + JSON.stringify(v.page_size));
+  assert(v.samples[0].hex === '#000000' && v.samples[1].outside, 'pdf samples: ' + JSON.stringify(v.samples));
+} });
+await call('documents', { action: 'list' }, { check: (v) => {
+  assert(v.filter((d) => /page\.pdf/.test(d.name)).length === 0, 'the PDF was closed');
+  assert(v.find((d) => d.active).name === 'live-release', 'live-release is active again');
+} });
 
 await call('documents', { action: 'close', discard: true });
 rmSync(tmp, { recursive: true, force: true });

@@ -35,7 +35,7 @@ describe('server', () => {
   it('keeps the tool list small (every agent request re-reads it)', async () => {
     const tools = (await client.listTools()).tools;
     const json = JSON.stringify(tools);
-    expect(json.length).toBeLessThan(56_000); // 2026-11-22: 48.9 KB after slimming from 61.6 KB; 0.3: 53.6 KB; 0.4: 55.0 KB (lean profile: 15.4 KB, its own test)
+    expect(json.length).toBeLessThan(56_000); // 2026-11-22: 48.9 KB after slimming from 61.6 KB; 0.3: 53.6 KB; 0.4: 55.0 KB; 0.5.2: 54.1 KB after trimming 5 descriptions (lean profile: 15.4 KB, its own test)
     expect(json).not.toContain('"$schema"');
     expect(json).not.toContain('9007199254740991');
     for (const name of ['create_text', 'create_shape', 'create_path', 'modify_items']) {

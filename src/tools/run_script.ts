@@ -12,14 +12,13 @@ export const HELPERS = `Helpers (global AIA, always loaded; positions/sizes in s
   AIA.swatch(name, color) → global process swatch (create/update); then use colour "swatch:Name"
   AIA.pstyle(name, {font,size,color,leading,tracking,hscale,align}) → paragraph style (create/update)
   AIA.text(str, {x,y,font,size,color,align,style,leading,tracking,hscale,name,parent}) → point text; y = BASELINE; "\\n" = new line; align left|center|right (anchor at x)
-  Every helper takes its options as the LAST argument, an object; parent goes there (extra positional arguments are ignored).
+  Options always come LAST as an object (parent goes there).
   AIA.rect(x,y,w,h,{fill,stroke,sw,name,parent}) · AIA.ellipse(x,y,w,h,{…}) · AIA.line(x1,y1,x2,y2,{stroke,sw,cap:"butt|round|square",dash,name,parent}) · AIA.path([[x,y],…],{closed,fill,stroke,…})
   AIA.font(name) → TextFont, fuzzy ("Arial Bold" → Arial-BoldMT) · AIA.box(item) → [x,y,w,h] · AIA.mm(v) → pt · AIA.doc() → active Document · AIA.find(name)
   AIA.refs(ref) → items for a uuid / "selection" / "name:X*" / "layer:X" / "artboard:N" · AIA.color(spec) → Color · AIA.colorStr(color) → spec
   AIA.at(k, fn) → run fn with coordinates from artboard k's top-left (multi-artboard builders)
   AIA.P(x,y) → document coordinates [x, y-up] for raw API calls · AIA.u(v) session units → pt · AIA.warn(msg)
-Font size, leading, tracking and stroke width are always pt.
-Colours as in every tool; "gray(60)" is K60 in CMYK documents.`;
+Type sizes and stroke widths are pt. "gray(60)" = K60 in CMYK documents.`;
 
 // Recipes (0.2.1): ready builders shipped in dist/recipes/<name>.jsx; the first two comment lines name and describe them.
 const RECIPES = asset('recipes');

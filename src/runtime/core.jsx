@@ -213,7 +213,13 @@ $.global.AIA = (function () {
       return '#' + h(c.red) + h(c.green) + h(c.blue);
     }
     if (t === 'SpotColor') { var n = 'swatch:' + c.spot.name; return Math.round(c.tint) === 100 ? n : n + '@' + Math.round(c.tint); }
-    if (t === 'GradientColor') { try { return 'gradient:' + c.gradient.name + (Math.round(c.angle) ? '@' + Math.round(c.angle) : ''); } catch (e) { return 'gradient'; } }
+    if (t === 'GradientColor') {
+      try {
+        var ga = c.angle;
+        try { ga = Math.atan2(c.matrix.mValueB, c.matrix.mValueA) * 180 / Math.PI; } catch (e) {}
+        return 'gradient:' + c.gradient.name + (Math.round(ga) ? '@' + Math.round(ga) : '');
+      } catch (e) { return 'gradient'; }
+    }
     if (t === 'PatternColor') { try { return 'pattern:' + c.pattern.name; } catch (e) { return 'pattern'; } }
     if (t === 'LabColor') return 'lab(' + rnd(c.l) + ',' + rnd(c.a) + ',' + rnd(c.b) + ')';
     return t;
@@ -531,8 +537,23 @@ $.global.AIA = (function () {
     return A.track(tf);
   };
 
+  // Fill from a colour string. Illustrator ignores GradientColor.angle when a gradient is assigned to a path (it keeps
+  // the item's previous gradient angle, 0 on a fresh fill), so "gradient:Name@a" is turned to a afterwards by rotating
+  // only the gradient (bugs.md #1).
+  A.setFill = function (item, spec) {
+    item.fillColor = A.color(spec);
+    if (spec.indexOf('gradient:') !== 0) return;
+    var m = /@(-?[0-9.]+)$/.exec(spec); // no angle = 0
+    // GradientColor.angle always reads 0 on a path; the real rotation is in the gradient's matrix, which a new
+    // gradient fill keeps from the previous one
+    var want = m ? +m[1] : 0, cur = 0;
+    try { var gm = item.fillColor.matrix; cur = Math.atan2(gm.mValueB, gm.mValueA) * 180 / Math.PI; } catch (e) {}
+    var d = want - cur;
+    d = d - 360 * Math.round(d / 360);
+    if (Math.abs(d) > 0.01) item.rotate(d, false, false, true, false);
+  };
   function paint(item, o) {
-    if (o.fill !== undefined) { if (o.fill === 'none') item.filled = false; else { item.filled = true; item.fillColor = A.color(o.fill); } }
+    if (o.fill !== undefined) { if (o.fill === 'none') item.filled = false; else { item.filled = true; A.setFill(item, o.fill); } }
     else item.filled = false;
     if (o.stroke !== undefined && o.stroke !== 'none') {
       item.stroked = true; item.strokeColor = A.color(o.stroke); item.strokeWidth = o.sw || 1;
@@ -1328,7 +1349,10 @@ $.global.AIA = (function () {
       }
     } finally { A.restoreLayers(hid); }
     if (wasSaved) { try { doc.saved = true; } catch (e) {} }
-    var out = { of: what, doc_bounds: bounds, rect: inFrame(function () { return A.rectOut(bounds); }), px: [Math.round(w * res / 72), Math.round(h * res / 72)], scale: r2(res / 72), method: method };
+    // the page this render belongs to (the artboard; for items and regions the frame artboard): the server maps a
+    // reference image onto it, so close-ups compare with the same part of the reference (bugs.md #2)
+    var pg = isAb ? doc.artboards[i].artboardRect : ((a.artboard !== undefined && a.artboard !== null) ? doc.artboards[a.artboard].artboardRect : A.abRect(doc));
+    var out = { of: what, doc_bounds: bounds, page_bounds: pg, rect: inFrame(function () { return A.rectOut(bounds); }), px: [Math.round(w * res / 72), Math.round(h * res / 72)], scale: r2(res / 72), method: method };
     if (res > want * 1.01) out.resize_to = Math.round(Math.max(w, h) * want / 72);
     return out;
   };

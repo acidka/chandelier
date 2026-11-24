@@ -38,7 +38,7 @@
     if (s.fill !== undefined) {
       if (text) ca.fillColor = A.color(s.fill);
       else if (s.fill === 'none') p.filled = false;
-      else { p.filled = true; p.fillColor = A.color(s.fill); }
+      else { p.filled = true; A.setFill(p, s.fill); }
     }
     if (s.stroke !== undefined) {
       if (text) { ca.strokeColor = A.color(s.stroke); if (s.stroke !== 'none' && s.stroke_width === undefined && !(ca.strokeWeight > 0)) ca.strokeWeight = 1; }
