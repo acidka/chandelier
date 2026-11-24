@@ -20,16 +20,16 @@ tools aren't enough. The [README](../README.md) is the short tour; this folder i
 | Doc | What's in it |
 |-----|--------------|
 | [plan.md](plan.md) | Goals, principles, architecture, decisions with **pros and cons**, tool catalogue, risks, testing |
-| [roadmap.md](roadmap.md) | Phases, milestones (MVP ✅, 0.1 release), checkboxes, exit criteria, change log |
+| [roadmap.md](roadmap.md) | Phases, milestones (MVP … 0.5 ✅), checkboxes, exit criteria, change log |
 | [windows-plan.md](windows-plan.md) | The Windows version: bridge options, COM details, steps W0–W8, risks, decisions |
-| [panel-plan.md](panel-plan.md) | The Chandelier panel (CEP): events from Illustrator to the agent; options, design, steps (MVP on a branch) |
+| [panel-plan.md](panel-plan.md) | The Chandelier panel (CEP, experimental in 0.5): chat, selection events, channel wake-up; design, protocol, live trials (P1–P5), limits |
 | [logo-plan.md](logo-plan.md) | How the logo and GitHub hero were designed through Chandelier, and what that job found |
 
 ## Research and measurements
 
 | Doc | What's in it |
 |-----|--------------|
-| [research/benchmarks.md](research/benchmarks.md) | Every measurement: per-call latency, the calendar and design-from-image agent benchmarks, targets |
+| [research/benchmarks.md](research/benchmarks.md) | Every measurement: per-call latency, the calendar and design-from-image agent benchmarks, the panel, targets |
 | [research/illustrator-quirks.md](research/illustrator-quirks.md) | Known Illustrator 29.x failures and how Chandelier handles each one |
 | [research/feature-gaps.md](research/feature-gaps.md) | Missing tools, user needs, all known competitors with pros and cons, proposed order for 0.1.x–0.4 (2026-11-23) |
 | [research/competitors.md](research/competitors.md) | `ie3jp/illustrator-mcp-server` and Adobe's official MCP (beta): what they do, tool parity map |

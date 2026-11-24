@@ -526,3 +526,5 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Fix (found on the Windows VM): pausing sharing while the panel's look was running still sent that look's state; now checked again after the look |
 | 2026-11-24 | **0.5.0 released**: npm (owner), plugin/marketplace 0.5.0, `main` fast-forwarded, tag `v0.5.0`, GitHub release with the `.mcpb` |
 | 2026-11-24 | Fix (for 0.5.1): `install-panel --help` (or an unknown option) installed the panel; now it prints usage and changes nothing |
+| 2026-11-24 | CI: `actions/checkout` and `actions/setup-node` v4 → v7 (Node 24; GitHub deprecated Node 20 for actions). The red `develop` runs on 2026-11-24 were the macOS runner never being assigned (capacity), not test failures |
+| 2026-11-24 | Docs for 0.5: README (panel section with listening / wake-up setup, features, tools, how it works, develop), benchmarks § 2f (panel), agent guide (working from the panel), panel plan (set-up, risks), docs index |

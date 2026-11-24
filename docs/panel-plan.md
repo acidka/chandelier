@@ -24,7 +24,7 @@ agents spend seconds per turn, and `batch` already makes calls few.
 The MVP keeps the panel small and the protocol identical to the OS bridges, so moving to UXP later means rewriting
 the panel side only.
 
-## 3. Design (MVP)
+## 3. Design
 
 ```
 agent ──MCP──▶ Chandelier server ── PanelTransport ──TCP 127.0.0.1 (NDJSON)──▶ Chandelier panel (CEP, inside Illustrator)
@@ -91,19 +91,25 @@ agent ──MCP──▶ Chandelier server ── PanelTransport ──TCP 127.0
   with `-p`); Team/Enterprise orgs must enable channels. The panel is the only sender (local socket, token), so no
   sender allowlist is needed; permission relay is not declared.
 
-## 4. Try it (developer setup)
+## 4. Set it up
+
+Users (0.5): see the [README](../README.md#chandelier-panel-experimental) — `npx chandelier-mcp install-panel`, restart
+Illustrator, Window > Extensions > Chandelier, then the server with `CHANDELIER_TRANSPORT=panel` in *listening* mode
+(the agent loops `events {wait}`) or *wake-up* mode (`CHANDELIER_CHANNEL=1` + `claude
+--dangerously-load-development-channels server:<name>`; without that flag such a session never gets panel messages).
+
+From a checkout:
 
 ```sh
 npm run build
-node scripts/cep/install.mjs --link     # copies/links dist/cep into Adobe/CEP/extensions, sets PlayerDebugMode=1
-                                        # add --debug for Chrome DevTools on the panel: http://localhost:8098
+node scripts/cep/install.mjs --link --debug   # symlink dist/cep, PlayerDebugMode=1, DevTools on http://localhost:8098
 # restart Illustrator → Window > Extensions > Chandelier (the panel doesn't reopen by itself after a restart)
-CHANDELIER_TRANSPORT=panel npm run test:live   # the live suite through the panel
-claude mcp add chandelier-panel -e CHANDELIER_TRANSPORT=panel -- node "$PWD/dist/index.js"
+CHANDELIER_TRANSPORT=panel npm run test:live  # the live suites through the panel
+claude mcp add chandelier-panel -s local -e CHANDELIER_TRANSPORT=panel -- node "$PWD/dist/index.js"
 ```
 
-Then ask the agent: "Call events with wait 60, then tell me what I selected." Undo: `node scripts/cep/install.mjs
---uninstall`.
+After `npm run build` reload the panel (close and reopen it, or `location.reload()` in DevTools). Switching branches
+leaves `dist/` stale: rebuild first. Undo: `node scripts/cep/install.mjs --uninstall`.
 
 ## 5. Steps
 
@@ -125,8 +131,15 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
 - **Polling cost: small (measured in P2).** One look takes ~1 ms with nothing selected and 1–34 ms with 1 000 items
   selected (§ 7). Polling only runs while an agent is connected and skips a tick while an agent script runs; under a
   burst of agent calls a look can wait until the burst ends (seen in P2: events arrived after 20 back-to-back calls).
-- **Does CEP keep running when the panel is hidden or docked closed?** If not, a later version can add an invisible
-  extension that starts with Illustrator.
+- **Hidden panel (open, owner check):** the panel keeps working with Illustrator in the background (all trials); not
+  yet checked: docked behind another panel tab. Check: dock it, keep another tab in front, select something, bring the
+  Chandelier tab forward — Status → Recent events should list the selection. If it doesn't, a later version can add
+  an invisible extension that starts with Illustrator.
+- **MRAP (fixed for everyone in 0.5):** a busy spell of seconds outlasted the runtime's retries in P4; `A.retry` now
+  tries a fourth time after 1 s.
+- **An unsaved document closed during the 0.5 release run (unexplained):** the owner-visible trial poster (unsaved,
+  ~990 items) was gone after `npm run test:live`; no tool call named it, nothing in the code closes a non-empty
+  document unless asked, and `test/live-edit.mjs` alone with a stand-in document did not reproduce it. Watch for it.
 - **Timeouts:** a script running in the panel can't be cancelled; past its deadline the call is reported as timed
   out and the usual ping/`last_call` advice follows.
 - **Selection events from Illustrator itself** (C++ notifiers) don't exist in CEP for Illustrator, hence the snapshot

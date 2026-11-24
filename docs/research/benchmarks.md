@@ -553,6 +553,21 @@ times through the full MCP server:
 
 Opening, saving and exporting files dominate (Illustrator's own work, about 1–3 s each); the merge itself is fast.
 
+## 2f. Chandelier panel (0.5) — 2026-11-24
+
+Illustrator 29.1.0 (CEP 11), macOS 27.2.1, Node 22.23.3, Apple M1; one run per arm. Details: [panel plan § 7, 9, 10](../panel-plan.md#7-first-live-run-p2).
+
+| Measure | OS bridge | Panel |
+|---|---:|---:|
+| `run_script {code: "app.documents.length"}` ×20, MCP round trip, warm — median (min) | 7.0 ms (4.5) | **1.6 ms** (1.1) |
+| Live suite (`npm run test:live`) | 242/242 | 242/242 |
+| One look at the selection (snapshot) — nothing / 100 / 1 000 selected | — | 0.7–1.5 / 1.7–5.5 / 1.1–34 ms |
+
+- Heavy calls (save/export, preview) take about as long through the panel: Illustrator's own work dominates.
+- Pairing: a hand selection reaches the agent within one look (~0.5 s). A fresh headless agent handled 3/3 panel
+  requests (9.0 s, 17.1 s, 1.9 s from Send to answer; 15 turns, $0.28). Channel wake-up of an idle interactive
+  session: work started 6 s and the answer arrived 10 s after Send.
+
 ## 3. Targets
 
 | Metric | Target | Status |

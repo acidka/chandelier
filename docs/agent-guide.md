@@ -203,6 +203,23 @@ swatch match by the swatch's colour and stay tints. Gradients are recoloured onc
 `export`, `find_items`, `get_items` and `tools` are listed. `tools {}` lists the rest, `tools {query}` searches,
 `tools {name}` returns a schema, `tools {call, args}` runs one; step tools also work inside `batch`.
 
+## Working from the Chandelier panel (0.5, experimental)
+
+Only when the `events` tool is listed (server started with `CHANDELIER_TRANSPORT=panel`; the designer opened Window >
+Extensions > Chandelier). Design and trials: [panel plan](panel-plan.md).
+
+- **Requests** from the designer come as `message` events — or, in channel mode (`CHANDELIER_CHANNEL=1`), straight into
+  the conversation as `<channel source="…" doc="…" selection="1: Headline (TextFrame, uuid 683)">make this red</channel>`.
+  "This"/"it" = the selection: its uuids are refs, no search needed.
+- **Loop** (listening mode): `events {since, wait: 300, types: ["message"]}` → do the request → check briefly →
+  `events {since: next, say: "Done: … (what changed)", wait: 300, types: ["message"]}`. Messages written before your
+  first call are not lost: unread ones are always returned. In channel mode don't wait: act, then `events {say}`.
+- **Answers** with `say` are short: what changed (before → after), or one question when the request is ambiguous. Stop
+  listening when the designer says they're done; mention unsaved changes.
+- **Watching the designer:** `events {types: ["selection"], wait}` waits for a selection ("select the headline and
+  I'll fix it"); `after_agent: true` marks changes that followed your own call; `state` is the current document and
+  selection. Don't change the designer's documents beyond what they asked.
+
 ## Reference: `AIA.*` helpers in `run_script`
 
 Positions and sizes in session units (default pt, artboard top-left, y down); font size, leading, tracking and

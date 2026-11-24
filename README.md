@@ -17,7 +17,8 @@
 **Chandelier** is an [MCP](https://modelcontextprotocol.io) server that lets AI agents — Claude Code, Claude Desktop,
 Cursor and other MCP clients — work in **Adobe Illustrator**: build print-ready documents, edit them, look at the
 result and export. It keeps **one persistent connection** to Illustrator, so a call costs **~5 ms instead of
-~330 ms**, and a whole page is built in **one call**.
+~330 ms**, and a whole page is built in **one call**. New in 0.5: an experimental [panel inside
+Illustrator](#chandelier-panel-experimental) where you chat with the agent about what you have selected.
 
 > *Chandelier* is *люстра* in Ukrainian, and «люстра» is what Ukrainian designers call Illustrator. A project that
 > hangs over Illustrator and lights it up for AI agents.
@@ -132,6 +133,9 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
 - **Safe by design.** Never launches Illustrator unless asked, never touches documents it didn't create or wasn't
   asked to change, removes what a failed call created, retries Illustrator's transient errors, and explains crashes
   and timeouts in plain words (and whether the timed-out call finished).
+- **Side by side with you** *(experimental, 0.5)*. The [Chandelier panel](#chandelier-panel-experimental) puts a
+  chat inside Illustrator: select something, write "make this red", and the agent changes exactly that; it can also
+  watch your selection and wait for you.
 - **Agent-friendly.** Compact responses, conventions sent once in the server instructions, errors that say what to do
   next, and two ready prompts: `recreate_design` and `print_export`.
 
@@ -154,7 +158,7 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
 
 ## Tools
 
-35 tools; every tool that changes a document can also be a step inside `batch`.
+35 tools (36 with the panel: `events`); every tool that changes a document can also be a step inside `batch`.
 
 | Group | Tools |
 |-------|-------|
@@ -165,6 +169,7 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
 | Structure, colour and effects | `layers` · `artboards` · `swatches` · `styles` · `effects` |
 | Build | `batch` (also over many files) · `run_script` · `data_merge` · `menu_command` · `symbols` |
 | Look, check, output | `preview` · `preflight` · `export` |
+| Panel mode only | `events` — what you select and write in the [panel](#chandelier-panel-experimental); answers in the panel |
 
 Coordinates in every tool: `[x, y, w, h]` from the artboard's top-left, y down, in the session's units (pt, mm, in
 or px). Full catalogue: [plan § 6](docs/plan.md#6-tool-catalogue); how agents should use them:
@@ -172,23 +177,31 @@ or px). Full catalogue: [plan § 6](docs/plan.md#6-tool-catalogue); how agents s
 
 ## Chandelier panel (experimental)
 
-A panel inside Illustrator that lets you and the agent work side by side (macOS; Windows needs x64 Illustrator):
+A panel inside Illustrator, so you and the agent work on the same document side by side. macOS; on Windows it needs
+x64 Illustrator (Illustrator on Windows ARM loads only Adobe's own panels).
 
-- **Chat** — write to the agent from Illustrator; with something selected, "make this red" means the selection. The
-  agent answers in the panel, and a line shows whether it is thinking or working.
-- **Events** — the agent sees what you select, which document is active, and when you save; the `events` tool waits
-  for you ("select the headline and I'll fix it").
-- **Wake-up** — with Claude Code channels (research preview), a panel message wakes an idle session.
+- **Chat** — write to the agent from Illustrator. With something selected, "make this red" means the selection: the
+  agent gets the item ids with your message and changes exactly those. It answers in the panel; a line under the chat
+  shows whether it has read your message, is thinking, or is working in Illustrator. Each document keeps its own chat.
+- **Events** — the agent can see what you select, which document is in front and when you save, and wait for you
+  ("select the headline and I'll fix it").
+- **Wake-up** — with Claude Code [channels](https://code.claude.com/docs/en/channels) (research preview), a message in
+  the panel wakes an idle session; no need to ask the agent to listen first.
 
-```sh
-npx chandelier-mcp install-panel        # then restart Illustrator → Window > Extensions > Chandelier
-claude mcp add chandelier-panel -e CHANDELIER_TRANSPORT=panel -e CHANDELIER_CHANNEL=1 -- npx -y chandelier-mcp
-claude --dangerously-load-development-channels server:chandelier-panel
-```
+**Set up** (Claude Code):
 
-The panel is unsigned, so the installer turns on Adobe's `PlayerDebugMode` for your user; `--uninstall` removes it.
-Without `CHANDELIER_CHANNEL=1` (or without the channel flag), ask the agent to listen to the panel instead. Trials,
-design and limits: [panel plan](docs/panel-plan.md).
+1. `npx chandelier-mcp install-panel`, restart Illustrator, then **Window → Extensions → Chandelier**.
+2. Add the server in panel mode — pick one:
+   - *Listening* (any MCP client): `claude mcp add chandelier-panel -e CHANDELIER_TRANSPORT=panel -- npx -y chandelier-mcp`,
+     then tell the agent: "I'll write to you from the Chandelier panel."
+   - *Wake-up* (Claude Code channels): add `-e CHANDELIER_CHANNEL=1` to that command and always start Claude Code with
+     `claude --dangerously-load-development-channels server:chandelier-panel`. Started without that flag, the session
+     doesn't receive panel messages (the panel then keeps showing "waiting for the agent").
+3. Write in the panel's **Chat** tab. The **Status** tab shows the connection and lets you pause sharing your selection.
+
+The panel is unsigned, so the installer allows unsigned panels for your user (Adobe's `PlayerDebugMode`);
+`npx chandelier-mcp install-panel --uninstall` removes the panel. Without `CHANDELIER_TRANSPORT=panel` nothing
+changes. How it was tested and its limits: [panel plan](docs/panel-plan.md).
 
 ## How it works
 
@@ -196,12 +209,15 @@ design and limits: [panel plan](docs/panel-plan.md).
 AI agent ──MCP (stdio)──▶ Chandelier server (Node.js)
                               │  one persistent bridge process:
                               │  macOS: osascript / JXA (Apple events) · Windows: PowerShell + COM (DoJavaScript)
+                              │  or, in panel mode, the Chandelier panel (local socket ⇄ chat, selection events)
                               ▼
                           Adobe Illustrator ── AIA runtime (ExtendScript, loaded once per Illustrator session)
 ```
 
 Each tool call becomes one Apple event (macOS) or COM call (Windows) that runs one runtime command; the runtime
-reloads itself after Illustrator restarts. Architecture, decisions with their pros and cons, and the measurements
+reloads itself after Illustrator restarts. In panel mode the same commands go through the panel (~1.6 ms per call,
+[benchmarks](docs/research/benchmarks.md#2f-chandelier-panel-05--2026-11-24)),
+and the panel pushes what you select and write back to the server. Architecture, decisions with their pros and cons, and the measurements
 behind them: [plan](docs/plan.md).
 
 ## Status
@@ -227,6 +243,7 @@ Everything planned and done: [roadmap](docs/roadmap.md).
 | [Agent guide](docs/agent-guide.md) | How an agent should build, check and export with Chandelier |
 | [Plan](docs/plan.md) | Goals, architecture, decisions with pros and cons, tool catalogue, risks |
 | [Roadmap](docs/roadmap.md) | Phases, milestones, what's done and what's next |
+| [Panel plan](docs/panel-plan.md) | The Chandelier panel: design, protocol, live trials, limits |
 | [Benchmarks](docs/research/benchmarks.md) | Every measurement, method and run |
 | [Illustrator quirks](docs/research/illustrator-quirks.md) | Known Illustrator failures and how Chandelier handles them |
 | [All docs](docs/README.md) | The full index |
@@ -240,6 +257,8 @@ npm run typecheck
 npm run test:live   # live suites: need Illustrator running; work only in documents they create
 npm run bench       # micro benchmark (ExtendScript files / ie3 MCP / Chandelier)
 npm run build:mcpb  # Claude Desktop bundle in build/
+node scripts/cep/install.mjs --link --debug        # the panel from this checkout (DevTools on :8098)
+CHANDELIER_TRANSPORT=panel npm run test:live       # the live suites through the panel
 claude plugin validate plugin   # the Claude Code plugin (plugin/) and its marketplace (.claude-plugin/)
 ```
 
