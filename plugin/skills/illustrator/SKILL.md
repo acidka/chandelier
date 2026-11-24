@@ -38,6 +38,10 @@ Name layers and groups. Keep scripts re-runnable.
 
 ## Recreating a design from an image
 
+**Read [recreate.md](recreate.md) first** — the full method: reference artboard, separating artwork from photo,
+layers from tone steps, dense measuring, smooth curves (designer anchors fitted to the points), colour, and the
+two-view compare loop. Short version:
+
 1. Look at the image with `preview {image: "<path>", grid: true}`: pixel size, ppi, and `content_box` (the page's
    pixel box). Format from the aspect ratio (1.414 A-series, 1.294 Letter). **Don't use Python/PIL, OpenCV, Swift or
    sips for images:** they may be missing and installing them costs the user time; `preview {image}` needs nothing.
@@ -47,9 +51,12 @@ Name layers and groups. Keep scripts re-runnable.
    `sample: [[x, y], [x, y, w, h]]` returns hex, RGB and naive CMYK. A PDF or .ai page (a die-cut template, an
    exported proof) works the same with `page` (rendered by Illustrator, in session units). One factor `S = page width in pt ÷ page width in px`; font size ≈ cap height px ÷ 0.7 × S.
 4. Build with the loop above, then `preview {reference: "<image>", reference_crop: [x, y, w, h]}`: fix what
-   `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); one or two rounds.
-5. **Proofread every word against the reference** — on a client's job the words are theirs.
-6. Missing font? Pick the closest installed one (`fonts {query}`) and match widths with the style's `hscale` so lines
+   `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); repeat until the full-size close-up is clean (recreate.md § 6).
+5. Free-form shapes (waves, ribbons, blobs): few anchors on peaks and troughs, horizontal handles there, handles
+   ⅓–½ of the segment, fitted to points measured every 25–50 px; check a full-size close-up for tips, slivers
+   and corners every round (recreate.md § 4, 6).
+6. **Proofread every word against the reference** — on a client's job the words are theirs.
+7. Missing font? Pick the closest installed one (`fonts {query}`) and match widths with the style's `hscale` so lines
    break where the reference breaks; put body copy in area text.
 
 ## Production runs

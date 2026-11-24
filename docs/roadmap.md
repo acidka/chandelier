@@ -397,6 +397,13 @@ a file, and the skill said "measure in pixels" without a way to.
   units; unit tests
 - [x] ✅ Guidance: server instructions, `recreate_design` prompt and skill say `preview {image}` instead of
   Python/PIL, Swift or sips; a row in the skill's trouble table
+- [x] ✅ Recreate method trained on a real job (2026-11-25, a photographed box front with five translucent wave
+  ribbons; RMSE 0.116 → 0.100 in six rounds): `plugin/skills/illustrator/recreate.md` — reference artboard beside
+  the work, artwork vs photo, layers from tone steps, dense measuring with gaps left open and shared edges, smooth
+  curves = designer anchors (peaks/troughs, horizontal handles, ⅓–½ handles) fitted by least squares with a
+  curvature-continuity term, colour from sampled overlaps, two-view compare (page + full-size close-up)
+- [ ] Tool support so agents don't hand-write the method: edge profiles (`preview {image, profile}`) and a curve
+  fit (`create_path {fit}`); then a fresh-agent trial on another image
 - [ ] Live check of PDF pages (needs Illustrator running) and a fresh-agent trial on a machine without Pillow
 - [ ] Release 0.5.2
 
@@ -555,3 +562,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | CI: `actions/checkout` and `actions/setup-node` v4 → v7 (Node 24; GitHub deprecated Node 20 for actions). The red `develop` runs on 2026-11-24 were the macOS runner never being assigned (capacity), not test failures |
 | 2026-11-24 | Docs for 0.5: README (panel section with listening / wake-up setup, features, tools, how it works, develop), benchmarks § 2f (panel), agent guide (working from the panel), panel plan (set-up, risks), docs index |
 | 2026-11-25 | `preview {image}` (look at image and PDF files: zoom, grid, colour samples) + guidance, so agents stop installing Python imaging libraries on first use |
+| 2026-11-25 | Recreate method (`plugin/skills/illustrator/recreate.md`), trained on a wave-ribbon box front: smooth free-form shapes, layers from tone steps, two-view compare |
