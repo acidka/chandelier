@@ -378,4 +378,14 @@ Version 0.2.0 (package, server, plugin, marketplace). Checked in the VM (§ 12),
   running Illustrator: `status {launch}` didn't launch and every call said "not running". Now `GetActiveObject` failing (its COMException unwrapped from PowerShell's MethodInvocationException)
   while such a process exists returns **0x80080005** "An Illustrator process exists but does not answer: still
   starting, or a crash report holds it" (error map, agent guide § 7).
+- **Regression pass for 0.2.1** (VM synced to `develop`): unit tests 118/118; `live`, `live-edit`, `live-print`,
+  `live-release`, `live-layout`, `live-finish`, `verify-assumptions`, `live-checks`, `live-w1-activate` green;
+  `live-safe-restart` green on a freshly started Illustrator (32.9 s to relaunch and reopen).
+- **Known issue: the links dialog can block `status {restart}`.** In an Illustrator session that earlier had a
+  document with a missing link (`live-print` places one on purpose), the quit request brought up "Some files are
+  missing or modified in the Links panel…" — with no document open — and Illustrator waited for an answer. The
+  restart then fails after 60 s with "did not quit within 60 s (a dialog may be open)", which is the right message;
+  the user answers the dialog and retries. A fix (quit with alerts off) is for a later version.
+- The MCP SDK's client waits 60 s per request by default; a restart can take longer, so `live-lib.mjs`'s `call()`
+  takes a `timeout` and `live-safe-restart.mjs` gives the restart 5 min.
 

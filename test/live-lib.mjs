@@ -44,10 +44,11 @@ export async function connect(name) {
   await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
   guard(client);
   let failures = 0;
-  /** call a tool; check(value, raw) may throw or return false. Errors are expected only with expectError. */
-  async function call(tool, args = {}, { expectError = false, check } = {}) {
+  /** call a tool; check(value, raw) may throw or return false. Errors are expected only with expectError.
+   *  timeout: ms the client waits (the MCP SDK's default is 60 s; an Illustrator restart can take longer). */
+  async function call(tool, args = {}, { expectError = false, check, timeout } = {}) {
     const t = performance.now();
-    const r = await client.callTool({ name: tool, arguments: args });
+    const r = await client.callTool({ name: tool, arguments: args }, undefined, timeout ? { timeout } : undefined);
     const ms = (performance.now() - t).toFixed(1);
     const img = r.content.find((c) => c.type === 'image');
     let ok = !!r.isError === expectError, note = '';

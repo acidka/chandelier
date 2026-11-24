@@ -23,7 +23,7 @@ await call('status', { restart: true }, { expectError: true, check: (v) => {
   assert(v.documents.length === 1 && v.documents[0].name === 'restart-unsaved' && v.documents[0].created_here, 'names only the unsaved one');
 } });
 await call('documents', { action: 'close', name: 'restart-unsaved', discard: true });
-await call('status', { restart: true }, { check: (v) => {
+await call('status', { restart: true }, { timeout: 300_000, check: (v) => {
   assert(v.restarted && v.reopened.length === 1 && v.reopened[0] === 'kept.ai' && !v.failed, 'reopened ' + JSON.stringify(v));
 } });
 await call('find_items', { name: 'KeepMe' }, { check: (v) => assert(v.total === 1, 'content survived the restart') });
