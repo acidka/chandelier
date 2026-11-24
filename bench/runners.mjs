@@ -74,11 +74,14 @@ export class ChandelierMcpRunner extends Ie3McpRunner {
   constructor(entry, node = process.execPath) { super(entry, node); this.name = 'M chandelier MCP (full server)'; }
 }
 
-// ── C: our persistent bridge ─────────────────────────────────────────────────
+// ── C: our persistent bridge (macOS: JXA; Windows: PowerShell/COM — same protocol) ──────────────
 export class OurBridgeRunner {
   constructor(bridgePath) { this.bridgePath = bridgePath; this.name = 'C chandelier bridge'; }
   async start() {
-    this.p = spawn('osascript', ['-l', 'JavaScript', this.bridgePath], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const [cmd, args] = process.platform === 'win32'
+      ? ['powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Sta', '-ExecutionPolicy', 'Bypass', '-File', this.bridgePath.replace(/bridge-mac\.js$/, 'bridge-win.ps1')]]
+      : ['osascript', ['-l', 'JavaScript', this.bridgePath]];
+    this.p = spawn(cmd, args, { stdio: ['pipe', 'pipe', 'pipe'] });
     this.q = new Map(); this.id = 0; let buf = '';
     const ready = new Promise((r) => this.q.set(0, r));
     this.p.stdout.on('data', (d) => {

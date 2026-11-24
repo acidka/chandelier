@@ -1,0 +1,3 @@
+Recreate the design in `C:ench\m2\design-from-image.jpg` in Adobe Illustrator as a new CMYK document with one artboard in the same proportions as the white page. Use live, editable text (no outlines, no placed or traced image) and keep the layout, colours, font weights and sizes as close to the reference as you can. When done, export a PNG preview next to the document and compare it with the reference.
+
+Note: Illustrator runs on a Windows machine. Pass Windows paths to its tools, and save the document and the PNG in `C:ench\m2\out\`. The same reference image is on this machine at `<repo>/bench/scenarios/design-from-image.jpg` if you want to look at it.

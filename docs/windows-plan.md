@@ -1,6 +1,6 @@
 # Windows version — plan
 
-Status: 🔄 in progress as 0.2 ([roadmap phase 7](roadmap.md#phase-7--windows-)): W0, W2, W3, W6 done; W1 done except the modal-dialog check (§ 12); W4 mostly done and all live suites green on Windows (§ 13); W5 nearly done; W7–W8 next.
+Status: ✅ done as 0.2.0, release pending ([roadmap phase 7](roadmap.md#phase-7--windows-)): W0, W2–W8 done (2026-11-24); W1 done except the modal-dialog check (needs someone at the VM). Results: § 12–14 and [benchmarks § 1b](research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24).
 
 **Goal:** the same server, the same 32 tools and the same ExtendScript runtime on Windows 10/11 with Illustrator
 2025+ (29.x), with the same guarantees: one persistent connection (target < 10 ms per call), never launching
@@ -151,7 +151,7 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | **W4** ✅ | Paths into ExtendScript; runtime checks from § 5 on Windows — drive letters, exports, PDF presets, menu commands, fonts, long paths (save/open refuse 260+ chars), localised names (shared code, tested on macOS) (§ 13) | 0.5 d | yes |
 | **W5** ✅ | HRESULT error map, hints (links dialog named in busy/timeout messages), launch from the registry path, activation (off by default), Windows `live-restart` — all live-checked 2026-11-24 | 0.5 d | yes |
 | **W6** ✅ | CI matrix (macOS + Windows) ✅, fake-COM bridge test ✅, live suites green on Windows ✅ 2026-11-24 (§ 13) — in an **en_US** Illustrator UI (moved from 0.1) | 1 d | yes |
-| **W7** | Benchmarks on Windows (micro M, one M2 C2 run), results in `benchmarks.md` | 0.5 d | yes |
+| **W7** ✅ | Benchmarks on Windows (micro M, one M2 C2 run), results in `benchmarks.md` | 0.5 d | yes |
 | **W8** ✅ | Windows install in README, agent guide troubleshooting; `.mcpb` / plugin checked on Windows (§ 14) | 0.5 d | yes |
 
 Total ≈ 5 days once a Windows machine exists. W3 (and the platform split of W2) can start on macOS now.

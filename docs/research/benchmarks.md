@@ -83,6 +83,40 @@ Startup per session: A none · B 274 ms · C 54 ms. All 2 × 4 × 3 runs created
 - C's p95 (40–126 ms) comes from the first call in a series (dictionary warm-up) and occasional Illustrator redraws.
 - C is the raw bridge without the MCP layer yet. Expected extra for MCP JSON-RPC + runtime dispatch: ~1–3 ms. To re-measure in phase 1.
 
+## 1b. Windows (0.2, phase 7 W7) — 2026-11-24
+
+**Environment:** Windows 11 Pro ARM64 26300 in a Parallels 27.1 VM (4 vCPU, 6 GB, "Adaptive hypervisor" on) on an
+Apple M1 Mac, macOS 27.2; Illustrator 2027 (31.0.0) native ARM64, en_US, CPU preview; Node 26.13 ARM64. **These are
+VM numbers, not hardware numbers:** the same call took 8–10 ms or 115–140 ms depending on the VM's state — most
+likely Parallels' adaptive hypervisor, which gives the VM less CPU while a Mac app is in front (the fast runs were
+taken while the owner had the VM window in front). Treat them as a floor for correctness, not as Windows speed.
+
+**Per call** (details: [windows-plan § 12–13](../windows-plan.md#12-w1-results-2026-11-24)), p50:
+
+| Path | VM fast state | VM slow state |
+|---|---:|---:|
+| Bare bridge, empty call (`1+1`) | 8.1–9.6 ms | 117–139 ms |
+| Full MCP server, `run_script "return 1"` | ~20 ms (21–48 ms per run) | — |
+
+**Micro runner M (and C) in the slow state** (`node bench/micro.mjs --only=C,M`, n=20, bulk=100; raw:
+[`2026-11-24T02-57-47-micro.md`](../../bench/results/2026-11-24T02-57-47-micro.md), Illustrator window visible;
+[`2026-11-24T02-58-57-micro.md`](../../bench/results/2026-11-24T02-58-57-micro.md), minimized — no difference):
+
+| Scenario | C bridge only | **M Chandelier MCP** |
+|----------|--------------:|---------------------:|
+| S1 read artboards | 166 ms | 126 ms |
+| S2 create rectangle | 110 ms | 95 ms |
+| S3 create text | 134 ms | 147 ms |
+| S4 200 objects (1 call) | 643 ms | 570 ms |
+| S5 batch of 200 steps | — | 622 ms |
+| S6 preview image | — | 187 ms |
+
+The server adds nothing measurable over the bare bridge (M ≈ C); every per-call cost in the slow state is the VM.
+One batch builds 200 objects in ~0.6 s even there — batching matters more on a slow machine, not less.
+`bench/micro.mjs` runs on Windows since 2026-11-24 (runner C uses `bridge-win.ps1`; runners A and B stay macOS-only).
+**The < 10 ms goal is a goal, not a 0.2 requirement** (owner, 2026-11-24): it can't be judged in a VM; measure on
+x64 hardware when one is available.
+
 ## 2. Macro benchmark (agent level)
 
 ### Baseline from the owner's notes (2026-11-21)
@@ -392,6 +426,26 @@ and the call goal met. 5 Illustrator calls: new document, one `run_script` build
 preflight}`, one `documents save {export, close}` (plus the builder's re-check). 5 global swatches, 13 paragraph
 styles, 121 live texts, preflight clean.
 
+### M2 on Windows — 2026-11-24 (arm C2, 1 run; 0.2 exit)
+
+Same M2 prompt with one note added: Illustrator runs on a Windows machine, so tools get Windows paths and the files go
+to `C:\bench\m2\out\` (the reference image copied there). Setup: the 0.2.0 server ran in the VM's desktop session
+behind a one-connection TCP relay, reached from the Mac through an SSH tunnel; a fresh headless Claude Code agent
+(`claude -p`, Opus 5.5, only the `chandelier` server plus Read; it loaded the installed plugin's `illustrator` skill)
+did the job. Environment as in § 1b. Files: `bench/results/m2/C2w-1/` (prompt, metrics, `.ai`, PNG, comparison).
+
+| Run | Wall | Requests | Tool calls (Illustrator) | Input | Output | Tool errors | Quality | RMSE |
+|-----|-----:|---------:|-------------------------:|------:|-------:|------------:|--------:|-----:|
+| C2w-1 | **1.5 min** | 10 | **11 (6)** | **0.35 M** | 8.0 k | 0 Chandelier (1 Bash denied) | **10** | 0.170 |
+
+Every MVP target met on Windows (quality 10, ≤ 4 min, ≤ 1.6 M input, ≤ 30 calls, no Chandelier errors): `documents
+new`, one `batch` (5 global swatches, 9 paragraph styles, 121 texts, rules), `preview {reference, preflight}`, one fix
+`batch`, a second check, `documents save {export, close}`. The re-opened file: CMYK, 1 artboard 570 × 637.5 pt (ratio
+0.894), 121 live texts (Arial / Arial Bold), each with a paragraph style, no raster, layers "Main" and "Mini months",
+preflight 0 errors / 0 warnings. The one error was outside Chandelier: the agent tried to measure the image with
+Python in Bash, which the run didn't allow. RMSE is against a 570 × 638 px export (72 ppi), so not strictly
+comparable with the macOS runs' 0.108–0.145.
+
 ### Metrics extractor
 
 ```sh
@@ -447,7 +501,7 @@ This is the floor for an agent: it shows the tools can do the job in ≤ 20 call
 
 | Metric | Target | Status |
 |--------|--------|--------|
-| Per-call overhead p50 (MCP → Illustrator → MCP) | < 10 ms | ✅ 5.7 ms through the full MCP server (2026-11-22) |
+| Per-call overhead p50 (MCP → Illustrator → MCP) | < 10 ms (goal) | ✅ 5.7 ms through the full MCP server (macOS, 2026-11-22); Windows VM ~20 ms in its fast state, not judged (§ 1b) |
 | 200 objects in one call | < 0.5 s | ✅ 96 ms (spike) |
 | Calendar macro: tool calls | ≤ 20 | ✅ 19 / 17 (12 / 8 to Illustrator), C1 / C2 one run each on the shorter loop, 2026-11-22 (were 23–25) |
 | Calendar macro: wall time | ≤ 3 min | ✅ 2.8 / 2.0 min (C1 / C2, 2026-11-22) |
@@ -457,5 +511,5 @@ This is the floor for an agent: it shows the tools can do the job in ≤ 20 call
 ## 4. Not yet benchmarked
 
 - Adobe's official MCP (beta app only) — add as arm D when it reaches the stable app.
-- Windows (B supports it; Chandelier's Windows version is [roadmap phase 7](../roadmap.md#phase-7--windows-), tested on a Windows 11 ARM64 VM).
+- Windows on real (x64) hardware: the 0.2 numbers (§ 1b) come from a Windows 11 ARM64 VM. Arm B (ie3) on Windows.
 - Documents above 5 000 objects (5 000 measured in phase 1.6, see below).

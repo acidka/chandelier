@@ -1,0 +1,25 @@
+{
+  "label": "M2-C2w-1",
+  "file": "<transcripts>/bfac8c6b-3c1f-403c-bb5d-c39907b96d87.jsonl",
+  "window": {
+    "from": "2026-11-24T01:02:25.957Z",
+    "to": "2026-11-24T01:03:57.434Z"
+  },
+  "wallMinutes": 1.5,
+  "modelRequests": 10,
+  "inputTokensTotal": 353037,
+  "inputTokens": {
+    "uncached": 26,
+    "cacheWrite": 36153,
+    "cacheRead": 316858
+  },
+  "outputTokens": 7996,
+  "toolCalls": 11,
+  "toolCallsByFamily": {
+    "other": 5,
+    "C our MCP": 6
+  },
+  "toolErrorsByFamily": {
+    "other": 1
+  }
+}

@@ -162,7 +162,8 @@ behind them: [plan](docs/plan.md).
 
 **0.2: Windows** — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)): all live suites pass
 with Illustrator 2027 on Windows 11 (ARM64, in a Parallels VM); npm package, plugin and Claude Desktop bundle run on
-Windows. Release pending.
+Windows; the design-from-image benchmark took 1.5 min and 11 tool calls there, quality 10 of 10
+([benchmarks](docs/research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24)). Release pending.
 
 Everything planned and done: [roadmap](docs/roadmap.md).
 

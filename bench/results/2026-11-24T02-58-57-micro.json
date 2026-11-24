@@ -1,0 +1,145 @@
+{
+  "env": {
+    "date": "2026-11-24",
+    "illustrator": "31.0.0",
+    "macos": "Windows 10.0.26300",
+    "node": "v26.13.1",
+    "cpu": "Apple Silicon"
+  },
+  "startup": {
+    "C": 2629.9574169999996,
+    "M": 768.1072079999994
+  },
+  "rows": [
+    {
+      "scenario": "S1",
+      "title": "Read artboards (×20, one call each)",
+      "runner": "C chandelier bridge",
+      "calls": 20,
+      "median": 127.69516700000167,
+      "p95": 593.5792919999985,
+      "min": 83.54412499999853,
+      "total": 3216.5409180000024,
+      "errors": 0,
+      "items": 0,
+      "expectItems": 0
+    },
+    {
+      "scenario": "S1",
+      "title": "Read artboards (×20, one call each)",
+      "runner": "M chandelier MCP (full server)",
+      "calls": 20,
+      "median": 123.25004100000297,
+      "p95": 3084.618958000001,
+      "min": 108.63237500000105,
+      "total": 5663.199667000017,
+      "errors": 0,
+      "items": 0,
+      "expectItems": 0
+    },
+    {
+      "scenario": "S2",
+      "title": "Create a rectangle (×20, one call each)",
+      "runner": "C chandelier bridge",
+      "calls": 20,
+      "median": 115.48804100000052,
+      "p95": 420.67204200000197,
+      "min": 21.013999999999214,
+      "total": 2886.5589190000137,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S2",
+      "title": "Create a rectangle (×20, one call each)",
+      "runner": "M chandelier MCP (full server)",
+      "calls": 20,
+      "median": 126.82412499999919,
+      "p95": 381.0671250000014,
+      "min": 22.62904200000048,
+      "total": 3007.6468779999996,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S3",
+      "title": "Create a 14 pt point text (×20, one call each)",
+      "runner": "C chandelier bridge",
+      "calls": 20,
+      "median": 134.580750000001,
+      "p95": 214.32337499999994,
+      "min": 41.17608399999881,
+      "total": 2580.446419,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S3",
+      "title": "Create a 14 pt point text (×20, one call each)",
+      "runner": "M chandelier MCP (full server)",
+      "calls": 20,
+      "median": 133.42695800000365,
+      "p95": 442.9827919999989,
+      "min": 40.900416999997105,
+      "total": 3161.4201670000075,
+      "errors": 0,
+      "items": 20,
+      "expectItems": 20
+    },
+    {
+      "scenario": "S4",
+      "title": "Build 100 rectangles + 100 texts (each approach's natural way)",
+      "runner": "C chandelier bridge",
+      "calls": 1,
+      "median": 534.2758329999997,
+      "p95": 534.2758329999997,
+      "min": 534.2758329999997,
+      "total": 534.2758329999997,
+      "errors": 0,
+      "items": 200,
+      "expectItems": 200
+    },
+    {
+      "scenario": "S4",
+      "title": "Build 100 rectangles + 100 texts (each approach's natural way)",
+      "runner": "M chandelier MCP (full server)",
+      "calls": 1,
+      "median": 579.6869580000057,
+      "p95": 579.6869580000057,
+      "min": 579.6869580000057,
+      "total": 579.6869580000057,
+      "errors": 0,
+      "items": 200,
+      "expectItems": 200
+    },
+    {
+      "scenario": "S5",
+      "title": "Batch of 200 typed steps, one object each (no script)",
+      "runner": "M chandelier MCP (full server)",
+      "calls": 1,
+      "median": 886.9068330000009,
+      "p95": 886.9068330000009,
+      "min": 886.9068330000009,
+      "total": 886.9068330000009,
+      "errors": 0,
+      "items": 200,
+      "expectItems": 200
+    },
+    {
+      "scenario": "S6",
+      "title": "Preview: render the page and return the image (×10)",
+      "runner": "M chandelier MCP (full server)",
+      "calls": 10,
+      "median": 207.87099999999919,
+      "p95": 385.0227920000034,
+      "min": 100.29062500000146,
+      "total": 2185.8265010000105,
+      "errors": 0,
+      "items": 0,
+      "expectItems": 0
+    }
+  ]
+}

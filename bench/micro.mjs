@@ -48,12 +48,12 @@ const js = async (code) => { const r = await admin.run(code, 60); if (!r.ok) thr
 const env = {
   date: new Date().toLocaleDateString('sv'),
   illustrator: await js('app.version'),
-  macos: execFileSync('sw_vers', ['-productVersion']).toString().trim(),
+  macos: process.platform === 'win32' ? `Windows ${os.release()}` : execFileSync('sw_vers', ['-productVersion']).toString().trim(),
   node: process.version,
   cpu: os.cpus()[0]?.model,
 };
 const scratch = await js('var d=app.documents.add(DocumentColorSpace.CMYK,595.28,841.89);d.name');
-console.log(`scratch document: ${scratch}  (Illustrator ${env.illustrator}, macOS ${env.macos})`);
+console.log(`scratch document: ${scratch}  (Illustrator ${env.illustrator}, ${env.macos.startsWith('Windows') ? '' : 'macOS '}${env.macos})`);
 
 async function assertScratchActive() {
   const name = await js('app.documents.length ? app.activeDocument.name : ""');
@@ -175,7 +175,7 @@ try {
   const md = [
     `# Micro benchmark ${env.date}`,
     '',
-    `Illustrator ${env.illustrator} · macOS ${env.macos} · Node ${env.node} · ${env.cpu} · ie3 ${ie3Version ?? 'n/a'} · n=${N}, bulk=${BULK}`,
+    `Illustrator ${env.illustrator} · ${env.macos.startsWith('Windows') ? '' : 'macOS '}${env.macos} · Node ${env.node} · ${env.cpu} · ie3 ${ie3Version ?? 'n/a'} · n=${N}, bulk=${BULK}`,
     '',
     `Startup (one-off per session): ${Object.entries(startup).map(([k, v]) => `${k} ${f(v)} ms`).join(' · ')}`,
     '',
