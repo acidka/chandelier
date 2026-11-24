@@ -38,6 +38,17 @@ describe('install-panel', () => {
     expect(calls[0]).toEqual(['reg', 'add', 'HKCU\\Software\\Adobe\\CSXS.9', '/v', 'PlayerDebugMode', '/t', 'REG_SZ', '/d', '1', '/f']);
     rmSync(f.root, { recursive: true, force: true });
   });
+  it('--help and unknown options print usage and change nothing', () => {
+    const f = fixture();
+    const calls: string[][] = [], lines: string[] = [];
+    const o = { src: f.src, platform: 'darwin' as const, home: f.home, exec: (c: string, a: string[]) => calls.push([c, ...a]), log: (l: string) => lines.push(l) };
+    expect(installPanel({ ...o, args: ['--help'] })).toBe(0);
+    expect(installPanel({ ...o, args: ['--force'] })).toBe(1);
+    expect(lines.join('\n')).toMatch(/Unknown option: --force[\s\S]*Usage: npx chandelier-mcp install-panel/);
+    expect(existsSync(join(extensionsDir('darwin', f.home), PANEL_ID))).toBe(false);
+    expect(calls).toEqual([]);
+    rmSync(f.root, { recursive: true, force: true });
+  });
   it('refuses without built panel files', () => {
     const lines: string[] = [];
     expect(installPanel({ args: [], src: '/nonexistent/cep', platform: 'darwin', home: '/tmp/x', exec: () => {}, log: (l) => lines.push(l) })).toBe(1);

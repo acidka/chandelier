@@ -525,3 +525,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Panel: one chat per document (owner's request) — keyed by file path, switches with the document in front, answers go to the chat they answer; `~/.chandelier/chats.json`; live-checked |
 | 2026-11-24 | Fix (found on the Windows VM): pausing sharing while the panel's look was running still sent that look's state; now checked again after the look |
 | 2026-11-24 | **0.5.0 released**: npm (owner), plugin/marketplace 0.5.0, `main` fast-forwarded, tag `v0.5.0`, GitHub release with the `.mcpb` |
+| 2026-11-24 | Fix (for 0.5.1): `install-panel --help` (or an unknown option) installed the panel; now it prints usage and changes nothing |

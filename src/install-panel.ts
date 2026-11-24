@@ -13,6 +13,12 @@ import { fileURLToPath } from 'node:url';
 export const PANEL_ID = 'io.github.acidka.chandelier';
 export const DEBUG_PORT = 8098;
 const CSXS = [9, 10, 11, 12, 13, 14];
+const FLAGS = ['--uninstall', '--link', '--debug'];
+const USAGE = `Usage: npx chandelier-mcp install-panel [--uninstall] [--link] [--debug]
+  (no flag)    copy the Chandelier panel into Illustrator's extensions folder and allow unsigned panels (PlayerDebugMode)
+  --uninstall  remove the panel (PlayerDebugMode stays; the message says how to turn it off)
+  --link       symlink instead of copying (development: a checkout's dist/cep)
+  --debug      add the panel's .debug file: Chrome DevTools on http://localhost:${DEBUG_PORT}`;
 
 export interface InstallOptions {
   args: string[];
@@ -44,6 +50,13 @@ export function installPanel(o: InstallOptions): number {
   const target = join(dir, PANEL_ID);
   const remove = () => { try { lstatSync(target); } catch { return false; } rmSync(target, { recursive: true, force: true }); return true; };
 
+  // --help, or anything unknown: say how, change nothing (seen 2026-11-24: "--help" installed the panel)
+  const unknown = [...args].filter((x) => !FLAGS.includes(x));
+  if (unknown.length) {
+    if (!(unknown.length === 1 && (unknown[0] === '--help' || unknown[0] === '-h'))) log(`Unknown option: ${unknown.join(' ')}`);
+    log(USAGE);
+    return unknown.every((x) => x === '--help' || x === '-h') ? 0 : 1;
+  }
   if (args.has('--uninstall')) {
     log(remove() ? `Removed ${target}` : `Not installed (${target})`);
     log(win
