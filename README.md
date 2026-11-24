@@ -7,6 +7,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-0F1B2D"></a>
+  <a href="https://www.npmjs.com/package/chandelier-mcp"><img alt="npm" src="https://img.shields.io/npm/v/chandelier-mcp?color=0F1B2D"></a>
   <img alt="macOS and Windows" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-0F1B2D">
   <img alt="Adobe Illustrator 2025+" src="https://img.shields.io/badge/Illustrator-2025%2B-0F1B2D">
   <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-0F1B2D">
@@ -16,7 +17,7 @@
 **Chandelier** is an [MCP](https://modelcontextprotocol.io) server that lets AI agents — Claude Code, Claude Desktop,
 Cursor and other MCP clients — work in **Adobe Illustrator**: build print-ready documents, edit them, look at the
 result and export. It keeps **one persistent connection** to Illustrator, so a call costs **~5 ms instead of
-~300 ms**, and a whole page is built in **one call**.
+~330 ms**, and a whole page is built in **one call**.
 
 > *Chandelier* is *люстра* in Ukrainian, and «люстра» is what Ukrainian designers call Illustrator. A project that
 > hangs over Illustrator and lights it up for AI agents.
@@ -35,40 +36,101 @@ Measured with fresh Claude agents on the same jobs (2026-11-22, Illustrator 29.1
 | tool calls · input tokens | 16 · 0.81 M | 103 · 3.21 M | **11 · 0.42 M** |
 | **12-page calendar from a screenshot** — time | 2.7 min | 21.4 min | **2.0 min** |
 | tool calls · input tokens | 17 · 0.94 M | 365 · 13.3 M | **17 · 0.78 M** |
-| **Overhead per call** | ~150 ms | ~280 ms | **~5 ms** |
+| **Overhead per call** | ~150 ms | ~330 ms | **~5 ms** |
 
 All Chandelier files scored 9–10 of 10 on the quality checklists, with global swatches, paragraph styles and a real
 bleed. Methods, every run and the caveats (one run per arm for the latest numbers): [benchmarks](docs/research/benchmarks.md).
+
+## Quick start
+
+**Needs:** macOS or Windows 11, Adobe Illustrator 2025 or later, running (tested on 29.1 on macOS and 2027 / 31.0 on
+Windows 11 ARM64), and Node.js 22.15 or later for the Claude Code and `npx` routes.
+
+**Claude Code — plugin (recommended):** the MCP server, an Illustrator skill and the `/ai-preview` and `/ai-preflight`
+commands.
+
+```
+/plugin install chandelier --marketplace acidka/chandelier
+```
+
+On Claude Code older than 2.1.275: `/plugin marketplace add acidka/chandelier`, then `/plugin install chandelier@chandelier`.
+
+**Claude Desktop:** download `chandelier-<version>.mcpb` from the [releases](https://github.com/acidka/chandelier/releases)
+and open it (or **Settings → Extensions → Install extension**). It brings its own dependencies and runs on Claude
+Desktop's built-in Node.
+
+**Any MCP client — server only:**
+
+```sh
+claude mcp add chandelier -- npx -y chandelier-mcp            # Claude Code, macOS
+claude mcp add chandelier -- cmd /c npx -y chandelier-mcp     # Claude Code, Windows
+```
+
+```json
+{ "mcpServers": { "chandelier": { "command": "npx", "args": ["-y", "chandelier-mcp"] } } }
+```
+
+On Windows use `"command": "cmd", "args": ["/c", "npx", "-y", "chandelier-mcp"]`: Windows has only `npx.cmd`, no `npx`
+executable. The plugin and the Claude Desktop bundle handle this themselves.
+
+Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
+
+<details>
+<summary><b>Setup notes</b>: permissions, Node version, smaller tool list, debug log, from source</summary>
+
+- **macOS:** on the first call macOS asks whether your terminal (or app) may control Illustrator. Allow it, or later in
+  **System Settings → Privacy & Security → Automation**.
+- **Windows:** nothing to allow. Run Illustrator and your MCP client at the same level (both normal, or both "Run as
+  administrator"). The first start compiles a small helper (a few seconds); later starts reuse it. Illustrator can't
+  save or open files whose path is 260 characters or longer; the server refuses those with a message.
+- **Node version:** the plugin and `npx` start the server with the first `node` on your PATH. If that is older than
+  22.15 (an old nvm default, for example), the server says so through its `status` tool instead of starting. Install a
+  current Node and make it the default (`nvm install 22 && nvm alias default 22`, or `brew install node`), or give the
+  full path of a newer `node` as the command, then restart your MCP client.
+- **Smaller tool list:** clients that load every tool schema up front can set `CHANDELIER_TOOLS=lean`: the eight tools
+  a build uses plus a `tools` tool that lists, explains and calls the rest — about 4.9 k tokens per request instead of
+  16.2 k ([benchmarks](docs/research/benchmarks.md#tool-list-size)). A design-from-image run with it scored 10 of 10
+  with no extra tool calls ([run](docs/research/benchmarks.md#m2-with-the-lean-tool-profile--2026-11-24-arm-c2-1-run-040)).
+  A comma-separated list of tool names works too.
+- **Debug log:** `CHANDELIER_LOG=debug` writes one JSON line per tool call (tool, time, result) to stderr;
+  `CHANDELIER_LOG_FILE=/path/to/file` appends them to a file.
+- **From source:**
+
+  ```sh
+  git clone https://github.com/acidka/chandelier.git && cd chandelier
+  npm install && npm run build      # then point your client at node /absolute/path/to/chandelier/dist/index.js
+  ```
+
+</details>
 
 ## Features
 
 - **Fast.** One long-lived bridge process and a helper runtime loaded into Illustrator once; each call sends only a
   command and its arguments. `batch` runs up to 1 000 tool steps in one round trip.
-- **Full power when tools aren't enough.** `run_script` runs ExtendScript with a helper library (`AIA.text`,
-  `AIA.swatch`, `AIA.at(artboard, …)` …) and re-runnable `.jsx` builders with arguments.
-- **Print-ready.** CMYK documents with real bleed, global process and spot swatches, paragraph and character styles,
-  PDF/X-4 export with exact trim and bleed boxes, and a preflight that checks what matters (RGB in CMYK, missing
-  fonts, overset text, hairlines, low-res images, white overprint…) and skips non-printing layers.
-- **It looks at its work.** `preview` returns an image of an artboard, items or a region; given a reference image it
-  returns a side-by-side difference, how far the content is shifted or scaled, and each difference: moved (by how much), missing, extra or changed, with the items there.
 - **Short build loop.** Create a document, one batch for swatches and styles, one for content, one check
   (`preview {reference, preflight: true}`), one finish (`documents save {export: [...], close: true}`) — about eight
   calls to Illustrator for a page.
+- **Full power when tools aren't enough.** `run_script` runs ExtendScript with a helper library (`AIA.text`,
+  `AIA.swatch`, `AIA.at(artboard, …)` …), re-runnable `.jsx` builders with arguments, and ready recipes (calendar
+  month, labels sheet, business card, style guide, colour chips).
+- **It looks at its work.** `preview` returns an image of an artboard, items or a region. Given a reference image, it
+  reports how far the content is shifted or scaled and lists each difference — moved (by how much), missing, extra or
+  changed — with the items there.
+- **Print-ready.** CMYK documents with real bleed, global process and spot swatches, paragraph and character styles,
+  PDF/X-4 export with exact trim and bleed boxes and output intents (FOGRA39, GRACoL…), spread traps, colour
+  conversion. `preflight` checks what matters (RGB in CMYK, missing fonts, overset text, hairlines, low-res images,
+  white overprint…), skips non-printing layers, and can check brand rules (allowed colours, fonts, sizes; contrast).
+- **Production runs.** `data_merge` fills a template from CSV or JSON (`{{name}}` in any text, swapped photos,
+  colours, optional parts) into one artboard per row, n-up sheets, or one PDF/PNG per row. `batch {files}` runs the
+  same steps over a folder and saves copies. `swatches {recolor}` snaps every colour to a brand palette, also from an
+  `.ase` library. Exports per layer set (with and without the dieline) and screen assets at 1x/2x/3x.
+- **Effects and more.** Live, editable effects (drop shadow, glows, round corners, feather, blur, offset, roughen,
+  zigzag, transform copies…), symbols, image trace.
 - **Safe by design.** Never launches Illustrator unless asked, never touches documents it didn't create or wasn't
   asked to change, removes what a failed call created, retries Illustrator's transient errors, and explains crashes
-  and timeouts in plain words.
-- **Ready-made and checked.** Recipes for a calendar month, a labels sheet, a business card, a style guide and colour
-  chips (`run_script {recipe}`); brand checks in `preflight` (allowed colours, fonts and sizes; contrast); exports per
-  layer set (with and without the dieline) and screen assets at 1x/2x/3x; symbols and image trace.
-- **Production runs.** `data_merge` fills a template from a CSV or JSON file (`{{name}}` in any text, swapped photos,
-  colours, optional parts) into one artboard per row, n-up sheets, or one PDF/PNG per row; `batch {files}` runs the
-  same steps over a folder of files and saves copies; `swatches {recolor}` snaps every colour to a brand palette
-  (also from an `.ase` swatch library).
-- **Effects and prepress.** Live effects that stay editable (drop shadow, glows, round corners, feather, blur,
-  offset, roughen, zigzag, transform copies…), spread traps, colour conversion to CMYK or grayscale, and PDF/X
-  output intents from your installed press profiles (FOGRA39, GRACoL…).
-- **Agent-friendly.** Compact responses with limits, conventions sent once in the server instructions, errors that
-  say what to do next, and two ready-made prompts: `recreate_design` and `print_export`.
+  and timeouts in plain words (and whether the timed-out call finished).
+- **Agent-friendly.** Compact responses, conventions sent once in the server instructions, errors that say what to do
+  next, and two ready prompts: `recreate_design` and `print_export`.
 
 ## What you can ask
 
@@ -105,69 +167,6 @@ Coordinates in every tool: `[x, y, w, h]` from the artboard's top-left, y down, 
 or px). Full catalogue: [plan § 6](docs/plan.md#6-tool-catalogue); how agents should use them:
 [agent guide](docs/agent-guide.md).
 
-## Quick start
-
-**Needs:** macOS or Windows 11, Adobe Illustrator 2025 or later running (tested on 29.1 on macOS, 2027 / 31.0 on
-Windows 11 ARM64), and Node.js 22.15 or later for the Claude Code and `npx` routes.
-
-**Claude Code — plugin (recommended).** The MCP server, an Illustrator skill and the `/ai-preview` and
-`/ai-preflight` commands:
-
-```
-/plugin install chandelier --marketplace acidka/chandelier
-```
-
-(On Claude Code older than 2.1.275: `/plugin marketplace add acidka/chandelier`, then `/plugin install chandelier@chandelier`.)
-
-**Claude Code or any MCP client — server only:**
-
-```sh
-claude mcp add chandelier -- npx -y chandelier-mcp            # macOS
-claude mcp add chandelier -- cmd /c npx -y chandelier-mcp     # Windows
-```
-
-or in an MCP config (`.mcp.json`, Cursor…):
-
-```json
-{ "mcpServers": { "chandelier": { "command": "npx", "args": ["-y", "chandelier-mcp"] } } }
-```
-
-(On Windows: `"command": "cmd", "args": ["/c", "npx", "-y", "chandelier-mcp"]` — Windows has no `npx` executable,
-only `npx.cmd`. The plugin and the Claude Desktop bundle handle this themselves.)
-
-**Claude Desktop.** Download `chandelier-<version>.mcpb` from the
-[releases](https://github.com/acidka/chandelier/releases) and open it (or **Settings → Extensions → Install
-extension**). It brings its own dependencies and runs on Claude Desktop's built-in Node.
-
-**From source** (to develop):
-
-```sh
-git clone https://github.com/acidka/chandelier.git && cd chandelier
-npm install && npm run build      # then point your client at node /absolute/path/to/chandelier/dist/index.js
-```
-
-**macOS:** on the first call macOS asks whether your terminal (or app) may control Illustrator: allow it, or later in
-**System Settings → Privacy & Security → Automation**.
-
-**Windows:** nothing to allow. Run Illustrator and your MCP client at the same level (both normal, or both "Run as
-administrator"). The first start compiles a small helper (a few seconds); later starts reuse it. Illustrator can't
-save or open files whose path is 260 characters or longer: the server refuses those with a message.
-
-**Node version:** the plugin and `npx` start the server with the first `node` on your PATH. If that is older than
-22.15 (an old nvm default, for example), the server says so through the `status` tool instead of starting: install a
-current Node and make it the default (`nvm install 22 && nvm alias default 22`, or `brew install node`), or give
-the full path of a newer `node` as the command, then restart your MCP client.
-
-**Smaller tool list:** MCP clients that load every tool schema up front (no deferred tool loading) can set
-`CHANDELIER_TOOLS=lean`: the eight tools a build uses plus a `tools` tool that lists, explains and calls the rest
-(about 4.9 k tokens per request instead of 16.2 k, [benchmarks](docs/research/benchmarks.md#tool-list-size)); a full
-design-from-image run with it scored 10 of 10 with no extra tool calls
-([run](docs/research/benchmarks.md#m2-with-the-lean-tool-profile--2026-11-24-arm-c2-1-run-040)). A comma-separated list of
-tool names works too.
-
-**Debug log:** set `CHANDELIER_LOG=debug` in the server's environment for one JSON line per tool call (tool, time,
-result) on stderr, or `CHANDELIER_LOG_FILE=/path/to/file` to append them to a file.
-
 ## How it works
 
 ```
@@ -184,22 +183,15 @@ behind them: [plan](docs/plan.md).
 
 ## Status
 
-**0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
+Current release: **0.4** (2026-11-24) on macOS and Windows — npm, Claude Code plugin and Claude Desktop bundle.
 
-**0.4 released** (2026-11-24): look and print depth — live effects (`effects`), spread traps, colour conversion, PDF/X
-output intents, and a visual diff that says what moved (and by how much), what's missing and what's extra.
-
-**0.3 released** (2026-11-24): production automation — `data_merge` (variable data into artboards, n-up sheets or files),
-`batch {files}` (the same steps over many files, copies saved), `swatches {recolor, import}` (snap colours to a
-palette or an `.ase` library), and the `lean` tool profile.
-
-**0.2.1 released** (2026-11-24): recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart
-and a debug log; a fix for tinted swatches (a tint changed the swatch itself).
-
-**0.2 released** (2026-11-24): **Windows** — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)): all live suites pass
-with Illustrator 2027 on Windows 11 (ARM64, in a Parallels VM); npm package, plugin and Claude Desktop bundle run on
-Windows; the design-from-image benchmark took 1.5 min and 11 tool calls there, quality 10 of 10
-([benchmarks](docs/research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24)).
+| Release | Date | What it added |
+|---------|------|---------------|
+| **0.4** | 2026-11-24 | Look and print depth: live effects, spread traps, colour conversion, PDF/X output intents, a visual diff that says what moved (and by how much), what's missing and what's extra |
+| **0.3** | 2026-11-24 | Production automation: `data_merge`, `batch {files}`, `swatches {recolor, import}`, the `lean` tool profile |
+| **0.2.1** | 2026-11-24 | Recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart, debug log; fix: a tint no longer changes the swatch itself |
+| **0.2** | 2026-11-24 | **Windows**: the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)); all live suites pass with Illustrator 2027 on Windows 11 ARM64; design from an image in 1.5 min, 11 tool calls, 10 of 10 ([benchmarks](docs/research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24)) |
+| **0.1** | 2026-11-23 | First release on macOS: npm, Claude Code plugin, Claude Desktop bundle |
 
 Everything planned and done: [roadmap](docs/roadmap.md).
 

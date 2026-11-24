@@ -476,3 +476,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | **0.4.0 released**: npm, plugin 0.4.0, tag `v0.4.0`, GitHub release with the `.mcpb` |
 | 2026-11-24 | M2 benchmark with the lean tool profile (C2L-1): quality 10, 1.3 min, 11 calls, 0.36 M input; fixed context 40.8 k tokens per request (~11 k less than the full list) — [benchmarks](research/benchmarks.md#m2-with-the-lean-tool-profile--2026-11-24-arm-c2-1-run-040) |
 | 2026-11-24 | Distribution: registry listing prepared (`server.json`, `mcpName`, version 0.4.1, `release-meta` unit test; owner publishes); maintainer's production workflow switched from `illustrator-mcp` to Chandelier |
+| 2026-11-24 | README refined: quick start moved up (setup notes folded), features regrouped, release history as a table, npm badge; per-call overhead of the ie3 MCP corrected to ~330 ms (benchmarks § micro) |
