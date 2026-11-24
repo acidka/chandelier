@@ -35,8 +35,10 @@ function head(path: string, n: number): Buffer {
 
 export function profileDirs(): string[] {
   if (process.platform === 'win32') {
-    const pf = [process.env['CommonProgramFiles'], process.env['CommonProgramFiles(x86)']].filter(Boolean) as string[];
-    return [join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'spool', 'drivers', 'color'), ...pf.map((p) => join(p, 'Adobe', 'Color', 'Profiles'))];
+    // the variables are missing in some contexts (a scheduled task's environment): the standard folders as well
+    const drive = process.env.SystemDrive ?? 'C:';
+    const pf = [process.env['CommonProgramFiles'], process.env['CommonProgramFiles(x86)'], `${drive}\\Program Files\\Common Files`, `${drive}\\Program Files (x86)\\Common Files`].filter(Boolean) as string[];
+    return [...new Set([join(process.env.SystemRoot ?? `${drive}\\Windows`, 'System32', 'spool', 'drivers', 'color'), ...pf.map((p) => join(p, 'Adobe', 'Color', 'Profiles'))])];
   }
   return ['/Library/Application Support/Adobe/Color/Profiles', '/Library/ColorSync/Profiles', join(homedir(), 'Library/ColorSync/Profiles'), '/System/Library/ColorSync/Profiles'];
 }

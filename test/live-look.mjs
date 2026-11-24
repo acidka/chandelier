@@ -91,6 +91,7 @@ if (part('diff')) {
   await call('preview', { reference: ref }, { check: (_v, r) => {
     const s = J({ content: r.content.filter((c) => c.type === 'text') });
     const d = s.differences, by = (k) => d.find((x) => x.kind === k);
+    console.log('     differences', JSON.stringify(d));
     assert(d && d.length >= 3, 'three differences ' + JSON.stringify(d));
     const mv = by('shifted');
     assert(mv && Math.abs(mv.shift[0] - 12) < 1.5 && Math.abs(mv.shift[1] - 6) < 1.5 && mv.items?.some((i) => i.name === 'Moves'), 'moved block: shift ≈ [12, 6] and its item ' + JSON.stringify(mv));
