@@ -209,6 +209,22 @@ describe('panel chat', () => {
   });
 });
 
+describe('chat history', () => {
+  it('survives a panel restart (kept in ~/.chandelier/chat.json, private)', async () => {
+    makeT();
+    await T!.ensure();
+    panel.message('make it red');
+    await T!.say('Done.');
+    const f = join(home, '.chandelier', 'chat.json');
+    expect(await until(() => existsSync(f))).toBe(true);
+    if (process.platform !== 'win32') expect(statSync(f).mode & 0o777).toBe(0o600);
+    T!.stop(); T = null;
+    panel.stop();
+    panel = createPanel({ evalScript: fakeEval, snapshot: SNAP, home, pollMs: 20 });
+    expect(panel.info().chat.map((e: any) => e.text)).toEqual(['make it red', 'Done.']);
+  });
+});
+
 describe('panel activity (the "thinking" line)', () => {
   it('unread → thinking when the agent gets the message → cleared by its answer; working while scripts run', async () => {
     panel.stop();

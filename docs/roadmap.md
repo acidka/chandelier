@@ -492,3 +492,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Panel: channel mode (`CHANDELIER_CHANNEL=1`, Claude Code channels): panel messages wake the session, with the selection attached; fresh-agent trial (headless) 3/3 after fixing skipped early messages; [panel plan § 10](panel-plan.md#10-fresh-agent-trial-p4b) |
 | 2026-11-24 | Panel channel mode confirmed live: an idle interactive session woke on a panel message, changed the selected item and answered in the panel (10 s) |
 | 2026-11-24 | MRAP: a fourth retry after 1 s for steps safe to repeat (`A.retry`: 40 ms, 80 ms, 1 s) — busy spells of seconds seen in the panel trial |
+| 2026-11-24 | Panel chat history saved to `~/.chandelier/chat.json` (survives a panel reload) |

@@ -63,7 +63,19 @@ function createPanel(opts) {
   let last = null;
   const recent = [];
 
-  const chat = []; // the designer's messages and the agent's answers, apart from events so selections don't push them out
+  // the designer's messages and the agent's answers, apart from events so selections don't push them out; kept in
+  // ~/.chandelier/chat.json (0600) so a panel reload or an Illustrator restart doesn't clear the conversation
+  const chatFile = path.join(path.dirname(file), 'chat.json');
+  const chat = (() => { try { const c = JSON.parse(fs.readFileSync(chatFile, 'utf8')); return Array.isArray(c) ? c.slice(-100) : []; } catch (e) { return []; } })();
+  let saveTimer = null;
+  const saveChat = () => {
+    if (saveTimer) return;
+    saveTimer = setTimeout(() => {
+      saveTimer = null;
+      try { fs.mkdirSync(path.dirname(chatFile), { recursive: true, mode: 0o700 }); fs.writeFileSync(chatFile, JSON.stringify(chat), { mode: 0o600 }); } catch (e) { /* the chat still works in memory */ }
+    }, 200);
+    if (saveTimer.unref) saveTimer.unref();
+  };
   const WORKING_HOLD_MS = opts.workingHoldMs ?? 1500;
   const thinking = new Set(); // clients that read a message and haven't answered or gone back to listening
   let unread = false, lastJobEnd = 0, holdTimer = null;
@@ -71,7 +83,7 @@ function createPanel(opts) {
     : (thinking.size ? 'thinking' : (unread && clients.size ? 'unread' : ''));
   const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), chat: chat.slice(), activity: activity() });
   const remember = (e) => { recent.push(e); if (recent.length > 50) recent.shift(); };
-  const talk = (e) => { chat.push(e); if (chat.length > 100) chat.shift(); };
+  const talk = (e) => { chat.push(e); if (chat.length > 100) chat.shift(); saveChat(); };
   const MAX_TEXT = 2000;
   const changed = () => { if (opts.onChange) try { opts.onChange(info()); } catch (e) { /* UI errors never stop the server */ } };
   const send = (sock, obj) => { try { sock.write(JSON.stringify(obj) + '\n'); } catch (e) { /* closed */ } };
