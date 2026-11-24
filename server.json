@@ -8,12 +8,12 @@
     "source": "github"
   },
   "websiteUrl": "https://github.com/acidka/chandelier",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "chandelier-mcp",
-      "version": "0.5.0",
+      "version": "0.5.1",
       "transport": { "type": "stdio" },
       "environmentVariables": [
         { "name": "CHANDELIER_TOOLS", "description": "Tool profile: full (default), lean, or a comma-separated list of tool names", "isRequired": false, "format": "string" },
