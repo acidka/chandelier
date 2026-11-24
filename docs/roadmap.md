@@ -299,7 +299,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 
 ## Phase 8 — Future 🧊
 
-- [ ] 🧊 CEP panel transport (WebSocket inside Illustrator): sub-millisecond calls, **events** (selection changed, document saved) pushed to the agent
+- [ ] 🔄 CEP panel transport: **events** (selection changed, document saved) pushed to the agent, scripts through the panel — [panel plan](panel-plan.md). MVP on branch `feature/panel` (2026-11-24): panel (local socket, token, snapshot polling, pause switch), `PanelTransport` (opt-in `CHANDELIER_TRANSPORT=panel`, falls back to the OS bridge), `events` tool (long poll), dev installer; unit tests 149/149. Next: first live run in Illustrator (P2, needs the owner)
 - [ ] 🧊 UXP plugin transport when Illustrator UXP is public (~Q2 2027 beta, ~Q4 2027 GA)
 - [x] ✅ Live effects via LiveEffect XML (drop shadow, round corners, feather, blur) — done in 0.4 (`effects`)
 - [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
@@ -479,3 +479,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | README refined: quick start moved up (setup notes folded), features regrouped, release history as a table, npm badge; per-call overhead of the ie3 MCP corrected to ~330 ms (benchmarks § micro) |
 | 2026-11-24 | **0.4.1 released** (registry metadata, README): plugin 0.4.1, tag `v0.4.1`, GitHub release with the `.mcpb`; npm and the registry entry are published by the owner |
 | 2026-11-24 | `chandelier-mcp@0.4.1` on npm (owner; `npx` from the registry starts, 35 tools, `status` answers — Illustrator was not running, so no live round trip) and **listed in the MCP Registry** as `io.github.acidka/chandelier` |
+| 2026-11-24 | Panel MVP (gap item 16) started on branch `feature/panel`: CEP panel, `PanelTransport`, `events` tool, installer, unit tests; [panel plan](panel-plan.md) |

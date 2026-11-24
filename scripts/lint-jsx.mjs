@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ES3 lint for ExtendScript files (Illustrator's engine is ES3 + a few extensions).
-//   node scripts/lint-jsx.mjs [files...]   (default: src/runtime/*.jsx and src/recipes/*.jsx)
+//   node scripts/lint-jsx.mjs [files...]   (default: src/runtime, src/recipes and src/cep/host *.jsx)
 // Checks: reserved words as property names; parses as ES3 (no let/const/arrows/template strings/trailing commas…), no ES5+ library calls
 // (Array#map/forEach/filter/indexOf…, JSON, Object.keys, String#trim), and nested ?: must be bracketed (quirk B9).
 import { readFileSync, readdirSync } from 'node:fs';
@@ -61,7 +61,7 @@ export function lint(src, file = '<input>') {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const files = process.argv.slice(2);
-  if (!files.length) for (const dir of ['src/runtime', 'src/recipes']) for (const f of readdirSync(dir).sort()) if (f.endsWith('.jsx')) files.push(dir + '/' + f);
+  if (!files.length) for (const dir of ['src/runtime', 'src/recipes', 'src/cep/host']) for (const f of readdirSync(dir).sort()) if (f.endsWith('.jsx')) files.push(dir + '/' + f);
   let bad = 0;
   for (const f of files) for (const p of lint(readFileSync(f, 'utf8'), f)) { bad++; console.log(`${p.file}:${p.line ?? '?'}  ${p.msg}`); }
   if (bad) { console.log(`${bad} problem(s)`); process.exit(1); }

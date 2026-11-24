@@ -5,6 +5,8 @@ import { mkdtempSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Transport } from './transport/transport.js';
+import { PanelTransport } from './transport/panel.js';
+import { events } from './tools/events.js';
 import { Runtime } from './runtime.js';
 import { TOOLS } from './tools/index.js';
 import { fail, ArgError, type Ctx, type ToolDef } from './tools/types.js';
@@ -102,8 +104,13 @@ function registerPrompts(server: McpServer): void {
 const LEAN_NOTE = `
 More tools than are listed: tools {} (catalog), {query}, {name} (schema), {call, args}; the ones that change items also work as batch steps.`;
 
+/** CHANDELIER_TRANSPORT=panel: scripts through the Chandelier panel when it is open (phase 8 MVP), else the OS bridge. */
+export function makeTransport(kind = process.env.CHANDELIER_TRANSPORT): Transport {
+  return kind === 'panel' ? new PanelTransport() : new Transport();
+}
+
 export function createServer(opts: { transport?: Transport; tmp?: string; tools?: string } = {}) {
-  const T = opts.transport ?? new Transport();
+  const T = opts.transport ?? makeTransport();
   const settings = defaultSettings();
   const ctx: Ctx = { T, rt: new Runtime(T, settings), tmp: opts.tmp ?? mkdtempSync(join(tmpdir(), 'aia-')), created: new Set(), settings, tools: new Map(TOOLS.map((t) => [t.name, t])) };
   // tool profile (0.3): CHANDELIER_TOOLS=lean or a list of names; the rest behind the "tools" tool
@@ -114,6 +121,8 @@ export function createServer(opts: { transport?: Transport; tmp?: string; tools?
     ctx.tools.set(meta.name, meta);
     exposed = [...TOOLS.filter((t) => shown.includes(t.name)), meta];
   }
+  // the events tool exists only with the panel transport, so the default tool list stays the same size
+  if (T instanceof PanelTransport) { ctx.tools.set(events.name, events); exposed = [...exposed, events]; }
   const server = new McpServer({ name: 'chandelier', version: VERSION }, { instructions: shown ? INSTRUCTIONS + LEAN_NOTE : INSTRUCTIONS });
   for (const tool of exposed) {
     server.registerTool(tool.name, { description: tool.description, inputSchema: tool.shape }, (args: unknown) => callTool(tool, args ?? {}, ctx));
