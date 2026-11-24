@@ -68,7 +68,8 @@ node (Transport) ──NDJSON over stdin/stdout──▶ powershell.exe -File br
 - **`launch`:** install path from `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Illustrator.exe` (or the
   Adobe keys), `Start-Process`, then the existing `status {launch}` wait loop.
 - **`activate`:** `WScript.Shell.AppActivate(<process id>)` — COM `Visible` is read-only since Illustrator 2026.
-  Whether Windows even needs activation before save/export (macOS quirk A10) is checked in W1; if not, it's a no-op.
+  Windows doesn't need activation before save/export (macOS quirk A10): checked in W1 (§ 12), so `activate` defaults
+  to false there; the op stays for an explicit `configure {activate:true}`.
 
 ### 3.3 Busy Illustrator and modal dialogs
 
@@ -144,7 +145,7 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | Step | What | Est. | Needs Windows? |
 |------|------|-----:|:--------------:|
 | **W0** | Parallels VM with Windows 11 ARM64 on the owner's Mac, set up for agent access over SSH (§ 11); Illustrator (Creative Cloud second activation; native ARM64 build or x64 emulation — check which), Node 22 ARM64, Git | ~1 h owner | yes |
-| **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); crash ✅; modal dialog and the 5-min call still open | 0.5 d | yes |
+| **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); crash ✅, 5-min call ✅, activation not needed ✅; modal dialog still open | 0.5 d | yes |
 | **W2** ✅ | Platform layer `src/platform.ts` (bridge command, script paths); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` — written 2026-11-23, ran live 2026-11-24 (§ 12) | 1 d | partly |
 | **W3** ✅ | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests — done 2026-11-23 | 0.5 d | no |
 | **W4** | Paths into ExtendScript; runtime checks from § 5 on Windows | 0.5 d | yes |
@@ -288,6 +289,11 @@ Node 26.13 ARM64, Illustrator 31.0.0, no document open:
   {launch:true}` relaunches and answers in 19.3 s (24 s before the fix), the runtime reloads by itself (228 ms), one
   bridge process throughout. The test now counts runtime loads from its own start (another session may have loaded the
   runtime already).
-- **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM), the 5-min call, and
-  whether save/export need activation (macOS A10).
+- **5-min call:** `$.sleep(300000)` completes and returns through the bridge (364 s: ExtendScript's sleep runs ~20 %
+  long on Windows — 70 s took 82 s too). Same run on the idle VM: 9.6 ms median per call, 1 MB script 74 ms.
+- **Activation (macOS A10) is not needed on Windows:** [test/live-w1-activate.mjs](../test/live-w1-activate.mjs) runs
+  with `configure {activate:false}`, Notepad in front, then Illustrator minimized: PNG, PDF/X-4, SVG and `save_as .ai`
+  all write valid files, and Notepad stays in front. So `activate` now defaults to **false on Windows** (true on
+  macOS): activating would only steal the user's focus and cost 0.2–1.3 s per save/export.
+- **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM).
 

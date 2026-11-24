@@ -3,6 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import { bridgeCommand, scriptPath, scriptPaths, osOf, BRIDGE_WIN } from '../../src/platform.js';
 import { explain, errKey, isTimeout } from '../../src/transport/errors.js';
+import { defaultSettings } from '../../src/settings.js';
 
 const hr = (hex: string) => parseInt(hex, 16) | 0; // signed 32-bit, as bridge-win.ps1 sends it
 
@@ -25,6 +26,10 @@ describe('platform', () => {
     expect(scriptPaths(a, 'mac')).toBe(a);
   });
 
+  it('activates before save/export on macOS only (A10; Windows saves in the background, W1)', () => {
+    expect(defaultSettings('mac').activate).toBe(true);
+    expect(defaultSettings('win').activate).toBe(false);
+  });
   it('ships an ASCII PowerShell bridge that speaks the same ops', () => {
     expect(existsSync(BRIDGE_WIN)).toBe(true);
     const src = readFileSync(BRIDGE_WIN, 'utf8');

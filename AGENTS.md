@@ -26,6 +26,7 @@ scripts/windows/make-x86-vm.sh <iso>  # on the Mac: unattended Windows 10 x64 VM
 scripts/windows/connect-vm.sh     # on the Mac, once: Parallels VM → SSH for the agent (key in tmp/windows-vm/; runs setup-vm.ps1 in the VM)
 ssh -F tmp/windows-vm/ssh_config win  # into the Windows VM (docs/windows-plan.md § 11)
 node test/live-w1-bridge.mjs      # Windows, desktop session (run-interactive.ps1): bridge latency, script size, Unicode, errors (W1)
+node test/live-w1-activate.mjs    # Windows, desktop session: save/export with Illustrator in the background (W1)
 scripts/windows/run-interactive.ps1  # over SSH: run a command in the VM's desktop session (live tests need it)
 claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill, commands); marketplace in .claude-plugin/
 node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
