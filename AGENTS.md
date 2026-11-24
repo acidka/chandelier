@@ -3,7 +3,7 @@
 ## What this is
 **Chandelier** (люстра — Ukrainian slang for Illustrator): an MCP server that drives Adobe Illustrator fast: a persistent bridge (JXA `src/bridge/bridge-mac.js` on macOS, PowerShell/COM `src/bridge/bridge-win.ps1` on Windows, picked in `src/platform.ts`), an
 ExtendScript runtime loaded once into Illustrator (`src/runtime/core.jsx` + one module per tool family, sent as one source; `$.global.AIA`), ready builders in `src/recipes/` (`run_script {recipe}`), and a
-TypeScript MCP server (`src/`, built to `dist/`), packaged for npm (`chandelier-mcp`), as a Claude Code plugin
+TypeScript MCP server (`src/`, built to `dist/`), an experimental CEP panel for events (`src/cep/`, opt-in `CHANDELIER_TRANSPORT=panel`), packaged for npm (`chandelier-mcp`), as a Claude Code plugin
 (`plugin/`) and as a Claude Desktop bundle (`scripts/build-mcpb.mjs`). Plan and decisions: `docs/plan.md`. TODO board: `docs/roadmap.md`.
 
 ## Commands
@@ -33,6 +33,9 @@ node test/live-w1-activate.mjs    # Windows, desktop session: save/export with I
 scripts/windows/run-interactive.ps1  # over SSH: run a command in the VM's desktop session (live tests need it)
 claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill, commands); marketplace in .claude-plugin/
 node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
+node scripts/cep/install.mjs --link  # dev-install the Chandelier panel (CEP) into Illustrator; --debug (DevTools :8098), --uninstall (docs/panel-plan.md)
+CHANDELIER_TRANSPORT=panel npm run test:live  # the live suite through the panel (open Window > Extensions > Chandelier first)
+claude --dangerously-load-development-channels server:<name>  # with CHANDELIER_CHANNEL=1 on that server: panel chat wakes the session (docs/panel-plan.md)
 ```
 
 ## Rules

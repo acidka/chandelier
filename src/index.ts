@@ -5,5 +5,7 @@
 // tells the agent what is wrong and how to fix it (old-node.ts uses only old syntax and no dependencies).
 const MIN = [22, 15];
 const [maj, min] = process.versions.node.split('.').map(Number);
-if (maj > MIN[0] || (maj === MIN[0] && min >= MIN[1])) await import('./main.js');
+// `npx chandelier-mcp install-panel [--uninstall]`: install the Chandelier panel (CEP) instead of running the server
+if (process.argv[2] === 'install-panel') process.exitCode = (await import('./install-panel.js')).installPanel({ args: process.argv.slice(3) });
+else if (maj > MIN[0] || (maj === MIN[0] && min >= MIN[1])) await import('./main.js');
 else await import('./old-node.js');

@@ -3,7 +3,7 @@
 // Safety: works only in a document it creates; closes it without saving; never touches other documents.
 //   npm run test:live
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -13,7 +13,9 @@ import { guard } from './live-lib.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = mkdtempSync(join(tmpdir(), 'aia-live-'));
 const client = new Client({ name: 'aia-live', version: '0' });
-await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
+await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit',
+  // CHANDELIER_TRANSPORT=panel npm run test:live runs the same checks through the Chandelier panel (docs/panel-plan.md)
+  env: { ...getDefaultEnvironment(), ...(process.env.CHANDELIER_TRANSPORT ? { CHANDELIER_TRANSPORT: process.env.CHANDELIER_TRANSPORT } : {}) } }));
 guard(client); // abort if another document becomes active mid-run
 
 let failures = 0;

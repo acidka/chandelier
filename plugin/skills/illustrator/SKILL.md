@@ -94,6 +94,15 @@ Name layers and groups. Keep scripts re-runnable.
 | A batch step failed | Earlier steps stayed (unless `rollback: true`); resend from `failed_step` |
 | `preview {region}` blank | Give `artboard` with `region` |
 
+## Working from the Chandelier panel
+
+Only when the `events` tool is listed (the server runs with `CHANDELIER_TRANSPORT=panel`):
+- Messages the designer writes in the panel come as `message` events, or — in channel mode — as
+  `<channel source="…" selection="…">text</channel>` in the conversation. "This"/"it" = the selection (uuids are refs).
+- Loop: `events {since, wait: 300, types: ["message"]}` → do it → check briefly → `events {since, say: "what changed",
+  wait: 300, types: ["message"]}`. In channel mode skip the waiting: act, then answer with `events {say}`.
+- Keep answers short; ask in the panel when the request is ambiguous; stop when the designer says they are done.
+
 ## When done, tell the user
 
 Where the file is and its artboards; what preflight found; what differs from the reference and why; how to rebuild

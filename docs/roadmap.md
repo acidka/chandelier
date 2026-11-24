@@ -299,7 +299,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 
 ## Phase 8 — Future 🧊
 
-- [ ] 🧊 CEP panel transport (WebSocket inside Illustrator): sub-millisecond calls, **events** (selection changed, document saved) pushed to the agent
+- [x] ✅ CEP panel (experimental, for 0.5): **events** (selection, document, saved) pushed to the agent, **chat** from the panel (`message` events, `events {say}`, activity line), **channel mode** (a panel message wakes a Claude Code session), scripts through the panel (1.6 ms vs 7.0 ms) — [panel plan](panel-plan.md). Install: `npx chandelier-mcp install-panel`. Live on macOS (Illustrator 29.1): live suite 23/23, pairing trial with the owner, fresh agent 3/3, channel wake-up. Open: signing (ZXP), x64 Windows test; Windows ARM Illustrator loads only Adobe's CEP panels (needs UXP)
 - [ ] 🧊 UXP plugin transport when Illustrator UXP is public (~Q2 2027 beta, ~Q4 2027 GA)
 - [x] ✅ Live effects via LiveEffect XML (drop shadow, round corners, feather, blur) — done in 0.4 (`effects`)
 - [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
@@ -479,5 +479,18 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | README refined: quick start moved up (setup notes folded), features regrouped, release history as a table, npm badge; per-call overhead of the ie3 MCP corrected to ~330 ms (benchmarks § micro) |
 | 2026-11-24 | **0.4.1 released** (registry metadata, README): plugin 0.4.1, tag `v0.4.1`, GitHub release with the `.mcpb`; npm and the registry entry are published by the owner |
 | 2026-11-24 | `chandelier-mcp@0.4.1` on npm (owner; `npx` from the registry starts, 35 tools, `status` answers — Illustrator was not running, so no live round trip) and **listed in the MCP Registry** as `io.github.acidka/chandelier` |
+| 2026-11-24 | Panel MVP (gap item 16) started on branch `feature/panel`: CEP panel, `PanelTransport`, `events` tool, installer, unit tests; [panel plan](panel-plan.md) |
+| 2026-11-24 | Panel P2 live run (Illustrator 29.1, macOS): panel loads unsigned, live suite 23/23 through it, events arrive; fixed initial/stale `state` and empty selection events on a document switch; installer `--debug` (DevTools, never shipped); `CHANDELIER_TRANSPORT=panel npm run test:live` |
 | 2026-11-24 | Agents leave a finished document open (owner's request): server instructions, plugin skill, agent guide, README, `recreate_design` prompt; close only when asked or for many-file jobs (`batch {files}` closes each itself) |
+| 2026-11-24 | Panel P3 (Windows 11 ARM64 VM, Illustrator 2027 native ARM64): unit tests 158/158, installer works, but Illustrator refuses the panel as "not supported on your device" (Adobe's own CEP panels load); needs x64 Windows; [panel plan § 8](panel-plan.md#8-windows-arm64-p3) |
+| 2026-11-24 | Panel P3 rechecked: the Windows ARM block is deliberate — `Services.aip` allows only a built-in list of Adobe CEP extension ids (`WinARMBlockedCEPExtensionsAlert`); Illustrator 2027 ships UXP, the route for Windows ARM |
+| 2026-11-24 | Panel P4 pairing trial with the owner (macOS): hand selections (click, deselect, Shift-add, text cursor) arrive within ~0.5 s with uuids; colour and font changes applied by uuid; a 7 s MRAP window explained (runtime retries ran in the panel engine too — no transport gap); [panel plan § 9](panel-plan.md#9-pairing-trial-p4) |
+| 2026-11-24 | Panel chat (owner's request): text box + Send in the panel → `message` events; `events {say}` answers in the panel; live round trip checked in Illustrator 29.1; unit tests 155 |
+| 2026-11-24 | Panel UI in two tabs: Chat (log, text box, Send) and Status (connection, sharing switch, events); chat history kept apart from events |
 | 2026-11-24 | Fix: a batch's `@n` referred only to the first 100 items of a long step result (results list ≤ 100); it now sees every item (found in the panel trial: 980 pattern dots, `@0` grouped 100); unit test |
+| 2026-11-24 | Panel activity line (owner's request): waiting to be read / thinking / working in Illustrator, with animated dots; live-checked in Illustrator 29.1 |
+| 2026-11-24 | Panel: channel mode (`CHANDELIER_CHANNEL=1`, Claude Code channels): panel messages wake the session, with the selection attached; fresh-agent trial (headless) 3/3 after fixing skipped early messages; [panel plan § 10](panel-plan.md#10-fresh-agent-trial-p4b) |
+| 2026-11-24 | Panel channel mode confirmed live: an idle interactive session woke on a panel message, changed the selected item and answered in the panel (10 s) |
+| 2026-11-24 | MRAP: a fourth retry after 1 s for steps safe to repeat (`A.retry`: 40 ms, 80 ms, 1 s) — busy spells of seconds seen in the panel trial |
+| 2026-11-24 | Panel chat history saved to `~/.chandelier/chat.json` (survives a panel reload) |
+| 2026-11-24 | Panel P5: shipped as experimental for 0.5 — `npx chandelier-mcp install-panel`, README and plugin skill sections; merged into `develop` |

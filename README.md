@@ -170,6 +170,26 @@ Coordinates in every tool: `[x, y, w, h]` from the artboard's top-left, y down, 
 or px). Full catalogue: [plan § 6](docs/plan.md#6-tool-catalogue); how agents should use them:
 [agent guide](docs/agent-guide.md).
 
+## Chandelier panel (experimental)
+
+A panel inside Illustrator that lets you and the agent work side by side (macOS; Windows needs x64 Illustrator):
+
+- **Chat** — write to the agent from Illustrator; with something selected, "make this red" means the selection. The
+  agent answers in the panel, and a line shows whether it is thinking or working.
+- **Events** — the agent sees what you select, which document is active, and when you save; the `events` tool waits
+  for you ("select the headline and I'll fix it").
+- **Wake-up** — with Claude Code channels (research preview), a panel message wakes an idle session.
+
+```sh
+npx chandelier-mcp install-panel        # then restart Illustrator → Window > Extensions > Chandelier
+claude mcp add chandelier-panel -e CHANDELIER_TRANSPORT=panel -e CHANDELIER_CHANNEL=1 -- npx -y chandelier-mcp
+claude --dangerously-load-development-channels server:chandelier-panel
+```
+
+The panel is unsigned, so the installer turns on Adobe's `PlayerDebugMode` for your user; `--uninstall` removes it.
+Without `CHANDELIER_CHANNEL=1` (or without the channel flag), ask the agent to listen to the panel instead. Trials,
+design and limits: [panel plan](docs/panel-plan.md).
+
 ## How it works
 
 ```
