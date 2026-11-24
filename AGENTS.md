@@ -2,7 +2,7 @@
 
 ## What this is
 **Chandelier** (люстра — Ukrainian slang for Illustrator): an MCP server that drives Adobe Illustrator fast: a persistent bridge (JXA `src/bridge/bridge-mac.js` on macOS, PowerShell/COM `src/bridge/bridge-win.ps1` on Windows, picked in `src/platform.ts`), an
-ExtendScript runtime loaded once into Illustrator (`src/runtime/core.jsx` + one module per tool family, sent as one source; `$.global.AIA`), and a
+ExtendScript runtime loaded once into Illustrator (`src/runtime/core.jsx` + one module per tool family, sent as one source; `$.global.AIA`), ready builders in `src/recipes/` (`run_script {recipe}`), and a
 TypeScript MCP server (`src/`, built to `dist/`), packaged for npm (`chandelier-mcp`), as a Claude Code plugin
 (`plugin/`) and as a Claude Desktop bundle (`scripts/build-mcpb.mjs`). Plan and decisions: `docs/plan.md`. TODO board: `docs/roadmap.md`.
 
@@ -12,7 +12,7 @@ Use Node ≥ 22.15 (if `node` on your PATH is older, run a newer one by its full
 ```sh
 npm run build       # tsc + copy bridge/runtime into dist/
 npm test            # unit tests (no Illustrator needed)
-npm run lint:jsx    # ES3 lint of the runtime
+npm run lint:jsx    # ES3 lint of the runtime and the recipes
 npm run typecheck
 npm run test:live   # needs a running Illustrator; works only in a document it creates
 node test/live-layout.mjs         # multi-artboard spacing/bleed, batch step artboard, AIA.at, non-printing renders

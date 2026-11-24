@@ -126,6 +126,23 @@ does preflight + export.
 Where the file is and its artboards; what preflight found (errors fixed, warnings accepted); differences from any
 reference and why; how to rebuild (the builder file and its args); anything skipped.
 
+## Recipes: ready builders
+
+`run_script {recipe: "list"}` names the built-in builders and their options; run one with
+`run_script {recipe: "calendar-month", args: [{year: 2027, month: 1, lang: "uk", week_numbers: true, x: 10, y: 10, w: 180, h: 120}]}`.
+Positions and sizes are in session units, type sizes in pt; each recipe builds into the active document as one named
+group and returns what it made.
+
+| Recipe | Builds |
+|--------|--------|
+| `calendar-month` | Month + year title, weekday row, date grid with weekends coloured, optional ISO week numbers; paragraph styles per role (`Cal Title`, `Cal Weekday`, `Cal Date`, `Cal Week`); `lang` en / uk, Monday or Sunday first |
+| `labels-sheet` | A cols × rows grid of labels with centred or left text (`\n` = new line) and optional borders; warns when there are more texts than labels |
+| `business-card` | One card: colour band (left or top) running into the bleed, company, name, title, contact lines; 85 × 55 mm by default |
+| `color-chips` | Chips with name and colour values, from given colours or the document's global and spot swatches |
+| `style-guide` | The document's global/spot swatches as chips and every paragraph style as a sample line, fitted to the width |
+
+Use a recipe as a starting point, then adjust with the normal tools (swatches, styles, `modify_items`).
+
 ## Reference: `AIA.*` helpers in `run_script`
 
 Positions and sizes in session units (default pt, artboard top-left, y down); font size, leading, tracking and

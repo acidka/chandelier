@@ -318,7 +318,7 @@ fit, to keep the tool list under its 50 KB budget.
 - [x] ✅ `export` options: `variants: [{name, show, hide}]` → one file per layer set (`<stem>-<name>`, or a subfolder), hidden layers also non-printing, every layer restored in a `finally` (the document counts as changed), a wrong layer name fails before anything changes; screen assets `{refs, each: true, scales: [1, 2, 3]}` → one PNG per item named after it, `@2x`/`@3x` copies; `test/live-checks.mjs`
 - [x] ✅ Symbols: new tool `symbols` — `list` (instances per symbol), `create` (items → symbol, replaced by one instance in place, `keep` leaves them; a taken name is refused), `place` (x, y, w/h, layer), `replace`, `expand` (break link), `remove` (refused while instances exist, `force` deletes them); `test/live-checks.mjs`
 - [x] ✅ Image trace: `path_ops {op: "trace", refs, preset}` — placed or embedded images → Image Trace + expand → a group named like the image, the image removed; non-images refused; `test/live-checks.mjs` (a generated PNG). Preset names follow the UI language
-- [ ] ⏳ Recipe library: ready builders (calendar month, labels sheet, business cards, style guide, colour chips) via `run_script {recipe}`
+- [x] ✅ Recipe library: `run_script {recipe, args}` runs ready builders shipped in `src/recipes/` (→ `dist/recipes/`, linted as ES3): `calendar-month` (en/uk, Monday/Sunday first, ISO weeks, paragraph styles per role), `labels-sheet`, `business-card` (band into the bleed), `color-chips`, `style-guide` (measures each style sample: a style's size can't be read, B1); `recipe: "list"` reads each file's header; unit test + `test/live-checks.mjs` (renders checked by eye)
 - [ ] ⏳ W1 modal-dialog check on Windows (needs the owner at the VM)
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -434,3 +434,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | 0.2.1 (2/6): `preflight {contrast, tokens}` → `off_token`; fixed: a tinted swatch colour changed the swatch's own tint (every later plain use came out tinted) |
 | 2026-11-24 | 0.2.1 (3/6): `export {variants}` (layer sets) and screen assets `{each, scales}` |
 | 2026-11-24 | 0.2.1 (4–5/6): `symbols` tool, `path_ops {op: "trace"}`; Windows: an `Illustrator.exe` without a COM object (a crash clone Windows Error Reporting holds) now gets its own message (0x80080005) instead of "not running"; tool list 49.8 KB |
+| 2026-11-24 | 0.2.1 (6/6): recipe library — `run_script {recipe}` with calendar-month, labels-sheet, business-card, color-chips, style-guide; Illustrator crashed twice in the VM late in long live runs (new document after many operations), not reproduced in isolation; the "process exists but does not answer" message now unwraps PowerShell's exception |

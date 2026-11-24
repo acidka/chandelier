@@ -111,7 +111,9 @@ function Get-App {
   catch {
     # an Illustrator.exe without a COM object: still starting, or the frozen copy Windows Error Reporting keeps of a
     # crashed Illustrator (seen 2026-11-24) - "not running" would be wrong and launch would not help
-    if ($_.Exception.HResult -eq $HR_NOT_RUNNING) { Fail $HR_UNREACHABLE 'Illustrator.exe is running but does not answer' }
+    $ex = $_.Exception
+    while ($ex.InnerException) { $ex = $ex.InnerException } # PowerShell wraps the COMException (MethodInvocationException)
+    if ($ex.HResult -eq $HR_NOT_RUNNING) { Fail $HR_UNREACHABLE 'Illustrator.exe is running but does not answer' }
     throw
   }
   return $script:app

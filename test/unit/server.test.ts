@@ -111,7 +111,7 @@ describe('server', () => {
     expect((await call('batch', { steps: [{ tool: 'preview', args: {} }] })).texts[0]).toMatch(/cannot be a batch step/);
     expect((await call('batch', { steps: [{ tool: 'nope' }] })).texts[0]).toMatch(/unknown tool/);
     expect((await call('batch', { steps: [{ tool: 'documents', args: { action: 'fly' } }] })).texts[0]).toMatch(/step 0 \(documents\): action/);
-    expect((await call('batch', { steps: [{ tool: 'run_script', args: {} }] })).texts[0]).toMatch(/give code or file/);
+    expect((await call('batch', { steps: [{ tool: 'run_script', args: {} }] })).texts[0]).toMatch(/give code, file or recipe/);
   });
 
   it('documents: export/close only with save, never as a batch step', async () => {
@@ -135,6 +135,15 @@ describe('server', () => {
     const r = await call('batch', { steps, results: 'errors' });
     expect(r.json).toMatchObject({ total: 100, completed: 100 });
     expect(T.spawns).toBe(before);
+  });
+
+  it('run_script recipes: list (no Illustrator needed) and a clear error for an unknown one', async () => {
+    const r = await call('run_script', { recipe: 'list' });
+    expect(r.json.recipes.map((x: any) => x.name)).toEqual(['business-card', 'calendar-month', 'color-chips', 'labels-sheet', 'style-guide']);
+    expect(r.json.recipes.every((x: any) => x.does && x.args.startsWith('{'))).toBe(true);
+    const bad = await call('run_script', { recipe: '../etc' });
+    expect(bad.isError).toBe(true);
+    expect(bad.texts[0]).toMatch(/No recipe.*calendar-month/);
   });
 
   it('status restart refuses while a document is unsaved and names it (never loses work)', async () => {

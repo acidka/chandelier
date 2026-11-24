@@ -369,12 +369,13 @@ Version 0.2.0 (package, server, plugin, marketplace). Checked in the VM (§ 12),
 
 ## 15. After 0.2.0 (0.2.1 work, 2026-11-24)
 
-- **One Illustrator crash** during the 0.2.1 live runs: access violation in `Illustrator.exe` 31.0.0.84 (offset
-  0x4913c8) at the start of a `live-checks` run that followed a full run (symbols, image trace, document close). Not
-  reproduced in two more full runs back to back; recorded, not attributed.
+- **Two Illustrator crashes** during the 0.2.1 live runs, both late in a long `live-checks` session at a `documents
+  new` after many operations (first: access violation in `Illustrator.exe` 31.0.0.84, offset 0x4913c8; second: the
+  call in flight got 0x800706BA). The symbols sequence before it, repeated 3 times in isolation, did not crash; four
+  other full runs passed. Recorded, not attributed — the crash paths behaved (the call in flight says "quit or crashed").
 - **A crashed Illustrator leaves a frozen copy** named `Illustrator.exe` (a crash-dump clone, empty command line, held
   by Windows Error Reporting; it can't be ended on its own — ending `WerFault` releases it). The bridge took it for a
-  running Illustrator: `status {launch}` didn't launch and every call said "not running". Now `GetActiveObject` failing
+  running Illustrator: `status {launch}` didn't launch and every call said "not running". Now `GetActiveObject` failing (its COMException unwrapped from PowerShell's MethodInvocationException)
   while such a process exists returns **0x80080005** "An Illustrator process exists but does not answer: still
   starting, or a crash report holds it" (error map, agent guide § 7).
 

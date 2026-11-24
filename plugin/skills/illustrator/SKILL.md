@@ -25,7 +25,8 @@ The server's own instructions carry the conventions; this skill is how to use th
    **paragraph style per text role**. A designer must be able to restyle the file by changing one swatch or style.
 3. **One batch of content:** `create_text` / `create_shape` / `create_path` with `items: [...]`, or
    `create_text {grid}` for tables and calendars; every text gets its `paragraph_style`; per-step `artboard: k` for
-   other pages. Or **one `run_script` builder** (`file` + `args`) when logic is easier in code; start it with
+   other pages. Or a ready **recipe** (`run_script {recipe: "list"}`: calendar month, labels sheet, business card, style
+   guide, colour chips), or **one `run_script` builder** (`file` + `args`) when logic is easier in code; start it with
    `AIA.fresh("Layer")` so a re-run replaces instead of adding.
 4. **One check call:** `preview {reference?, more: [other artboards], preflight: true}`. Fix what it shows (one
    batch), check once more.

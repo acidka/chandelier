@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Live checks for 0.2.1 (needs a running Illustrator; works only in documents it creates, closes them unsaved):
 // preflight {tokens, contrast} brand checks; export {variants} (layer sets) and screen assets {each, scales};
-// symbols; path_ops trace.
+// symbols; path_ops trace; run_script recipes (renders kept in the temp folder for a look).
 //   npm run build && node test/live-checks.mjs
 import { mkdtempSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { encodePng } from '../dist/image.js';
@@ -108,5 +108,29 @@ await call('find_items', { type: ['placed', 'raster'] }, { check: (v) => assert(
 await call('find_items', { type: 'path', count_only: true }, { check: (v) => assert(v.total > 0, 'vector paths: ' + v.total) });
 await call('path_ops', { op: 'trace', refs: 'name:Logo' }, { expectError: true }); // not an image any more
 await call('documents', { action: 'close', discard: true });
+
+// ── recipes ──
+await call('run_script', { recipe: 'list' }, { check: (v) => assert(['business-card', 'calendar-month', 'color-chips', 'labels-sheet', 'style-guide'].every((n) => v.recipes.some((r) => r.name === n && r.args)), 'five recipes listed') });
+await call('run_script', { recipe: 'nope' }, { expectError: true });
+await call('documents', { action: 'new', width: 297, height: 210, units: 'mm', title: 'aia-checks-recipes' });
+await call('run_script', { recipe: 'calendar-month', args: [{ year: 2027, month: 1, lang: 'uk', week_numbers: true, x: 10, y: 10, w: 180, h: 120 }] }, { check: (v) => assert(v.result.days === 31 && v.result.rows === 5 && v.result.styles.length === 4, 'January 2027: 31 days in 5 rows ' + JSON.stringify(v.result)) });
+await call('find_items', { name: 'Month' }, { check: (v) => assert(v.total === 1, 'month title') });
+await call('run_script', { recipe: 'labels-sheet', args: [{ texts: ['Alpha', 'Beta\nTwo lines', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta'], cols: 3, rows: 2, x: 200, y: 10, label_w: 28, label_h: 18, gap_x: 2, gap_y: 2 }] }, { check: (v) => {
+  assert(v.result.labels === 6, 'six labels placed'); assert((v.warnings ?? []).some((w) => /7 texts but 6 labels/.test(w)), 'overflow warned ' + JSON.stringify(v.warnings));
+} });
+await call('run_script', { recipe: 'business-card', args: [{ name: 'Olena Kovalenko', title: 'Art director', company: 'Studio', lines: ['+380 44 000 0000', 'olena@example.com'], x: 200, y: 60, bleed: 3 }] }, { check: (v) => assert(v.result.size[0] === 85 && v.result.size[1] === 55, 'card 85 × 55 mm ' + JSON.stringify(v.result)) });
+await call('swatches', { action: 'add', name: 'Brand Red', color: 'cmyk(0,95,85,0)' });
+await call('run_script', { recipe: 'color-chips', args: [{ x: 10, y: 140, cols: 8, chip_w: 14, chip_h: 10 }] }, { check: (v) => assert(v.result.chips >= 1, 'chips from swatches ' + JSON.stringify(v.result)) });
+await call('preflight', { ignore: ['live_text'] }, { check: (v) => assert(v.summary.errors === 0, 'recipes leave no preflight errors ' + JSON.stringify(v.summary)) });
+await call('export', { format: 'png', path: join(dir, 'recipes-1.png'), scale: 2 });
+await call('documents', { action: 'close', discard: true });
+await call('documents', { action: 'new', width: 210, height: 297, units: 'mm', title: 'aia-checks-guide' });
+await call('swatches', { action: 'add', name: 'Navy', color: 'cmyk(100,85,35,30)' });
+await call('styles', { action: 'create', name: 'Heading', font: 'Arial Bold', size: 24 });
+await call('styles', { action: 'create', name: 'Body', font: 'Arial', size: 10 });
+await call('run_script', { recipe: 'style-guide', args: [{ x: 15, y: 15 }] }, { check: (v) => assert(v.result.swatches >= 1 && v.result.styles === 2, 'style guide counts ' + JSON.stringify(v.result)) });
+await call('export', { format: 'png', path: join(dir, 'recipes-2.png') });
+await call('documents', { action: 'close', discard: true });
+console.log('renders:', dir);
 
 process.exit((await done()) ? 1 : 0);
