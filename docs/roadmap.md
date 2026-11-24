@@ -324,7 +324,7 @@ fit, to keep the tool list under its 50 KB budget.
 - [x] ✅ macOS live pass (Illustrator 29.1 ru_RU, macOS, Node 22.23, 2026-11-24): all seven suites green (`live`, `live-edit`, `live-release`, `live-layout`, `live-finish`, `live-checks`, `live-print`); the earlier `live-print` failure (preflight missed `rgb_in_cmyk` **and** `low_res` for the linked `LowRes` image, so the image itself wasn't seen as a linked raster) didn't reproduce in 10 runs, alone and after the other suites. The test now records how Illustrator sees `LowRes` and prints it if the check fails again
 - [x] ✅ Release 0.2.1 (2026-11-24): npm `chandelier-mcp@0.2.1` (owner; checked from the registry with a live `status`), plugin and marketplace 0.2.1 (launcher `^0.2.0` picks it up), `main` fast-forwarded, tag `v0.2.1`, GitHub release with `chandelier-0.2.1.mcpb`
 
-## Milestone 🎯 0.3 — production automation 🔄 (features done; Windows check and release open)
+## Milestone 🎯 0.3 — production automation ✅ (released 2026-11-24)
 
 Items 2–4 of the [gap review](research/feature-gaps.md#recommended-order): the jobs print shops and production teams
 repeat, done in one call each. Owner, 2026-11-24: "finish 0.3"; the tool-list size problem solved with profiles
@@ -336,7 +336,7 @@ repeat, done in one call each. Owner, 2026-11-24: "finish 0.3"; the tool-list si
 - [x] ✅ Tool profiles: `CHANDELIER_TOOLS=lean` (8 tools + `tools` meta-tool: catalog, query, schema, call; 15.4 KB ≈ 4.9 k tokens) or a list of names; `full` stays the default (53.6 KB; budget raised to 55 KB)
 - [x] ✅ Tests: unit (CSV, patterns, ASE round trip, file lists, profiles, lean server) and `test/live-production.mjs` (macOS, Illustrator 29.1 ru_RU, 2026-11-24: green)
 - [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 127/127; `live-production` green by parts — merge and recolor in a full run, files on a fresh Illustrator (`ONLY=files`); Illustrator crashed twice at a new/opened document late in full runs (the 0.2.1 known issue; a 4× save-close-open loop alone doesn't reproduce it)
-- [ ] ⏳ Release 0.3.0: version bump, npm (owner approves the staged publish), `main`, tag, GitHub release with the `.mcpb`
+- [x] ✅ Release 0.3.0 (2026-11-24): npm `chandelier-mcp@0.3.0` (owner), plugin and marketplace 0.3.0 (launcher `^0.3.0`), `main` fast-forwarded, tag `v0.3.0`, GitHub release with `chandelier-0.3.0.mcpb`
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -458,3 +458,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | **0.2.1 released**: npm, plugin 0.2.1, tag `v0.2.1`, GitHub release with the `.mcpb`; W1 modal-dialog check carried over to phase 7 |
 | 2026-11-24 | 0.3 features: `data_merge`, `batch {files}`, `swatches {recolor, import}`, tool profiles (`CHANDELIER_TOOLS=lean`, `tools` meta-tool); plan D12, D13; `test/live-production.mjs` green on macOS |
 | 2026-11-24 | 0.3 Windows check (live-production by parts; Illustrator 2027 VM crashes late in long runs, as in 0.2.1); version 0.3.0, plugin launcher `^0.3.0` |
+| 2026-11-24 | **0.3.0 released**: npm, plugin 0.3.0, tag `v0.3.0`, GitHub release with the `.mcpb` |

@@ -179,9 +179,9 @@ behind them: [plan](docs/plan.md).
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
 
-**0.3** (2026-11-24): production automation — `data_merge` (variable data into artboards, n-up sheets or files),
+**0.3 released** (2026-11-24): production automation — `data_merge` (variable data into artboards, n-up sheets or files),
 `batch {files}` (the same steps over many files, copies saved), `swatches {recolor, import}` (snap colours to a
-palette or an `.ase` library), and the `lean` tool profile. Release pending.
+palette or an `.ase` library), and the `lean` tool profile.
 
 **0.2.1 released** (2026-11-24): recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart
 and a debug log; a fix for tinted swatches (a tint changed the swatch itself).
