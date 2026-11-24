@@ -212,6 +212,11 @@ DevTools: select the Sun → "make this blue" → "make the headline a bit small
   selection, no search (9.0 s from Send to answer); headline 48 → 41 pt with a clear before/after answer (17.1 s);
   sign-off with "the document isn't saved yet" (1.9 s). 15 turns, 36 s, $0.28. The activity line went
   waiting → thinking → working → idle as designed.
-- **Channel mode** (§ 3) can't be tried headless (`--dangerously-load-development-channels` needs an interactive
-  session): a local server `chandelier-channel` (`CHANDELIER_CHANNEL=1`) is set up for the owner to try with
-  `claude --dangerously-load-development-channels server:chandelier-channel`.
+- **Channel mode, live (2026-11-24):** an interactive Claude Code 2.1.331 session (driven through a pty: folder trust,
+  the development-channel warning, then left idle, no task given) with only the channel server. "make this green"
+  written in the panel with the Button selected was pushed into the idle session (`channel: make this green`); it
+  woke up, made 3 tool calls, set the Button to cmyk(80,10,100,0) and answered in the panel — 6 s from Send to work,
+  10 s to the answer. Start-up printed "server:chandelier-channel · no MCP server configured with that name" although
+  the server (given with `--mcp-config`) worked — harmless here. For the owner (alias `claude-personal`, own config
+  dir): local server `chandelier-channel` set up; start with `claude-personal --dangerously-load-development-channels
+  server:chandelier-channel`.
