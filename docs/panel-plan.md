@@ -79,7 +79,7 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
 | P1 | Panel core, snapshot, CEP manifest and UI; `PanelTransport`; `events` tool; dev installer; unit tests (fake panel engine, real socket) | ✅ 2026-11-24 (unit tests 149/149) |
 | P2 | First live run in Illustrator 29.1 (macOS): panel loads, Node enabled, runtime loads through `evalScript`, `test/live.mjs` green with `CHANDELIER_TRANSPORT=panel`, events seen; measure per-call latency against the bridge | ✅ 2026-11-24 ([§ 7](#7-first-live-run-p2)); fixed: state pushed with the first look, stale `saved` after a document switch, empty selection events on a switch |
 | P3 | Same on Windows (VM) | ⛔ 2026-11-24, rechecked: Illustrator 2027 **native ARM64** blocks every third-party CEP extension by design (built-in list of Adobe ids in `Services.aip`, "not supported on your device") — [§ 8](#8-windows-arm64-p3). CEP on Windows needs x64 Illustrator; Windows ARM needs a UXP panel |
-| P4 | Agent trial: a pairing task ("fix what I select") with a fresh agent; decide whether events are worth shipping | ⏳ |
+| P4 | Agent trial: a pairing task ("fix what I select") with a fresh agent; decide whether events are worth shipping | ✅ 2026-11-24 with the owner on the Mac ([§ 9](#9-pairing-trial-p4)): every hand selection arrives within ~0.5 s with uuids; "change colour" / "change font" applied to exactly the selected item by uuid. Open: a fresh agent on its own (local `chandelier-panel` server added) |
 | P5 | Ship or stop: if yes, package the panel (signed ZXP or `npx chandelier-mcp install-panel`), README, plugin skill section; if no, keep the branch for UXP | ❓ owner |
 
 ## 6. Open questions and risks
@@ -116,8 +116,8 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
 - **Fixed during the run:** `state` was `null` until something changed (the first look is now pushed); after
   switching to a document with unsaved changes `state.saved` read `true` (the panel now sends the whole snapshot); a
   switch between documents with nothing selected sent an empty `selection` event.
-- **Still open:** whether the panel keeps polling while it is hidden behind another panel tab or collapsed; designer
-  (not script) selection in a real pairing session (P4).
+- **Still open:** whether the panel keeps polling while it is hidden behind another panel tab or collapsed.
+  (Designer selection: confirmed in P4, § 9.)
 
 ## 8. Windows ARM64 (P3)
 
@@ -146,3 +146,26 @@ Node 26.13 ARM64.
   through the Windows shell (`Shell.Application.ShellExecute`, parent explorer) it does. Doesn't affect the OS bridge.
 - **Consequence:** on Windows the panel needs x64 Illustrator (real x64 hardware, windows-plan § 9) — or UXP later.
   Windows-on-ARM users would keep the OS bridge (events unavailable).
+
+## 9. Pairing trial (P4)
+
+2026-11-24 · Illustrator 29.1.0, macOS 27.2.1, Node 22.23.3 · the owner at Illustrator, the agent (this session)
+acting through a panel-mode MCP client; trial poster (A4: Headline, Subtitle, Sun, Button, Button label) left open.
+
+- **Hand selections arrive, each as one event within a poll tick (~0.5 s):** a click on the headline; deselect
+  (`count: 0`); Shift-click adding the Button, then the Sun (items in click order); the Type tool's cursor in the
+  Headline, then in the Subtitle (`text: {uuid, text: ""}` — no characters highlighted). None carried `after_agent`.
+- **Acting on the selection:** "change color" → `modify_items {refs: "681", fill}` on the Sun; "change text font" →
+  `edit_text {refs: "683", font: "Georgia-Bold"}` on the Headline — by the uuid from the event, no search call.
+- **A first false alarm:** the owner's first selection never reached the Mac's Illustrator (Illustrator itself had
+  nothing selected; the Windows VM's Illustrator was also on screen). A selection made by a script through the OS
+  bridge arrived at once, which separated "nothing selected" from "panel missed it".
+- **MRAP for ~7 s:** the first two `edit_text` calls through the panel failed with MRAP while the text cursor was in
+  the frame; the same change then succeeded through the OS bridge, a fresh panel connection and the same client,
+  with Illustrator in front or behind. Not a panel gap: the runtime's `A.retry` (3 tries, 40/80 ms) runs in the
+  panel's engine too — its counters read `retried 4, failed 2`, i.e. both calls retried fully; Illustrator stayed
+  busy longer than the retry window (cause unknown; perhaps the designer working in a menu or panel at that moment).
+  Possible follow-up for both transports: one server-side retry after ~1 s before reporting MRAP.
+- **Verdict for P5 (owner):** events work as designed on macOS; the pairing loop needs no extra tool calls (the
+  selection's uuids are the refs). Remaining before shipping: a fresh agent's unprompted use of `events`, the hidden
+  panel question, packaging/signing, and no Windows-ARM support (§ 8).
