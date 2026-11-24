@@ -130,9 +130,9 @@ export class PanelTransport extends Transport {
             resolve(true);
             continue;
           }
+          if (m.state && m.id === undefined && !m.event) { this.state = m.state; continue; }
           if (m.event) {
             const { type, ...rest } = m.event;
-            if (type === 'selection' || type === 'document' || type === 'saved' || type === 'edited') this.state = { ...(this.state as object ?? {}), ...stateOf(type, rest) };
             if (type === 'paused') this.state = null;
             this.events.push({ type, ...rest });
             continue;
@@ -172,11 +172,4 @@ export class PanelTransport extends Transport {
     this.sock = null;
     super.stop();
   }
-}
-
-/** The part of the panel state an event updates. */
-function stateOf(type: string, e: Record<string, unknown>): Record<string, unknown> {
-  if (type === 'selection') return { doc: e.doc, count: e.count, items: e.items, text: e.text };
-  if (type === 'document') return { doc: e.doc, docs: e.docs, count: 0, items: [], text: undefined };
-  return { saved: type === 'saved' };
 }

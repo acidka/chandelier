@@ -1,9 +1,12 @@
 // Copy non-TypeScript assets (the JXA and PowerShell bridges, the ExtendScript runtime, the recipes, the CEP panel) into dist/.
-import { cpSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// a dev install with --link --debug points Illustrator at dist/cep: keep its .debug (DevTools port) across builds
+const DEBUG = join(ROOT, 'dist/cep/.debug');
+const debug = existsSync(DEBUG) ? readFileSync(DEBUG) : null;
 for (const f of ['bridge/bridge-mac.js', 'bridge/bridge-win.ps1', 'runtime', 'recipes', 'cep']) {
   rmSync(join(ROOT, 'dist', f), { recursive: true, force: true }); // no stale files (the runtime loads every .jsx in the folder)
   mkdirSync(dirname(join(ROOT, 'dist', f)), { recursive: true });
@@ -11,3 +14,4 @@ for (const f of ['bridge/bridge-mac.js', 'bridge/bridge-win.ps1', 'runtime', 're
 }
 // the panel shows which server version it belongs to
 writeFileSync(join(ROOT, 'dist/cep/version.json'), JSON.stringify({ version: JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version }) + '\n');
+if (debug) writeFileSync(DEBUG, debug);

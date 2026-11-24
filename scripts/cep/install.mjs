@@ -3,10 +3,11 @@
 //   node scripts/cep/install.mjs            copy dist/cep into Illustrator's CEP extensions folder
 //   node scripts/cep/install.mjs --link     symlink instead (edits in dist/cep apply after "npm run build" + reopening the panel)
 //   node scripts/cep/install.mjs --uninstall
+//   add --debug to open Chrome DevTools for the panel at http://localhost:8098 (writes the panel's .debug file)
 // Unsigned extensions load only with PlayerDebugMode=1 for the CEP version Illustrator uses (CSXS.9 … CSXS.14 are set;
-// Illustrator 2025 uses CEP 12). The setting is per user; --uninstall leaves it and prints how to undo it.
+// Illustrator 2025 (29.x) uses CEP 11). The setting is per user; --uninstall leaves it and prints how to undo it.
 // Then restart Illustrator and open Window > Extensions > Chandelier.
-import { cpSync, rmSync, symlinkSync, existsSync, mkdirSync, lstatSync } from 'node:fs';
+import { cpSync, rmSync, symlinkSync, existsSync, mkdirSync, lstatSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -21,6 +22,7 @@ const EXT_DIR = WIN
   : join(homedir(), 'Library', 'Application Support', 'Adobe', 'CEP', 'extensions');
 const TARGET = join(EXT_DIR, ID);
 const CSXS = [9, 10, 11, 12, 13, 14];
+const DEBUG_PORT = 8098;
 const args = new Set(process.argv.slice(2));
 
 function removeTarget() {
@@ -46,6 +48,14 @@ removeTarget();
 if (args.has('--link')) symlinkSync(SRC, TARGET, WIN ? 'junction' : 'dir');
 else cpSync(SRC, TARGET, { recursive: true });
 console.log(`${args.has('--link') ? 'Linked' : 'Copied'} the panel to ${TARGET}`);
+if (args.has('--debug')) {
+  writeFileSync(join(TARGET, '.debug'), `<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionList>
+  <Extension Id="${ID}.panel"><HostList><Host Name="ILST" Port="${DEBUG_PORT}"/></HostList></Extension>
+</ExtensionList>
+`);
+  console.log(`DevTools for the panel: http://localhost:${DEBUG_PORT} (after restarting Illustrator and opening the panel).`);
+}
 
 for (const n of CSXS) {
   if (WIN) execFileSync('reg', ['add', `HKCU\\Software\\Adobe\\CSXS.${n}`, '/v', 'PlayerDebugMode', '/t', 'REG_SZ', '/d', '1', '/f'], { stdio: 'ignore' });

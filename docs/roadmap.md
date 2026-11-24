@@ -299,7 +299,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 
 ## Phase 8 — Future 🧊
 
-- [ ] 🔄 CEP panel transport: **events** (selection changed, document saved) pushed to the agent, scripts through the panel — [panel plan](panel-plan.md). MVP on branch `feature/panel` (2026-11-24): panel (local socket, token, snapshot polling, pause switch), `PanelTransport` (opt-in `CHANDELIER_TRANSPORT=panel`, falls back to the OS bridge), `events` tool (long poll), dev installer; unit tests 149/149. Next: first live run in Illustrator (P2, needs the owner)
+- [ ] 🔄 CEP panel transport: **events** (selection changed, document saved) pushed to the agent, scripts through the panel — [panel plan](panel-plan.md). MVP on branch `feature/panel` (2026-11-24): panel (local socket, token, snapshot polling, pause switch), `PanelTransport` (opt-in `CHANDELIER_TRANSPORT=panel`, falls back to the OS bridge), `events` tool (long poll), dev installer; unit tests 151/151. **First live run (P2, 2026-11-24, Illustrator 29.1 macOS): live suite 23/23 through the panel; `run_script` median 1.6 ms vs 7.0 ms over the OS bridge; events seen.** Next: Windows (P3), agent pairing trial (P4)
 - [ ] 🧊 UXP plugin transport when Illustrator UXP is public (~Q2 2027 beta, ~Q4 2027 GA)
 - [x] ✅ Live effects via LiveEffect XML (drop shadow, round corners, feather, blur) — done in 0.4 (`effects`)
 - [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
@@ -480,3 +480,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | **0.4.1 released** (registry metadata, README): plugin 0.4.1, tag `v0.4.1`, GitHub release with the `.mcpb`; npm and the registry entry are published by the owner |
 | 2026-11-24 | `chandelier-mcp@0.4.1` on npm (owner; `npx` from the registry starts, 35 tools, `status` answers — Illustrator was not running, so no live round trip) and **listed in the MCP Registry** as `io.github.acidka/chandelier` |
 | 2026-11-24 | Panel MVP (gap item 16) started on branch `feature/panel`: CEP panel, `PanelTransport`, `events` tool, installer, unit tests; [panel plan](panel-plan.md) |
+| 2026-11-24 | Panel P2 live run (Illustrator 29.1, macOS): panel loads unsigned, live suite 23/23 through it, events arrive; fixed initial/stale `state` and empty selection events on a document switch; installer `--debug` (DevTools, never shipped); `CHANDELIER_TRANSPORT=panel npm run test:live` |

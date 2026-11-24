@@ -5,6 +5,7 @@
 //   a client must send {"op":"hello","token":…} first, else it is dropped. Same NDJSON protocol as the OS bridges:
 //   → {"id":1,"op":"js","code":"…","timeout":30}   ← {"id":1,"ok":true,"result":"…"}
 //   Handshake reply: {"id":0,"ok":true,"result":"ready","panel":{version,protocol},"state":<snapshot>}.
+//   {"state":<snapshot>} is pushed with the first snapshot after a connect or a resume, and before every batch of events.
 // - Requests run one at a time through evalScript (Illustrator's engine is single-threaded anyway).
 // - While a client is connected, a snapshot script (host/snapshot.jsx) runs every pollMs; changes become events
 //   pushed to every client as {"event":{type, t, …}}: document (active document changed, opened, closed), saved,
@@ -28,11 +29,12 @@ function diff(prev, cur) {
   if (!cur || cur.error || !prev || prev.error) return [];
   const ev = [];
   if (prev.doc !== cur.doc || prev.docs !== cur.docs) {
-    ev.push({ type: 'document', doc: cur.doc, docs: cur.docs, previous: prev.doc });
+    ev.push({ type: 'document', doc: cur.doc, docs: cur.docs, previous: prev.doc, saved: cur.saved });
   } else if (prev.saved !== cur.saved) {
     ev.push({ type: cur.saved ? 'saved' : 'edited', doc: cur.doc });
   }
-  if (cur.doc && selSig(prev) !== selSig(cur)) {
+  // a document switch reports the new document's selection only when something is selected there
+  if (cur.doc && (prev.doc === cur.doc ? selSig(prev) !== selSig(cur) : cur.count > 0)) {
     const e = { type: 'selection', doc: cur.doc, count: cur.count, items: cur.items };
     if (cur.text) e.text = cur.text;
     ev.push(e);
@@ -85,7 +87,11 @@ function createPanel(opts) {
       let cur;
       try { cur = JSON.parse(await evalScript(opts.snapshot)); } catch (e) { cur = { error: 'snapshot: ' + e.message }; }
       const events = diff(last, cur);
+      // the first good snapshot (after a connect or a resume) is the baseline: send it as the current state
+      const baseline = !last && !cur.error;
       if (!cur.error) last = cur;
+      // the whole snapshot goes out first whenever something changed, so clients never patch state together
+      if (baseline || events.length) broadcast({ state: cur });
       for (const e of events) {
         e.t = Date.now();
         if (afterAgent) e.after_agent = true;
@@ -101,7 +107,8 @@ function createPanel(opts) {
     let buf = '', authed = false;
     sock.setEncoding('utf8');
     sock.setNoDelay(true);
-    const drop = () => { if (clients.delete(sock)) changed(); };
+    // nobody listening: forget the state, so the next agent starts from a fresh baseline instead of a stale diff
+    const drop = () => { if (clients.delete(sock)) { if (!clients.size) last = null; changed(); } };
     sock.on('close', drop);
     sock.on('error', drop);
     sock.on('data', (d) => {

@@ -49,6 +49,11 @@ describe('panel diff', () => {
     expect(diff(base, { ...base, saved: false })).toEqual([{ type: 'edited', doc: 'A.ai' }]);
     expect(diff({ ...base, saved: false }, base)).toEqual([{ type: 'saved', doc: 'A.ai' }]);
   });
+  it('a document switch reports a selection only when something is selected there', () => {
+    expect(diff(base, { ...base, doc: 'B.ai', docs: 2 }).map((e: any) => e.type)).toEqual(['document']);
+    const sel = { ...base, doc: 'B.ai', docs: 2, count: 1, items: [{ uuid: '9', type: 'PathItem', name: '' }] };
+    expect(diff(base, sel).map((e: any) => e.type)).toEqual(['document', 'selection']);
+  });
   it('selection changes by uuid, and text cursor moves', () => {
     const one = { ...base, count: 1, items: [{ uuid: '7', type: 'PathItem', name: '' }] };
     expect(diff(base, one)).toEqual([{ type: 'selection', doc: 'A.ai', count: 1, items: one.items }]);
@@ -123,8 +128,18 @@ describe('panel socket', () => {
     expect(await until(() => T!.events.since(0, ['edited']).length > 0)).toBe(true);
     expect(T!.events.since(0, ['edited'])[0].after_agent).toBe(true);
 
-    world.doc = 'B.ai'; world.docs = 2; world.count = 0; world.items = [];
+    world.doc = 'B.ai'; world.docs = 2; world.count = 0; world.items = []; // B.ai has unsaved changes too
     expect(await until(() => T!.events.since(0, ['document']).length > 0)).toBe(true);
+    expect(T!.events.since(0, ['document'])[0]).toMatchObject({ doc: 'B.ai', saved: false });
+    expect(T!.state).toMatchObject({ doc: 'B.ai', saved: false, count: 0, items: [] });
+  });
+
+  it('sends the current state once the first snapshot arrives, before anything changes', async () => {
+    makeT();
+    await T!.ensure();
+    expect(await until(() => T!.state !== null)).toBe(true);
+    expect(T!.state).toMatchObject({ doc: 'A.ai', count: 0 });
+    expect(T!.events.since(0, ['selection', 'document'])).toEqual([]);
   });
 
   it('pausing stops events; the designer decides', async () => {

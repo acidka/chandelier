@@ -15,6 +15,10 @@ describe('release metadata', () => {
     expect(json('plugin/.claude-plugin/plugin.json').version).toBe(pkg.version);
     expect(json('.claude-plugin/marketplace.json').plugins[0].version).toBe(pkg.version);
   });
+  it('a dev install\'s panel .debug file (DevTools port) never ships', () => {
+    expect(pkg.files).toContain('!dist/cep/.debug');
+    expect(readFileSync(new URL('../../scripts/build-mcpb.mjs', import.meta.url), 'utf8')).toMatch(/endsWith\('\.debug'\)/);
+  });
   it('registry listing matches the npm package', () => {
     expect(pkg.mcpName).toBe(server.name);
     expect(server.packages[0].identifier).toBe(pkg.name);

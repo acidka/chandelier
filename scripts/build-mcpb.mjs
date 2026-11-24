@@ -15,7 +15,7 @@ if (!existsSync(join(ROOT, 'dist/index.js'))) throw new Error('Run npm run build
 
 rmSync(STAGE, { recursive: true, force: true });
 mkdirSync(STAGE, { recursive: true });
-cpSync(join(ROOT, 'dist'), join(STAGE, 'dist'), { recursive: true, filter: (f) => !f.endsWith('.map') });
+cpSync(join(ROOT, 'dist'), join(STAGE, 'dist'), { recursive: true, filter: (f) => !f.endsWith('.map') && !f.endsWith('.debug') }); // .debug: a dev install's DevTools port
 for (const f of ['LICENSE', 'README.md']) cpSync(join(ROOT, f), join(STAGE, f));
 cpSync(join(ROOT, 'docs/assets/brand/chandelier-mark-512.png'), join(STAGE, 'icon.png'));
 writeFileSync(join(STAGE, 'package.json'), JSON.stringify({
