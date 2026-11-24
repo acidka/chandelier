@@ -299,7 +299,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 
 ## Phase 8 — Future 🧊
 
-- [ ] 🔄 CEP panel transport: **events** (selection changed, document saved) pushed to the agent, scripts through the panel — [panel plan](panel-plan.md). MVP on branch `feature/panel` (2026-11-24): panel (local socket, token, snapshot polling, pause switch), `PanelTransport` (opt-in `CHANDELIER_TRANSPORT=panel`, falls back to the OS bridge), `events` tool (long poll), dev installer; unit tests 151/151. **First live run (P2, 2026-11-24, Illustrator 29.1 macOS): live suite 23/23 through the panel; `run_script` median 1.6 ms vs 7.0 ms over the OS bridge; events seen.** Windows P3 blocked: native ARM64 Illustrator 2027 refuses third-party CEP panels ("not supported on your device"); needs x64 Windows. P4 pairing trial with the owner ✅ (hand selections arrive with uuids, changes applied by uuid). Next: P5 ship-or-stop (owner)
+- [x] ✅ CEP panel (experimental, for 0.5): **events** (selection, document, saved) pushed to the agent, **chat** from the panel (`message` events, `events {say}`, activity line), **channel mode** (a panel message wakes a Claude Code session), scripts through the panel (1.6 ms vs 7.0 ms) — [panel plan](panel-plan.md). Install: `npx chandelier-mcp install-panel`. Live on macOS (Illustrator 29.1): live suite 23/23, pairing trial with the owner, fresh agent 3/3, channel wake-up. Open: signing (ZXP), x64 Windows test; Windows ARM Illustrator loads only Adobe's CEP panels (needs UXP)
 - [ ] 🧊 UXP plugin transport when Illustrator UXP is public (~Q2 2027 beta, ~Q4 2027 GA)
 - [x] ✅ Live effects via LiveEffect XML (drop shadow, round corners, feather, blur) — done in 0.4 (`effects`)
 - [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
@@ -493,3 +493,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | Panel channel mode confirmed live: an idle interactive session woke on a panel message, changed the selected item and answered in the panel (10 s) |
 | 2026-11-24 | MRAP: a fourth retry after 1 s for steps safe to repeat (`A.retry`: 40 ms, 80 ms, 1 s) — busy spells of seconds seen in the panel trial |
 | 2026-11-24 | Panel chat history saved to `~/.chandelier/chat.json` (survives a panel reload) |
+| 2026-11-24 | Panel P5: shipped as experimental for 0.5 — `npx chandelier-mcp install-panel`, README and plugin skill sections; merged into `develop` |

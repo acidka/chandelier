@@ -1,8 +1,8 @@
 # Chandelier panel: events from Illustrator (phase 8, gap item 16)
 
-Status: **MVP on branch `feature/panel`** (2026-11-24) — built, unit-tested and **tried in Illustrator 29.1 on
-macOS**: the live suite passes through the panel ([§ 7](#7-first-live-run-p2)). Not released; the default transport
-is unchanged.
+Status: **experimental, merged into `develop` for 0.5** (2026-11-24) — live-tested in Illustrator 29.1 on macOS
+(live suite, pairing trial, fresh agent 3/3, channel wake-up); opt-in (`CHANDELIER_TRANSPORT=panel`), the default
+transport is unchanged. Install: `npx chandelier-mcp install-panel`.
 
 ## 1. Why
 
@@ -109,7 +109,7 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
 | P3 | Same on Windows (VM) | ⛔ 2026-11-24, rechecked: Illustrator 2027 **native ARM64** blocks every third-party CEP extension by design (built-in list of Adobe ids in `Services.aip`, "not supported on your device") — [§ 8](#8-windows-arm64-p3). CEP on Windows needs x64 Illustrator; Windows ARM needs a UXP panel |
 | P4 | Agent trial: a pairing task ("fix what I select") with a fresh agent; decide whether events are worth shipping | ✅ 2026-11-24 with the owner on the Mac ([§ 9](#9-pairing-trial-p4)): every hand selection arrives within ~0.5 s with uuids; "change colour" / "change font" applied to exactly the selected item by uuid. Open: a fresh agent on its own (local `chandelier-panel` server added) |
 | P4b | Fresh agent on its own (headless `claude -p`, only the panel server, brief: "I'll write to you from the Chandelier panel… handle my requests there"), designer messages played through DevTools | ✅ 2026-11-24 ([§ 10](#10-fresh-agent-trial-p4b)): found the listen → act → `say` loop from the tool description alone; 3/3 requests after a fix (messages written before the agent's first call were skipped) |
-| P5 | Ship or stop: if yes, package the panel (signed ZXP or `npx chandelier-mcp install-panel`), README, plugin skill section; if no, keep the branch for UXP | ❓ owner |
+| P5 | Ship or stop: package the panel, README, plugin skill section; merge for 0.5 | ✅ 2026-11-24 (owner: "finish all"): shipped as **experimental, unsigned** — `npx chandelier-mcp install-panel [--uninstall]` (copies the panel, sets `PlayerDebugMode`), README section, plugin skill section, merged into `develop` for 0.5. Signing (ZXP) stays open: it needs Adobe's ZXPSignCmd and a certificate |
 
 ## 6. Open questions and risks
 
