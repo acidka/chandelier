@@ -78,7 +78,7 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
 |------|------|--------|
 | P1 | Panel core, snapshot, CEP manifest and UI; `PanelTransport`; `events` tool; dev installer; unit tests (fake panel engine, real socket) | ✅ 2026-11-24 (unit tests 149/149) |
 | P2 | First live run in Illustrator 29.1 (macOS): panel loads, Node enabled, runtime loads through `evalScript`, `test/live.mjs` green with `CHANDELIER_TRANSPORT=panel`, events seen; measure per-call latency against the bridge | ✅ 2026-11-24 ([§ 7](#7-first-live-run-p2)); fixed: state pushed with the first look, stale `saved` after a document switch, empty selection events on a switch |
-| P3 | Same on Windows (VM) | ⏳ |
+| P3 | Same on Windows (VM) | ⛔ 2026-11-24: Illustrator 2027 **native ARM64** (the only build that runs in the VM) refuses the panel — "The following extensions are not supported on your device: Chandelier" ([§ 8](#8-windows-arm64-p3)). Needs x64 Windows with Illustrator |
 | P4 | Agent trial: a pairing task ("fix what I select") with a fresh agent; decide whether events are worth shipping | ⏳ |
 | P5 | Ship or stop: if yes, package the panel (signed ZXP or `npx chandelier-mcp install-panel`), README, plugin skill section; if no, keep the branch for UXP | ❓ owner |
 
@@ -118,3 +118,23 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
   switch between documents with nothing selected sent an empty `selection` event.
 - **Still open:** whether the panel keeps polling while it is hidden behind another panel tab or collapsed; designer
   (not script) selection in a real pairing session (P4).
+
+## 8. Windows ARM64 (P3)
+
+2026-11-24 · Windows 11 Pro ARM64 VM (Parallels 27.1, macOS 27.2.1), Illustrator 2027 (31.0.0, native ARM64, CEP 12),
+Node 26.13 ARM64.
+
+- **Unit tests** on the panel branch: 158/158 in the VM (panel tests included; the 0600 mode check is skipped on Windows).
+- **Install:** `node scripts/cep/install.mjs --link --debug` works (junction into `%APPDATA%\Adobe\CEP\extensions`,
+  `PlayerDebugMode=1` under `HKCU\Software\Adobe\CSXS.9…14`).
+- **Refused:** CEP 12 finds and registers the extension (`Adding extension with id 'io.github.acidka.chandelier.panel'`,
+  then `WARN Service: io.github.acidka.chandelier.panel not registered properly`), and Illustrator shows "The following
+  extensions are not supported on your device. Contact the provider for more information. Chandelier"; no
+  Window > Extensions menu appears. Adobe's own CEP panels (Home, Libraries) do load. No manifest setting that changes
+  this is documented; an Adobe forum thread from before the ARM release (Oct 2024) only expected that users would run
+  the x64 build under emulation (Prism) for CEP extensions — and the x64 build refused to install in this VM (windows-plan § 11).
+- **Side finding:** started directly from a scheduled task (`run-interactive.ps1` → `status {launch}`), Illustrator's
+  CEP doesn't start at all (`ERROR PlugPlugSetup:` in `%TEMP%\CEP12-ILST.log`, Adobe's panels missing too); started
+  through the Windows shell (`Shell.Application.ShellExecute`, parent explorer) it does. Doesn't affect the OS bridge.
+- **Consequence:** on Windows the panel needs x64 Illustrator (real x64 hardware, windows-plan § 9) — or UXP later.
+  Windows-on-ARM users would keep the OS bridge (events unavailable).
