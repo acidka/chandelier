@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-11-23 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
+Last updated: 2026-11-24 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
 
 Each phase has **exit criteria**. A phase is done only when they are met and the docs are updated.
 
@@ -306,7 +306,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 - [ ] 🧊 Visual diff: compare a preview with a reference image and report misaligned regions
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
 
-## Milestone 🎯 0.2.1 — quick wins 🔄 (features done; macOS `live-print` failure and release open)
+## Milestone 🎯 0.2.1 — quick wins 🔄 (features done, tests green on both platforms; release open)
 
 The 0.1.x / quick-win items of the [gap review](research/feature-gaps.md#recommended-order) plus the two 0.2 extras that
 didn't make 0.2.0 (owner, 2026-11-24: "finish all 0.2.x"). New features go in as options on existing tools where they
@@ -321,7 +321,7 @@ fit, to keep the tool list under its 50 KB budget.
 - [x] ✅ Recipe library: `run_script {recipe, args}` runs ready builders shipped in `src/recipes/` (→ `dist/recipes/`, linted as ES3): `calendar-month` (en/uk, Monday/Sunday first, ISO weeks, paragraph styles per role), `labels-sheet`, `business-card` (band into the bleed), `color-chips`, `style-guide` (measures each style sample: a style's size can't be read, B1); `recipe: "list"` reads each file's header; unit test + `test/live-checks.mjs` (renders checked by eye)
 - [ ] ⏳ W1 modal-dialog check on Windows (needs the owner at the VM); seen in the wild: the links dialog during a restart's quit (windows-plan § 15, known issue)
 - [x] ✅ Regression pass in the Windows VM: all live suites green, unit tests 118/118 (2026-11-24)
-- [ ] 🔄 macOS live pass (Illustrator 29.1 ru_RU, 2026-11-24): `live`, `live-edit`, `live-release`, `live-layout`, `live-finish`, `live-checks` green; **`live-print` fails**: preflight no longer reports `rgb_in_cmyk` (the check expects it; green on Windows). Investigate before publishing 0.2.1
+- [x] ✅ macOS live pass (Illustrator 29.1 ru_RU, macOS, Node 22.23, 2026-11-24): all seven suites green (`live`, `live-edit`, `live-release`, `live-layout`, `live-finish`, `live-checks`, `live-print`); the earlier `live-print` failure (preflight missed `rgb_in_cmyk` **and** `low_res` for the linked `LowRes` image, so the image itself wasn't seen as a linked raster) didn't reproduce in 10 runs, alone and after the other suites. The test now records how Illustrator sees `LowRes` and prints it if the check fails again
 - [ ] ⏳ Release 0.2.1: npm publish (owner) → `main`, tag `v0.2.1`, GitHub release with `chandelier-0.2.1.mcpb`
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -440,3 +440,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | 0.2.1 (6/6): recipe library — `run_script {recipe}` with calendar-month, labels-sheet, business-card, color-chips, style-guide; Illustrator crashed twice in the VM late in long live runs (new document after many operations), not reproduced in isolation; the "process exists but does not answer" message now unwraps PowerShell's exception |
 | 2026-11-24 | 0.2.1 regression pass in the VM (all live suites green); known issue: the links dialog can block `status {restart}`'s quit; live tests can set a per-call client timeout |
 | 2026-11-24 | 0.2.1 macOS live pass: 6 of 7 suites green; `live-print` fails (`rgb_in_cmyk` not reported) — blocks the 0.2.1 release |
+| 2026-11-24 | 0.2.1 macOS live pass green: `live-print` failure not reproduced in 10 runs (alone and after all suites); the test now prints how Illustrator sees the linked image if it recurs — release unblocked |

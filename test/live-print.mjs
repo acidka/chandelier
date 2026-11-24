@@ -80,8 +80,11 @@ try {
   // RGB images (vector fills are converted to CMYK on assignment in a CMYK document)
   await call('place', { path: png, x: 40, y: 120, w: 20, layer: 'Notes', name: 'RGBonNotes' });
   await call('layers', { action: 'update', name: 'Notes', printable: false });
+  // how Illustrator sees the linked image: shown if rgb_in_cmyk is missing (macOS 2026-11-24: missed once with low_res, not reproduced in 10 runs)
+  let lowRes = '?';
+  await call('run_script', { code: 'var it = AIA.find("LowRes"), f = null; try { f = it.file; } catch (e) { return it.typename + " file threw: " + e; } return it.typename + " " + (f ? f.name + " | " + f.fsName + " | exists " + f.exists : "no file");' }, { check: (v) => { lowRes = v.result; } });
   await call('preflight', {}, { check: (v) => {
-    const c = v.checks, has = (k, n) => assert(c[k] && c[k].count >= (n ?? 1), 'expected ' + k + ' in ' + Object.keys(c));
+    const c = v.checks, has = (k, n) => assert(c[k] && c[k].count >= (n ?? 1), 'expected ' + k + ' in ' + Object.keys(c) + (k === 'rgb_in_cmyk' || k === 'low_res' ? ' · LowRes: ' + lowRes : ''));
     has('rgb_in_cmyk'); assert(c.rgb_in_cmyk.items.some((i) => i.name === 'LowRes') && c.rgb_in_cmyk.items.every((i) => i.name !== 'RGBonNotes'), 'linked RGB found; non-printing layer skipped (A3)');
     assert(v.skipped_non_printing === 1, 'skipped 1');
     has('white_overprint'); has('registration_color'); has('hairline'); has('off_artboard'); has('small_text'); has('overset_text'); has('default_text'); has('low_res'); has('broken_link'); has('no_bleed');
