@@ -16,6 +16,7 @@ export const assert = (c, m) => { if (!c) throw new Error(m); };
 export function guard(client) {
   const mine = new Set();
   const raw = client.callTool.bind(client);
+  client.callToolUnguarded = raw; // for timing loops: the guard's status call would double what they measure
   const first = (r) => { try { return JSON.parse(r.content.find((c) => c.type === 'text')?.text ?? ''); } catch { return null; } };
   client.callTool = async (req, ...rest) => {
     const { name, arguments: args = {} } = req;

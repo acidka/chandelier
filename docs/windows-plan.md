@@ -322,6 +322,13 @@ and the hang hint (phase 5). The owner saw several during these runs (screenshot
 **Desktop noise from test runs:** `run-interactive.ps1` ran each command as a visible `cmd.exe`, so every live run
 opened a terminal window on the owner's desktop; it now starts `conhost.exe --headless`, and output still comes back.
 
-MCP `run_script` round trip in the full run: p50 **42 ms**, p95 70 ms — against 8–10 ms for the bare bridge (§ 12) and
-5.7 ms on macOS. Where the other ~30 ms go is W7's first question.
+**Round trip, layer by layer (2026-11-24, same VM, 60 calls each, p50):** bare bridge `1+1` 9.2 ms; a runtime command
+through the dispatch wrapper 15.0 ms; runtime `script "return 1"` 15.1 ms; MCP `run_script "return 1"` 20.0 ms; MCP
+`configure` (no Illustrator call) 0.7 ms. So: COM in this VM ~9 ms, the runtime's per-call wrapper in Illustrator
+~6 ms, the server ~1–5 ms. The **42 ms** first reported by `live.mjs` was mostly the test: its safety guard sent a
+`status` call before every call of the latency loop. The loop now uses an unguarded call (`client.callToolUnguarded`
+from `test/live-lib.mjs`; our document is closed by then). Corrected `live.mjs` runs back to back: p50 21 ms and
+48 ms, p95 ~100–120 ms — the run-to-run spread is the VM (6 GB, Illustrator ~1.8 GB, emulated graphics), as the
+owner suspected. macOS on hardware: 5.7 ms. Whether Windows meets the 10 ms target needs real hardware (W7);
+if it doesn't, the dispatch wrapper's ~6 ms is the first thing to trim.
 

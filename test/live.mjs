@@ -79,7 +79,8 @@ await call('documents', { action: 'save', path: join(dir, 'live.ai') }, { check:
 await call('documents', { action: 'close', name: docName });
 
 const ms = [];
-for (let i = 0; i < 30; i++) { const t = performance.now(); await client.callTool({ name: 'run_script', arguments: { code: 'return 1;' } }); ms.push(performance.now() - t); }
+// unguarded: no document of ours is open any more, and the guard's extra status call per call would double the number
+for (let i = 0; i < 30; i++) { const t = performance.now(); await client.callToolUnguarded({ name: 'run_script', arguments: { code: 'return 1;' } }); ms.push(performance.now() - t); }
 ms.sort((a, b) => a - b);
 console.log(`run_script round trip over MCP: p50 ${ms[15].toFixed(1)} ms, p95 ${ms[28].toFixed(1)} ms`);
 await client.close();
