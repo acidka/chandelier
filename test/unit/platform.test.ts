@@ -1,7 +1,7 @@
 // Phase 7 W2: platform layer and the Windows HRESULT error map (run on every OS).
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { bridgeCommand, scriptPath, scriptPaths, osOf, BRIDGE_WIN } from '../../src/platform.js';
+import { bridgeCommand, scriptPath, scriptPaths, osOf, BRIDGE_WIN, longPathProblem } from '../../src/platform.js';
 import { explain, errKey, isTimeout } from '../../src/transport/errors.js';
 import { defaultSettings } from '../../src/settings.js';
 
@@ -26,6 +26,12 @@ describe('platform', () => {
     expect(scriptPaths(a, 'mac')).toBe(a);
   });
 
+  it('refuses paths Illustrator would answer with a Save/Open dialog (Windows, 260+ chars, W4)', () => {
+    const long = 'C:/x/' + 'a'.repeat(260);
+    expect(longPathProblem(long, 'win')).toMatch(/too long.*dialog/);
+    expect(longPathProblem('C:/x/' + 'a'.repeat(250), 'win')).toBeNull();
+    expect(longPathProblem(long, 'mac')).toBeNull();
+  });
   it('activates before save/export on macOS only (A10; Windows saves in the background, W1)', () => {
     expect(defaultSettings('mac').activate).toBe(true);
     expect(defaultSettings('win').activate).toBe(false);

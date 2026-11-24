@@ -57,7 +57,7 @@ export class Runtime {
   private async afterTimeout(call: number, cmd: string): Promise<string> {
     const p = await this.T.js(Runtime.wrap({ cmd: 'ping', args: {} }), 5);
     if (p.ok) return `Illustrator answers again: call #${call} (${cmd}) probably finished. Before repeating it, call status and check last_call (finished, created uuids).`;
-    return `Illustrator is not answering: a modal dialog may be open or it is still busy with call #${call} (${cmd}). Look at the Illustrator window; do not repeat the call until status answers and last_call shows whether it finished.`;
+    return `Illustrator is not answering: a modal dialog may be open (e.g. one asking to update missing or modified links) or it is still busy with call #${call} (${cmd}). Look at the Illustrator window; do not repeat the call until status answers and last_call shows whether it finished.`;
   }
   constructor(readonly T: Transport, readonly settings: Settings = defaultSettings()) {}
 

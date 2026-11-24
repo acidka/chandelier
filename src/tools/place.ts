@@ -4,6 +4,7 @@ import { resolve, join } from 'node:path';
 import type { ToolDef } from './types.js';
 import { ArgError } from './types.js';
 import { refSchema, placeShape } from './common.js';
+import { longPathProblem } from '../platform.js';
 
 let n = 0;
 export const place: ToolDef = {
@@ -32,6 +33,8 @@ Returns {uuid, name, type, box, how: "linked" | "embedded" | "editable"}.`,
     } else if (a.path) {
       args.path = resolve(a.path);
       if (!existsSync(args.path as string)) throw new ArgError('File not found: ' + args.path);
+      const long = longPathProblem(args.path as string);
+      if (long) throw new ArgError(long);
     } else throw new ArgError('Give path or svg.');
     return { cmd: 'place', args };
   },

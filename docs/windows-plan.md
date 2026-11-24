@@ -148,8 +148,8 @@ and a macOS dependency removed. Can be done on macOS before any Windows work (st
 | **W1** 🔄 | Spike: persistent PowerShell bridge — attach, `DoJavaScript` loop; measure per-call latency, the ~30 KB runtime load, a 5-min call, a modal dialog, a crash, Unicode; check whether activation is needed (A10). Decide A or E — **A kept** (2026-11-24, § 12); crash ✅, 5-min call ✅, activation not needed ✅; modal dialog still open | 0.5 d | yes |
 | **W2** ✅ | Platform layer `src/platform.ts` (bridge command, script paths); `bridge-win.ps1` with message filter; `Transport` picks by `process.platform` — written 2026-11-23, ran live 2026-11-24 (§ 12) | 1 d | partly |
 | **W3** ✅ | Pure-JS image pipeline (JPEG decode, resize, crop) replacing `sips` on both platforms; unit tests — done 2026-11-23 | 0.5 d | no |
-| **W4** 🔄 | Paths into ExtendScript; runtime checks from § 5 on Windows — drive letters, exports, PDF presets, menu commands, fonts ✅ (§ 13); localised layer names, long paths open | 0.5 d | yes |
-| **W5** 🔄 | HRESULT error map ✅, `status` hints, launch from the registry path (written), activation (written), Windows `live-restart` | 0.5 d | yes |
+| **W4** ✅ | Paths into ExtendScript; runtime checks from § 5 on Windows — drive letters, exports, PDF presets, menu commands, fonts, long paths (save/open refuse 260+ chars), localised names (shared code, tested on macOS) (§ 13) | 0.5 d | yes |
+| **W5** ✅ | HRESULT error map, hints (links dialog named in busy/timeout messages), launch from the registry path, activation (off by default), Windows `live-restart` — all live-checked 2026-11-24 | 0.5 d | yes |
 | **W6** ✅ | CI matrix (macOS + Windows) ✅, fake-COM bridge test ✅, live suites green on Windows ✅ 2026-11-24 (§ 13) — in an **en_US** Illustrator UI (moved from 0.1) | 1 d | yes |
 | **W7** | Benchmarks on Windows (micro M, one M2 C2 run), results in `benchmarks.md` | 0.5 d | yes |
 | **W8** | Windows install in README, agent guide troubleshooting; `.mcpb` / plugin checked on Windows | 0.5 d | yes |
@@ -321,6 +321,18 @@ and the hang hint (phase 5). The owner saw several during these runs (screenshot
 
 **Desktop noise from test runs:** `run-interactive.ps1` ran each command as a visible `cmd.exe`, so every live run
 opened a terminal window on the owner's desktop; it now starts `conhost.exe --headless`, and output still comes back.
+
+**Long paths (W4):** exports (PNG, PDF, SVG, JPG) and `preview` work in a folder whose path is over 260 characters
+(322 tested), but Illustrator's own save does not: `saveAs` to such a path opens the interactive **Save As dialog**
+and the call hangs until someone cancels it — even with alerts off. Fix: on Windows `documents save/save_as/open` and
+`place` refuse paths of 260+ characters before they reach Illustrator, with a clear message
+(`longPathProblem` in `src/platform.ts`); verified live.
+
+**Localised layer names (W4):** the VM's Illustrator is en_US and the suites pass with "Layer 1"; the localised case
+(ru_RU) was tested on macOS in 0.1, and the runtime code is shared, so no Windows-only check.
+
+**Hints (W5):** the busy and "not answering" messages now name the links dialog as an example of a dialog that blocks
+scripts; "not running", "not installed", elevation and crash have their own messages (§ 3.5, § 12).
 
 **Round trip, layer by layer (2026-11-24, same VM, 60 calls each, p50):** bare bridge `1+1` 9.2 ms; a runtime command
 through the dispatch wrapper 15.0 ms; runtime `script "return 1"` 15.1 ms; MCP `run_script "return 1"` 20.0 ms; MCP

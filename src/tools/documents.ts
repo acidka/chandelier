@@ -5,6 +5,7 @@ import type { ToolDef } from './types.js';
 import { ArgError, text, fail, J } from './types.js';
 import { runStep, errorText, respond } from './respond.js';
 import { export_tool } from './export.js';
+import { longPathProblem } from '../platform.js';
 
 const FORMATS = ['ai', 'pdf', 'eps', 'svg'] as const;
 
@@ -78,6 +79,8 @@ action:
       if (!a.path) throw new ArgError('open needs path');
       args.path = resolve(a.path);
       if (!existsSync(args.path as string)) throw new ArgError('File not found: ' + args.path);
+      const long = longPathProblem(args.path as string);
+      if (long) throw new ArgError(long);
     }
     if (a.action === 'save' || a.action === 'save_as') {
       if (a.action === 'save_as' && !a.path) throw new ArgError('save_as needs path');
@@ -86,6 +89,8 @@ action:
         const ext = extname(p).slice(1).toLowerCase();
         const format = a.format ?? ((FORMATS as readonly string[]).includes(ext) ? ext : undefined);
         if (!format) throw new ArgError(`Cannot tell the format from "${p}": use .ai, .pdf, .eps or .svg, or give format.`);
+        const long = longPathProblem(p);
+        if (long) throw new ArgError(long);
         mkdirSync(dirname(p), { recursive: true });
         args.path = p; args.format = format;
       }

@@ -4,7 +4,7 @@
 const NOT_RUNNING = 'Illustrator is not running. Start it, or call status with launch:true.';
 const GONE = 'Illustrator quit or crashed during the call. Restart it; the runtime reloads by itself.';
 const TIMEOUT = 'Timed out waiting for Illustrator. It may still be working: check the document before retrying (do not repeat non-idempotent work blindly).';
-const BUSY = 'Illustrator stayed busy until the timeout (a modal dialog may be open in Illustrator). Close it and check the document before retrying.';
+const BUSY = 'Illustrator stayed busy until the timeout (a modal dialog may be open in Illustrator, e.g. one asking to update missing or modified links). Close it and check the document before retrying.';
 
 export const ERRNO: Record<string, string> = {
   '-600': NOT_RUNNING,

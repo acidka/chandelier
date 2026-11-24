@@ -24,6 +24,14 @@ export function scriptPath(p: string, os: OS = osOf()): string {
   return os === 'win' ? p.replace(/\\/g, '/') : p;
 }
 
+/** Windows: a path Illustrator can't save to or open by script. At 260+ characters (MAX_PATH) its saveAs opens the
+ *  interactive Save As dialog instead and the call hangs until someone cancels it (W4, Illustrator 31, 2026-11-24);
+ *  exports to such paths work. Returns the error message, or null when the path is fine. */
+export function longPathProblem(p: string, os: OS = osOf()): string | null {
+  if (os !== 'win' || p.length < 260) return null;
+  return `Path too long for Illustrator on Windows (${p.length} characters, limit 259): it would open a Save/Open dialog and wait. Use a shorter folder.`;
+}
+
 /** Keys of runtime command args that hold file system paths (documents, export, place, preview). */
 export const PATH_KEYS = ['path', 'dir'] as const;
 
