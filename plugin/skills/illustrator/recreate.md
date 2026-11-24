@@ -5,8 +5,8 @@ and above all **free-form shapes** (waves, ribbons, blobs, swooshes, organic ban
 producing lumpy "camouflage" or "mountain" outlines instead of smooth curves.
 
 Worked through on a real job (2026-11-25, Illustrator 29.1, macOS): a photographed kraft box front with five
-overlapping translucent wave ribbons. RMSE against the photo went 0.116 → 0.100 in six rounds; every mistake below was
-made there once.
+overlapping translucent wave ribbons. RMSE against the photo went 0.116 → 0.100 in six rounds of shape and colour, then 0.095 with
+shading; every mistake below was made there once.
 
 ## 0. Set up for comparing
 
@@ -70,6 +70,41 @@ script, never in Python.
   (light needs no black, deep needs some), use a second swatch for the deepest shape.
 - Colour where shapes pile up comes from the overlap, not from the shape: keep a shape's own colour as it looks
   where it is alone.
+
+## 5b. Shading, gradients and shadows
+
+Flat fills give the "8 colours" look. Measure the tone **inside** each region (a profile across it), then decide per
+effect what it is:
+
+| Seen in the image | What it usually is | Build it as |
+|---|---|---|
+| Tone changing across a curved shape, restarting at every edge | Artwork: soft shadow of the layer above (paper-cut, layered look) | A gradient **that follows the curve** (below) |
+| Tone changing in one straight direction | Artwork or lighting | Linear/radial gradient swatch (`swatches {add, kind: "gradient"}`); a fill re-assigned with the same gradient keeps its old angle — rotate it with `item.rotate(a, false, false, true, false)` |
+| A soft blob of shadow or glow | Artwork | Shape + `effects {blur}` (or `feather`), multiply, clipped to where it falls |
+| Thin light or dark line along an edge | Artwork: edge highlight / crease | Stroke on that edge, 0.25–0.5 pt, screen (light) or multiply (dark), low opacity |
+| Light falling across the whole object, folds, side faces, grain | Photo and material (the board itself) | Leave out of print artwork; a substrate preview goes on its own layer |
+
+**Shade the regions you see, not the objects you built.** With overlapping translucent shapes, the visible bands are
+the spaces between consecutive edges; in the worked job every band darkened toward its own top edge, whichever shape
+it belonged to. Shading per object (one gradient over a whole wide shape) or a fixed-size blur (thin bands drown)
+both failed.
+
+A gradient that follows a curve (linear gradients can't; mesh and freeform gradients can't be scripted):
+1. Under each edge, N stacked multiply layers in one shadow swatch; layer k is bounded by the curve
+   `edge + k/N × (distance to the next visible edge below)` — darkness falls linearly to zero at that edge. This is
+   what Illustrator's Blend does between two paths.
+2. Clip the stack with the region under the **exact** Bézier edge: the edge stays crisp, the inner steps (polylines
+   every ~1 mm) are too soft to see.
+3. The distance to the next edge: only edges **seen** there (measured, not a model's hidden stretch — a hidden edge
+   cuts a seam), smoothed along the edge (±60 px window) so merges and crossings don't make vertical seams; no edge
+   below (paper) → no shade.
+4. Opacity per step ≥ ~1.5 %: Illustrator drops smaller steps entirely (a 12 % gradient in 28 steps rendered as
+   nothing). Use fewer, stronger steps for weak gradients.
+5. Strength per edge from the profile: `1 − tone at the band's bottom ÷ tone at its top`, roughly (multiply).
+   Shading darkens the base, so lighten the shapes' own opacity after adding it.
+
+Check with numbers, not by eye: render at exactly 1 px per reference px (`preview {width}`) and compare tone
+profiles across the bands with the reference's at the same columns.
 
 ## 6. Compare — every round, two views
 

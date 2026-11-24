@@ -54,7 +54,8 @@ two-view compare loop. Short version:
    `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); repeat until the full-size close-up is clean (recreate.md § 6).
 5. Free-form shapes (waves, ribbons, blobs): few anchors on peaks and troughs, horizontal handles there, handles
    ⅓–½ of the segment, fitted to points measured every 25–50 px; check a full-size close-up for tips, slivers
-   and corners every round (recreate.md § 4, 6).
+   and corners every round (recreate.md § 4, 6). Shading and shadows: measure tone across each band; gradients that
+   follow a curve, per visible band (recreate.md § 5b).
 6. **Proofread every word against the reference** — on a client's job the words are theirs.
 7. Missing font? Pick the closest installed one (`fonts {query}`) and match widths with the style's `hscale` so lines
    break where the reference breaks; put body copy in area text.
