@@ -40,7 +40,7 @@ describe('platform', () => {
     expect(existsSync(BRIDGE_WIN)).toBe(true);
     const src = readFileSync(BRIDGE_WIN, 'utf8');
     expect(/[^\x00-\x7e]/.test(src)).toBe(false); // PowerShell 5.1 reads BOM-less files as ANSI
-    for (const op of ["'running'", "'activate'", "'launch'", "'js'"]) expect(src).toContain(op);
+    for (const op of ["'running'", "'activate'", "'launch'", "'quit'", "'js'"]) expect(src).toContain(op);
     expect(src).toContain('GetActiveObject');
     expect(src).not.toMatch(/New-Object\s+-ComObject\s+['"]?Illustrator/i); // never launch Illustrator by COM
   });

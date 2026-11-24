@@ -4,7 +4,7 @@
 // Protocol (newline-delimited JSON):
 //   stdin  ← {"id":1,"op":"js","code":"...","timeout":120}
 //            {"id":2,"op":"activate"}
-//            {"id":3,"op":"running"}
+//            {"id":3,"op":"running"}   (also launch, quit)
 //   stdout → {"id":1,"ok":true,"result":"..."}
 //            {"id":1,"ok":false,"error":"...","errno":-1712}
 //
@@ -70,6 +70,10 @@ function handle(req) {
   }
   if (req.op === 'launch') {
     return runAppleScript(APP + 'tell application id aiaId to launch\nreturn "ok"');
+  }
+  if (req.op === 'quit') {
+    // status {restart}: sent only when no document has unsaved changes, so Illustrator asks nothing
+    return runAppleScript(ifRunning('tell application id aiaId to quit\nreturn "ok"'));
   }
   if (req.op === 'js') {
     // Never auto-launch Illustrator by accident: a bare `tell application` would start it.

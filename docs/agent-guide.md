@@ -101,7 +101,7 @@ does preflight + export.
 
 | What you see | What to do |
 |---|---|
-| `MRAP` (1346458189) | Transient Illustrator error. Swatches, styles, text styling and reads already retry inside Illustrator (`status` shows `mrap`); if one still reaches you, retry once (`run_script {retries}` does it). If it repeats, save, restart Illustrator (`status {launch:true}` after quitting), continue — the runtime reloads by itself |
+| `MRAP` (1346458189) | Transient Illustrator error. Swatches, styles, text styling and reads already retry inside Illustrator (`status` shows `mrap`); if one still reaches you, retry once (`run_script {retries}` does it). If it repeats, save your documents and call `status {restart: true}`: it quits and relaunches Illustrator and reopens them (refused while one is unsaved); the runtime reloads by itself |
 | "Timed out …" | The error says whether Illustrator answers again (the call probably finished) or not (a dialog may be open, or it is still busy). Call `status`: `last_call` shows whether call #n finished and the uuids it created. Never repeat non-idempotent work before that |
 | "not running" | `status {launch: true}` |
 | `preview {region}` comes back blank | Without `artboard`, `region` is measured from the active artboard, which a script that adds or activates artboards changes: give `preview {artboard: k, region}` |

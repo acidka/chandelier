@@ -2,7 +2,7 @@
 # Runs as ONE long-lived `powershell.exe -Sta -File bridge-win.ps1` (Windows PowerShell 5.1) per MCP server.
 #
 # Protocol (newline-delimited JSON), identical to bridge-mac.js:
-#   stdin  <- {"id":1,"op":"js","code":"...","timeout":120}   ops: js | running | launch | activate
+#   stdin  <- {"id":1,"op":"js","code":"...","timeout":120}   ops: js | running | launch | activate | quit
 #   stdout -> {"id":1,"ok":true,"result":"..."}  or  {"id":1,"ok":false,"error":"...","errno":-2147221021}
 #   first line: {"id":0,"ok":true,"result":"ready"}
 # errno is the COM HRESULT as a signed 32-bit int; src/transport/errors.ts explains it.
@@ -161,6 +161,13 @@ function Handle($req) {
       $exe = Find-Illustrator
       if (-not $exe) { Fail $HR_NOT_INSTALLED 'Illustrator.exe not found (App Paths registry key or Program Files\Adobe)' }
       Start-Process -FilePath $exe | Out-Null
+      return 'ok'
+    }
+    'quit' {
+      # status {restart}: sent only when no document has unsaved changes, so Illustrator asks nothing
+      if ($FAKE -or -not (Is-Running)) { return 'ok' }
+      try { [void][Chandelier.Com]::Call((Get-App), 'Quit', @()) } catch { } # the call may die with the server: fine
+      $script:app = $null
       return 'ok'
     }
     'js' { return Invoke-Js $req }

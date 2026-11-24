@@ -1,7 +1,7 @@
 // Builds the MCP server: one McpServer, tools from src/tools, a shared context (transport + runtime).
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, appendFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Transport } from './transport/transport.js';
@@ -26,6 +26,13 @@ Only touch documents you created or were asked to change; close what you created
 
 /** Run one tool: custom run(), or its runtime step. Never throws. */
 export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {
+  const t = performance.now();
+  const r = await callToolInner(tool, args, ctx);
+  if (LOG) log({ tool: tool.name, ms: Math.round((performance.now() - t) * 10) / 10, ok: !r.isError, error: r.isError ? firstText(r).slice(0, 300) : undefined });
+  return r;
+}
+
+async function callToolInner(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {
   try {
     if (tool.run) return await tool.run(args, ctx);
     if (!tool.step) return fail(`tool ${tool.name} has no implementation`);
@@ -33,6 +40,18 @@ export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<Call
   } catch (e) {
     return fail(e instanceof ArgError ? e.message : String((e as Error)?.message ?? e));
   }
+}
+
+// Debug log (phase 5): CHANDELIER_LOG=debug writes one JSON line per tool call to stderr (MCP clients keep the
+// server's stderr in their logs); CHANDELIER_LOG_FILE=<path> appends the lines to that file instead.
+const LOG = process.env.CHANDELIER_LOG === 'debug' || !!process.env.CHANDELIER_LOG_FILE;
+const firstText = (r: CallToolResult): string => String((r.content?.find((c) => c.type === 'text') as { text?: string } | undefined)?.text ?? '');
+function log(entry: Record<string, unknown>): void {
+  const line = JSON.stringify({ t: new Date().toISOString(), ...entry }) + '\n';
+  try {
+    if (process.env.CHANDELIER_LOG_FILE) appendFileSync(process.env.CHANDELIER_LOG_FILE, line);
+    else process.stderr.write(line);
+  } catch { /* logging never breaks a call */ }
 }
 
 /**

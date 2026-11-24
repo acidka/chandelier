@@ -142,6 +142,9 @@ save or open files whose path is 260 characters or longer: the server refuses th
 current Node and make it the default (`nvm install 22 && nvm alias default 22`, or `brew install node`), or give
 the full path of a newer `node` as the command, then restart your MCP client.
 
+**Debug log:** set `CHANDELIER_LOG=debug` in the server's environment for one JSON line per tool call (tool, time,
+result) on stderr, or `CHANDELIER_LOG_FILE=/path/to/file` to append them to a file.
+
 ## How it works
 
 ```

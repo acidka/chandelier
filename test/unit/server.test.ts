@@ -136,4 +136,13 @@ describe('server', () => {
     expect(r.json).toMatchObject({ total: 100, completed: 100 });
     expect(T.spawns).toBe(before);
   });
+
+  it('status restart refuses while a document is unsaved and names it (never loses work)', async () => {
+    await call('documents', { action: 'new', width: 100, height: 100, title: 'restart-guard' });
+    const r = await call('status', { restart: true });
+    expect(r.isError).toBe(true);
+    expect(r.json.error).toMatch(/Not restarting/);
+    expect(r.json.documents.length).toBeGreaterThan(0); // the shim's new document: never saved, no path
+    expect(r.json.documents[0]).toMatchObject({ path: null });
+  });
 });

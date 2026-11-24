@@ -60,7 +60,7 @@ Name layers and groups. Keep scripts re-runnable.
 | "Chandelier needs Node.js 22.15 or later" | The user's default `node` is too old: show them the fix from the message (install Node 22+, make it the default, restart Claude Code) |
 | "Illustrator is not running" | Ask the user to start it (or `status {launch: true}` if they agree) |
 | "quit or crashed" | Ask the user to restart Illustrator; the runtime reloads itself |
-| MRAP | Transient; tools already retry. If it repeats, save and restart Illustrator |
+| MRAP | Transient; tools already retry. If it repeats, save, then `status {restart: true}` (reopens the documents) |
 | A batch step failed | Earlier steps stayed (unless `rollback: true`); resend from `failed_step` |
 | `preview {region}` blank | Give `artboard` with `region` |
 

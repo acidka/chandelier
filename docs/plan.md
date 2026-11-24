@@ -191,7 +191,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 
 | # | Tool | Actions / what it does | Phase |
 |---|------|------------------------|-------|
-| 1 | `status` | Bridge + Illustrator state, version, open docs, settings, latency; `launch: true` | 1 |
+| 1 | `status` | Bridge + Illustrator state, version, open docs, settings, latency; `launch: true`; `restart: true` (quit + relaunch + reopen, refused while any document is unsaved) | 1 |
 | 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate | 1 |
 | 3 | `run_script` | Run ExtendScript `code` or a `.jsx` `file` with `args`; helpers available as `AIA.*` (`AIA.at(k, fn)` = coordinates from artboard k); returns JSON | 1 |
 | 4 | `batch` | Many tool steps in one call; `@n` refs; per-step `artboard` (coordinates from that artboard); `stop_on_error`; `rollback` of created items | 1 |
