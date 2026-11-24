@@ -474,3 +474,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | 0.4 features: `effects` tool (11 live effects + raw XML, clear), `path_ops {trap}`, `export {output_intent}`, `swatches {convert}`, `preview` `differences`; plan D14; quirks C26–C29; `test/live-look.mjs` green on macOS |
 | 2026-11-24 | 0.4 Windows check (two fixes: ICC folders without env vars, light colours count as content in the diff); version 0.4.0, plugin launcher `^0.4.0` |
 | 2026-11-24 | **0.4.0 released**: npm, plugin 0.4.0, tag `v0.4.0`, GitHub release with the `.mcpb` |
+| 2026-11-24 | M2 benchmark with the lean tool profile (C2L-1): quality 10, 1.3 min, 11 calls, 0.36 M input; fixed context 40.8 k tokens per request (~11 k less than the full list) — [benchmarks](research/benchmarks.md#m2-with-the-lean-tool-profile--2026-11-24-arm-c2-1-run-040) |

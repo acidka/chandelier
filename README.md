@@ -160,8 +160,10 @@ the full path of a newer `node` as the command, then restart your MCP client.
 
 **Smaller tool list:** MCP clients that load every tool schema up front (no deferred tool loading) can set
 `CHANDELIER_TOOLS=lean`: the eight tools a build uses plus a `tools` tool that lists, explains and calls the rest
-(about 4.9 k tokens per request instead of 16.2 k, [benchmarks](docs/research/benchmarks.md#tool-list-size)). A
-comma-separated list of tool names works too.
+(about 4.9 k tokens per request instead of 16.2 k, [benchmarks](docs/research/benchmarks.md#tool-list-size)); a full
+design-from-image run with it scored 10 of 10 with no extra tool calls
+([run](docs/research/benchmarks.md#m2-with-the-lean-tool-profile--2026-11-24-arm-c2-1-run-040)). A comma-separated list of
+tool names works too.
 
 **Debug log:** set `CHANDELIER_LOG=debug` in the server's environment for one JSON line per tool call (tool, time,
 result) on stderr, or `CHANDELIER_LOG_FILE=/path/to/file` to append them to a file.

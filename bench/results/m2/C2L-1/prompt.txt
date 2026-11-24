@@ -1,0 +1,3 @@
+Recreate the design in `bench/scenarios/design-from-image.jpg` in Adobe Illustrator as a new CMYK document with one artboard in the same proportions as the white page. Use live, editable text (no outlines, no placed or traced image) and keep the layout, colours, font weights and sizes as close to the reference as you can. When done, export a PNG preview next to the document and compare it with the reference.
+
+Save the document as `bench/results/m2/C2L-1/M2-C2L-1.ai` and the PNG as `bench/results/m2/C2L-1/M2-C2L-1.png` (absolute paths: this repository's folder).

@@ -446,6 +446,31 @@ preflight 0 errors / 0 warnings. The one error was outside Chandelier: the agent
 Python in Bash, which the run didn't allow. RMSE is against a 570 × 638 px export (72 ppi), so not strictly
 comparable with the macOS runs' 0.108–0.145.
 
+### M2 with the lean tool profile — 2026-11-24 (arm C2, 1 run; 0.4.0)
+
+Same M2 prompt (plus where to save the files), fresh headless agent (`claude -p`, Opus 5.5) with only the `chandelier`
+server (`CHANDELIER_TOOLS=lean`: 8 tools + `tools`) and Read; Claude Code's own deferred tool loading **off**
+(`ENABLE_TOOL_SEARCH=false`), so the listed schemas were in context on every request — the case `lean` is for
+(clients that load every tool). The agent loaded the plugin's `illustrator` skill. Illustrator 29.1.0 ru_RU (fresh
+start), macOS 27.2.1, Apple M1, Node 22.23, Chandelier 0.4.0. Files: `bench/results/m2/C2L-1/` (prompt, metrics, PNG,
+comparison; the `.ai` is not committed).
+
+| Run | Wall | Requests | Tool calls (Illustrator) | Input | Output | Tool errors | Quality | RMSE |
+|-----|-----:|---------:|-------------------------:|------:|-------:|------------:|--------:|-----:|
+| C2L-1 | 1.3 min | **7** | 11 (8) | **0.36 M** | 8.6 k | 2 (not Chandelier's: see below) | **10** | 0.135 |
+
+- **No extra calls:** 11 tool calls, as in C2v4-1 and C2w-1; the agent never needed the `tools` meta-tool — the
+  build loop runs on the listed tools (`documents new`, `run_script`, `preview {reference}` × 3, three fixes,
+  `documents save_as {export}`).
+- **Fixed context per request: 40.8 k tokens** (first request, everything cached afterwards). With the full list
+  (16.2 k instead of 4.9 k tokens, § Tool list size) it would be ~52 k: an estimated ~11 k less per request, ~79 k
+  (~22 %) less input over this run. For comparison, C2v2 (phase 3, every schema force-loaded, 61.6 KB): 0.85 M input
+  over 12 requests.
+- The 2 errors came from the run's rules, not the server: `Write` (a `.jsx` builder file) was not allowed, so the
+  following `run_script {file}` found no file; the agent switched to inline `code`.
+- Re-opened file: CMYK, 1 artboard 570 × 637.5 pt (ratio 0.894), 121 live texts (Arial / Arial Bold), each with its own
+  paragraph style (13), 5 global swatches, named layer and groups, no raster, preflight 0 errors / 0 warnings.
+
 ### Metrics extractor
 
 ```sh
