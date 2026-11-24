@@ -1332,6 +1332,47 @@ $.global.AIA = (function () {
     if (res > want * 1.01) out.resize_to = Math.round(Math.max(w, h) * want / 72);
     return out;
   };
+  // render_file (preview {image} for .pdf/.ai/.eps/.svg): one page (PDF) or artboard (others) of a file to PNG.
+  // A file that is already open is rendered as it is and stays open; otherwise it is opened (alerts off), rendered
+  // and closed without saving, and the document that was active before is active again.
+  A.cmd.render_file = function (a) {
+    var f = new File(a.path), page = a.page || 1, doc = null, opened = false, prev = null, i, lvl = null;
+    if (!f.exists) throw new Error('File not found: ' + a.path);
+    var isPdf = /\.pdf$/i.test(a.path);
+    try { prev = app.activeDocument; } catch (e) {}
+    for (i = 0; i < app.documents.length; i++) {
+      try { if (String(app.documents[i].path) !== '' && app.documents[i].fullName.fsName === f.fsName) { doc = app.documents[i]; break; } } catch (e) {}
+    }
+    if (!doc) {
+      try { lvl = app.userInteractionLevel; app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS; } catch (e) {}
+      try {
+        if (isPdf) { try { app.preferences.PDFFileOptions.pageToOpen = page; } catch (e) {} }
+        doc = app.open(f);
+        opened = true;
+      } finally { try { if (lvl !== null) app.userInteractionLevel = lvl; } catch (e) {} }
+    }
+    try {
+      var k = (opened && isPdf) ? 0 : page - 1;
+      if (k < 0 || k >= doc.artboards.length) throw new Error('Page ' + page + ' does not exist (' + doc.artboards.length + ' artboard(s)).');
+      var ab = doc.artboards[k].artboardRect, b = ab;
+      if (a.region) {
+        var r = a.region;
+        b = [ab[0] + A.u(r[0]), ab[1] - A.u(r[1]), ab[0] + A.u(r[0] + r[2]), ab[1] - A.u(r[1] + r[3])];
+      }
+      var w = b[2] - b[0], h = b[1] - b[3];
+      if (!(w > 0) || !(h > 0)) throw new Error('Nothing to render: the region is empty.');
+      // enough pixels for max_px (also when zooming into a small region), within imageCapture's 72-2400 ppi
+      var res = Math.min(2400, Math.max(72, 72 * (a.max_px || 1024) / Math.max(w, h)));
+      var o = new ImageCaptureOptions();
+      o.resolution = res; o.antiAliasing = true; o.transparency = false;
+      doc.imageCapture(new File(a.out), b, o);
+      return { page_size: [A.toU(ab[2] - ab[0]), A.toU(ab[1] - ab[3])], artboards: opened && isPdf ? undefined : doc.artboards.length,
+        rect: [A.toU(b[0] - ab[0]), A.toU(ab[1] - b[1]), A.toU(w), A.toU(h)], k: res / 72 * A.unit(), already_open: opened ? undefined : true };
+    } finally {
+      if (opened) { try { doc.close(SaveOptions.DONOTSAVECHANGES); } catch (e) {} }
+      if (prev) { try { if (app.activeDocument !== prev) prev.activate(); } catch (e) {} }
+    }
+  };
 
   return A;
 })();

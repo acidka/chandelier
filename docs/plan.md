@@ -236,7 +236,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 8 | `get_items` | Full detail by refs: geometry, appearance, text runs and styles, path points (opt-in) | 1 |
 | 9 | `get_tree` | Layers → groups → items outline with depth/limit | 1 |
 | 10 | `selection` | `get`, `set`, `add`, `clear`, `all` (optionally per artboard/layer) | 1 |
-| 11 | `preview` | PNG of an artboard, items or region returned as an image (what prints: non-printing layers hidden); `max_px`, background; `reference` comparison with `differences` (0.4: blobs classified shifted — with the measured shift — / missing / extra / changed, and the items in each); one check call: `more` (other artboards), `preflight: true`, `info: true` | 1 |
+| 11 | `preview` | PNG of an artboard, items or region returned as an image (what prints: non-printing layers hidden); `max_px`, background; `reference` comparison with `differences` (0.4: blobs classified shifted — with the measured shift — / missing / extra / changed, and the items in each); one check call: `more` (other artboards), `preflight: true`, `info: true`; `image` (0.5.2): look at a file instead — PNG/JPEG (pure JS, no Illustrator needed) or a .pdf/.ai/.eps/.svg page (rendered by Illustrator, opened and closed unsaved): px, ppi, content box, background; `region` crops and zooms (≤ 8×), `grid` labelled lines, `sample` colours (hex, RGB, naive CMYK) | 1 |
 | 12 | `create_shape` | `rect`, `rounded_rect`, `ellipse`, `polygon`, `star`, `line` + style | 2 |
 | 13 | `create_path` | Points with handles **or an SVG path `d` string**; open/closed; compound | 2 |
 | 14 | `create_text` | Point / area / path text; font (fuzzy name match), size, colour, alignment, leading, tracking, paragraph/character style; atomic | 2 |

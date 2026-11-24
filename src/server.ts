@@ -19,6 +19,7 @@ import { profile, toolsTool } from './tools/tools_meta.js';
 export const INSTRUCTIONS = `chandelier drives Adobe Illustrator on this Mac (~5 ms per call).
 Conventions: coordinates [x, y, w, h] from the top-left of the active artboard, y down, in points (configure: units mm/in/px, origin, artboard). Colours "cmyk(100,85,30,25)", "gray(60)", "#1e2a44", "swatch:Name", "swatch:Name@50", "gradient:Name@45", "none". Refs (one or a list): uuid, "selection", "name:Glob*", "layer:Name", "artboard:N", "@n" (an earlier batch step). Uuids change when a document is reopened.
 Load only the tools a job needs (a build: documents, batch or run_script, preview). Fonts match fuzzily; call fonts only when unsure.
+To look at an image or PDF file (pixel size, crop and zoom with a coordinate grid, colour samples, page box) use preview {image}, not Python/PIL, Swift or sips: nothing to install.
 Build a document (aim for ~8 Illustrator calls; no status call first):
 1. documents new (size, units — they become the session units, bleed, artboards, artboard_names, title).
 2. One batch: swatches (global, one per colour role) + styles (one paragraph style per text role); give every text its paragraph_style, so the file can be restyled.
@@ -83,9 +84,9 @@ function registerPrompts(server: McpServer): void {
     argsSchema: { image: z.string().describe('path of the image'), output: z.string().describe('path of the .ai to save'), notes: z.string().optional() },
   }, ({ image, output, notes }) => ({ messages: [{ role: 'user', content: { type: 'text', text:
 `Recreate the design in ${image} in Illustrator as an editable CMYK document and save it as ${output}.
-1. Look at the image. Find the page format from its aspect ratio (1.414 A-series, 1.294 US Letter, 1.25 8×10 in, 1.0 square) and note the page's pixel box.
+1. Look at the image with preview {image: "${image}", grid: true} (pixel size, content_box = the page's pixel box). Find the page format from its aspect ratio (1.414 A-series, 1.294 US Letter, 1.25 8×10 in, 1.0 square).
 2. List the parts (titles, rules, grids, repeated blocks, photo areas) and the colour and text roles. Copy the structure, not the artwork: leave photos, logos and brand names out (named placeholder boxes instead) and fix obvious mistakes in the reference.
-3. Measure in image pixels and convert with one factor (page width in points ÷ page width in pixels). Font size ≈ cap height in px ÷ 0.7 × factor.
+3. Measure in image pixels (preview {image, region, grid} zooms a part with labelled lines; sample: [[x, y]] gives colours) and convert with one factor (page width in points ÷ page width in pixels). Font size ≈ cap height in px ÷ 0.7 × factor.
 4. documents new; one batch of global swatches (one per colour role) and paragraph styles (one per text role); then build with batches (items[] / grid) or one run_script builder. Every text gets its paragraph style; name layers and groups.
 5. preview {reference: "${image}", reference_crop: the page's pixel box, preflight: true}; fix what content_box and differences show (each: kind shifted/missing/extra/changed, shift, items) and what preflight shows; compare once more.
 6. documents save {path: "${output}"} (leave it open). Report what differs from the reference and why.${notes ? '\nNotes: ' + notes : ''}` } }] }));

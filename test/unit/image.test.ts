@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { decodePng, encodePng, compare, type Img } from '../../src/image.js';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { decodePng, encodePng, compare, resize, type Img } from '../../src/image.js';
 
 const solid = (w: number, h: number, v: number): Img => ({ w, h, rgb: new Uint8Array(w * h * 3).fill(v) });
 
@@ -79,5 +81,60 @@ describe('pure-JS image pipeline (W3: no sips)', async () => {
     const png = decodePng(encodePng(resize(img, 2, 1)));
     expect(png.a && Array.from(png.a)).toEqual([255, 0]);
     expect(Array.from(png.rgb.subarray(0, 3))).toEqual([255, 0, 0]);
+  });
+});
+
+describe('preview {image} view (imageview)', async () => {
+  const { view, niceStep, rgbToCmyk, contentBox, sampleAt } = await import('../../src/imageview.js');
+  const { imagePpi } = await import('../../src/imagefile.js');
+  // grey 100×50 page with a black 20×10 block at (30, 20)
+  const page = (): Img => {
+    const img = solid(100, 50, 128);
+    for (let y = 20; y < 30; y++) img.rgb.fill(0, (y * 100 + 30) * 3, (y * 100 + 50) * 3);
+    return img;
+  };
+  it('round grid steps', () => {
+    expect([niceStep(1000), niceStep(1220), niceStep(37), niceStep(3)]).toEqual([100, 100, 5, 0.2]);
+  });
+  it('naive CMYK', () => {
+    expect(rgbToCmyk([255, 255, 255])).toEqual([0, 0, 0, 0]);
+    expect(rgbToCmyk([0, 0, 0])).toEqual([0, 0, 0, 100]);
+    expect(rgbToCmyk([255, 0, 0])).toEqual([0, 100, 100, 0]);
+  });
+  it('content box against the border colour, in frame units', () => {
+    expect(contentBox({ img: page(), ox: 0, oy: 0, k: 1 })).toEqual({ box: [30, 20, 20, 10], background: '#808080' });
+    // a frame cut out at (10, 5) and rendered at 2 px per unit
+    const box = contentBox({ img: resize(page(), 200, 100), ox: 10, oy: 5, k: 2 }).box!; // edges anti-aliased by the resize
+    [40, 25, 20, 10].forEach((v, i) => expect(Math.abs(box[i] - v)).toBeLessThanOrEqual(0.5));
+  });
+  it('samples a point and a rect', () => {
+    const f = { img: page(), ox: 0, oy: 0, k: 1 };
+    expect(sampleAt(f, [35, 25]).hex).toBe('#000000');
+    expect(sampleAt(f, [30, 20, 40, 10]).rgb).toEqual([64, 64, 64]); // half block, half page
+  });
+  it('shrinks big images and zooms small regions (≤ 8×, sharp)', () => {
+    const big = view({ img: solid(4000, 2000, 255), ox: 0, oy: 0, k: 1 }, { max_px: 1000 });
+    expect(big.shown_px).toEqual([1000, 500]);
+    const small = view({ img: page(), ox: 0, oy: 0, k: 1 }, { max_px: 1024 });
+    expect(small.zoom).toBe(8);
+    expect(small.shown_px).toEqual([800, 400]);
+    expect(Array.from(small.img.rgb.subarray(((20 * 8) * 800 + 30 * 8) * 3, ((20 * 8) * 800 + 30 * 8) * 3 + 3))).toEqual([0, 0, 0]);
+  });
+  it('draws the grid and marks samples', () => {
+    const v = view({ img: solid(100, 100, 255), ox: 0, oy: 0, k: 1 }, { grid: true, sample: [[50, 50]], max_px: 100 });
+    expect(v.grid).toBe(10);
+    expect(v.samples![0].hex).toBe('#ffffff'); // sampled before drawing
+    const px = (x: number, y: number) => Array.from(v.img.rgb.subarray((y * 100 + x) * 3, (y * 100 + x) * 3 + 3));
+    expect(px(10, 60)).not.toEqual([255, 255, 255]); // a grid line
+    expect(px(75, 85)).toEqual([255, 255, 255]);
+  });
+  it('reads the stated resolution', () => {
+    expect(imagePpi('test/unit/fixtures/sample.png')).toBe(imagePpi('test/unit/fixtures/sample.png')); // no throw
+    const png = encodePng(solid(2, 2, 255));
+    const phys = Buffer.alloc(9); phys.writeUInt32BE(11811, 0); phys.writeUInt32BE(11811, 4); phys[8] = 1; // 300 ppi
+    const len = Buffer.alloc(4); len.writeUInt32BE(9);
+    const withPhys = Buffer.concat([png.subarray(0, 33), len, Buffer.from('pHYs'), phys, Buffer.alloc(4), png.subarray(33)]);
+    const f = join(tmpdir(), `ppi-${process.pid}.png`); writeFileSync(f, withPhys);
+    expect(imagePpi(f)).toBe(300);
   });
 });

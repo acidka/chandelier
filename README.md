@@ -119,7 +119,8 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
   month, labels sheet, business card, style guide, colour chips).
 - **It looks at its work.** `preview` returns an image of an artboard, items or a region. Given a reference image, it
   reports how far the content is shifted or scaled and lists each difference — moved (by how much), missing, extra or
-  changed — with the items there.
+  changed — with the items there. It also looks at image and PDF files itself (size, zoom with a coordinate grid,
+  colour samples), so agents don't stop to install Python imaging libraries first.
 - **Print-ready.** CMYK documents with real bleed, global process and spot swatches, paragraph and character styles,
   PDF/X-4 export with exact trim and bleed boxes and output intents (FOGRA39, GRACoL…), spread traps, colour
   conversion. `preflight` checks what matters (RGB in CMYK, missing fonts, overset text, hairlines, low-res images,

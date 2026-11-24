@@ -26,3 +26,23 @@ export function imageColorMode(path: string): ColorMode {
   }
   return 'unknown';
 }
+
+/** Resolution the file states (PNG pHYs in pixels per metre, JPEG JFIF density), or null. */
+export function imagePpi(path: string): number | null {
+  const b = head(path, 64 * 1024);
+  if (b.length > 8 && b.readUInt32BE(0) === 0x89504e47) {
+    for (let i = 8; i + 12 <= b.length;) {
+      const len = b.readUInt32BE(i), kind = b.toString('latin1', i + 4, i + 8);
+      if (kind === 'pHYs' && i + 17 <= b.length) return b[i + 16] === 1 ? Math.round(b.readUInt32BE(i + 8) * 0.0254) : null;
+      if (kind === 'IDAT' || kind === 'IEND') return null;
+      i += 12 + len;
+    }
+    return null;
+  }
+  // JFIF APP0: units (1 dpi, 2 dots per cm), Xdensity
+  if (b.length > 18 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff && b[3] === 0xe0 && b.toString('latin1', 6, 10) === 'JFIF') {
+    const u = b[13], d = b.readUInt16BE(14);
+    return u === 1 && d > 1 ? d : u === 2 && d > 1 ? Math.round(d * 2.54) : null;
+  }
+  return null;
+}

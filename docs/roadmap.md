@@ -383,6 +383,23 @@ Gap item 16 (phase 8). Owner, 2026-11-24: "do everything needed to close this mi
 - Open after 0.5 (not blocking): signed ZXP (needs Adobe's ZXPSignCmd and a certificate), a test on x64 Windows, the
   hidden-panel check (owner)
 
+## Milestone 🎯 0.5.2 — no extra installs ⏳
+
+Owner, 2026-11-25: on another Mac, an agent's first requests after installing Chandelier failed until it had installed
+Python imaging libraries. Session logs show why: to measure or crop a reference image, sample a colour or render a PDF
+page, agents reached for Python PIL / OpenCV (`pip install` into a venv) or a Swift script — Chandelier couldn't look at
+a file, and the skill said "measure in pixels" without a way to.
+
+- [x] ✅ `preview {image}`: PNG/JPEG (+ `sips` formats on macOS) in pure JS — px, ppi, colour mode, content box and
+  background; `region` crops and zooms up to 8× (sharp); `grid: true | step` labelled lines in image px; `sample`
+  points or rects → hex, RGB, naive CMYK. Pages of .pdf/.ai/.eps/.svg via Illustrator (`render_file`: opened with
+  alerts off, captured, closed unsaved, previous document active again; an open file is rendered as is), in session
+  units; unit tests
+- [x] ✅ Guidance: server instructions, `recreate_design` prompt and skill say `preview {image}` instead of
+  Python/PIL, Swift or sips; a row in the skill's trouble table
+- [ ] Live check of PDF pages (needs Illustrator running) and a fresh-agent trial on a machine without Pillow
+- [ ] Release 0.5.2
+
 ## Candidates from the 2026-11-23 gap review 🧊
 
 Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
@@ -537,3 +554,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | **0.5.1 released**: npm (owner), `main` fast-forwarded, tag `v0.5.1`, GitHub release with the `.mcpb` |
 | 2026-11-24 | CI: `actions/checkout` and `actions/setup-node` v4 → v7 (Node 24; GitHub deprecated Node 20 for actions). The red `develop` runs on 2026-11-24 were the macOS runner never being assigned (capacity), not test failures |
 | 2026-11-24 | Docs for 0.5: README (panel section with listening / wake-up setup, features, tools, how it works, develop), benchmarks § 2f (panel), agent guide (working from the panel), panel plan (set-up, risks), docs index |
+| 2026-11-25 | `preview {image}` (look at image and PDF files: zoom, grid, colour samples) + guidance, so agents stop installing Python imaging libraries on first use |

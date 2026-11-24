@@ -38,10 +38,14 @@ Name layers and groups. Keep scripts re-runnable.
 
 ## Recreating a design from an image
 
-1. Look at the image; find the page's pixel box and its format from the aspect ratio (1.414 A-series, 1.294 Letter).
+1. Look at the image with `preview {image: "<path>", grid: true}`: pixel size, ppi, and `content_box` (the page's
+   pixel box). Format from the aspect ratio (1.414 A-series, 1.294 Letter). **Don't use Python/PIL, OpenCV, Swift or
+   sips for images:** they may be missing and installing them costs the user time; `preview {image}` needs nothing.
 2. List parts and roles. Copy the structure, not artwork: no photos or other people's logos — leave a named
    placeholder. Fix obvious mistakes and say so.
-3. Measure in pixels; one factor `S = page width in pt ÷ page width in px`; font size ≈ cap height px ÷ 0.7 × S.
+3. Measure in pixels: `preview {image, region: [x, y, w, h], grid: 10}` zooms a part (up to 8×) with labelled lines;
+   `sample: [[x, y], [x, y, w, h]]` returns hex, RGB and naive CMYK. A PDF or .ai page (a die-cut template, an
+   exported proof) works the same with `page` (rendered by Illustrator, in session units). One factor `S = page width in pt ÷ page width in px`; font size ≈ cap height px ÷ 0.7 × S.
 4. Build with the loop above, then `preview {reference: "<image>", reference_crop: [x, y, w, h]}`: fix what
    `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); one or two rounds.
 5. **Proofread every word against the reference** — on a client's job the words are theirs.
@@ -93,6 +97,7 @@ Name layers and groups. Keep scripts re-runnable.
 | MRAP | Transient; tools already retry. If it repeats, save, then `status {restart: true}` (reopens the documents) |
 | A batch step failed | Earlier steps stayed (unless `rollback: true`); resend from `failed_step` |
 | `preview {region}` blank | Give `artboard` with `region` |
+| Tempted to `pip install` or write a Swift/Python script to look at an image or PDF | `preview {image}`: size, crop/zoom, grid, colours, PDF pages |
 
 ## Working from the Chandelier panel
 
