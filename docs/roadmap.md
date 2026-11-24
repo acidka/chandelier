@@ -1,6 +1,8 @@
 # Roadmap
 
-Last updated: 2026-11-24 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
+Last updated: 2026-11-25 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
+
+Known bugs and unverified parts: [bugs.md](bugs.md).
 
 Each phase has **exit criteria**. A phase is done only when they are met and the docs are updated.
 
@@ -405,8 +407,7 @@ a file, and the skill said "measure in pixels" without a way to.
 - [x] ✅ Shading in the method (recreate.md § 5b, same job: RMSE 0.100 → 0.095): shade visible bands, not objects;
   a gradient that follows a curve = stacked multiply steps between an edge and the next seen edge, clipped by the
   exact edge; ≥ 1.5 % opacity per step (smaller steps don't render); check with tone profiles at 1 px per px
-- [ ] Bug: `modify_items {fill: "gradient:Name@-90"}` ignores the angle on an existing gradient fill (seen 2026-11-25,
-  Illustrator 29.1); worked around with `item.rotate(a, false, false, true, false)`
+- [ ] Fix the bugs found on the way: [bugs.md](bugs.md) #1 (gradient angle), #2 (`preview {reference, region}`), #3 (fractional zoom)
 - [ ] Tool support so agents don't hand-write the method: edge profiles (`preview {image, profile}`) and a curve
   fit (`create_path {fit}`); then a fresh-agent trial on another image
 - [ ] Live check of PDF pages (needs Illustrator running) and a fresh-agent trial on a machine without Pillow
@@ -569,3 +570,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | `preview {image}` (look at image and PDF files: zoom, grid, colour samples) + guidance, so agents stop installing Python imaging libraries on first use |
 | 2026-11-25 | Recreate method (`plugin/skills/illustrator/recreate.md`), trained on a wave-ribbon box front: smooth free-form shapes, layers from tone steps, two-view compare |
 | 2026-11-25 | Recreate method § 5b: shading and gradients that follow curves (per visible band, stacked multiply steps, profile checks) |
+| 2026-11-25 | [bugs.md](bugs.md): one list of known bugs (6 open) and unverified parts (4) |
