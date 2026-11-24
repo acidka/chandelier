@@ -83,7 +83,10 @@
     try { o.box = A.box(it); } catch (e) {}
     return o;
   };
+  // Lists at most max (100) items to keep replies short; the full list stays in A.lastList so a batch's "@n" refers
+  // to every item of the step, not only the listed ones (seen 2026-11-24: 980 dots, "@0" grouped 100).
   A.outList = function (items, max) {
+    A.lastList = items;
     var o = [], n = Math.min(items.length, max || 100);
     for (var i = 0; i < n; i++) o.push(A.out(items[i]));
     var r = { count: items.length, items: o };

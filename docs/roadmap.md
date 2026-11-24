@@ -480,3 +480,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | **0.4.1 released** (registry metadata, README): plugin 0.4.1, tag `v0.4.1`, GitHub release with the `.mcpb`; npm and the registry entry are published by the owner |
 | 2026-11-24 | `chandelier-mcp@0.4.1` on npm (owner; `npx` from the registry starts, 35 tools, `status` answers — Illustrator was not running, so no live round trip) and **listed in the MCP Registry** as `io.github.acidka/chandelier` |
 | 2026-11-24 | Agents leave a finished document open (owner's request): server instructions, plugin skill, agent guide, README, `recreate_design` prompt; close only when asked or for many-file jobs (`batch {files}` closes each itself) |
+| 2026-11-24 | Fix: a batch's `@n` referred only to the first 100 items of a long step result (results list ≤ 100); it now sees every item (found in the panel trial: 980 pattern dots, `@0` grouped 100); unit test |

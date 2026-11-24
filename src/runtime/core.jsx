@@ -698,9 +698,12 @@ $.global.AIA = (function () {
         var c = A.cmd[s.cmd];
         if (!c) throw new Error('Unknown runtime command "' + s.cmd + '".');
         A.S = merged(base, s.settings);
+        A.lastList = null;
         var d = c(s.args || {});
         if (d === undefined) d = null;
-        A.steps.push(d);
+        // "@n" sees every item of a long result (A.outList lists only the first 100 in d)
+        var full = A.lastList;
+        A.steps.push(full && d && d.count === full.length && d.more ? { items: full } : d);
         out.push({ ok: true, data: d });
       } catch (e) {
         var info = A.errorInfo(e, s.cmd === 'script');
