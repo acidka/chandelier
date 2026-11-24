@@ -237,6 +237,65 @@ describe('panel activity (the "thinking" line)', () => {
   });
 });
 
+describe('unread messages are never skipped', () => {
+  it('a message written before the agent first calls events is still returned (found in the fresh-agent trial)', async () => {
+    makeT();
+    const { server } = createServer({ transport: T! });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const client = new Client({ name: 'test', version: '0' });
+    await client.connect(b);
+    await T!.ensure();
+    panel.message('make this blue');
+    await until(() => T!.events.since(0, ['message']).length > 0);
+    world.count = 1; world.items = [{ uuid: '9', type: 'PathItem', name: 'Sun' }]; // a later selection event
+    await until(() => T!.events.since(0, ['selection']).length > 0);
+    const call = async (args: object) => JSON.parse(((await client.callTool({ name: 'events', arguments: args })) as any).content[0].text);
+    const first = await call({ say: 'Hi, listening', wait: 5, types: ['message'] }); // no since: starts "now"
+    expect(first.events.map((e: any) => e.text)).toEqual(['make this blue']);
+    const again = await call({ since: first.next, wait: 0.1, types: ['message'] });
+    expect(again.events).toEqual([]); // read once
+    await client.close();
+  });
+});
+
+describe('channel mode (Claude Code channels)', () => {
+  it('pushes panel messages into the session with the selection, not into events; next call = thinking', async () => {
+    makeT();
+    const { server } = createServer({ transport: T!, channel: true });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const client = new Client({ name: 'test', version: '0' });
+    const pushed: any[] = [];
+    client.fallbackNotificationHandler = async (n: any) => { if (n.method === 'notifications/claude/channel') pushed.push(n.params); };
+    await client.connect(b);
+    expect((client.getServerCapabilities() as any).experimental).toEqual({ 'claude/channel': {} });
+    expect(client.getInstructions()).toMatch(/<channel source=/);
+    await T!.ensure();
+    world.count = 1; world.items = [{ uuid: '683', type: 'TextFrame', name: 'Headline' }];
+    await until(() => (T!.state as any)?.count === 1);
+    panel.message('make this red');
+    expect(await until(() => pushed.length > 0)).toBe(true);
+    expect(pushed[0]).toEqual({ content: 'make this red', meta: { doc: 'A.ai', selection: '1: Headline (TextFrame, uuid 683)' } });
+    expect(T!.events.since(0, ['message'])).toEqual([]); // delivered once, through the channel
+    expect(panel.info().activity).toBe('unread'); // no proof yet that a session got it
+    await client.callTool({ name: 'events', arguments: { say: 'Done: it is red.' } });
+    expect(await until(() => panel.info().chat.at(-1)?.type === 'agent')).toBe(true);
+    await client.close();
+  });
+
+  it('is off without the flag: no channel capability, messages stay in events', async () => {
+    makeT();
+    const { server } = createServer({ transport: T!, channel: false });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const client = new Client({ name: 'test', version: '0' });
+    await client.connect(b);
+    expect((client.getServerCapabilities() as any).experimental).toBeUndefined();
+    await client.close();
+  });
+});
+
 describe('event log', () => {
   it('long-polls until an event arrives, or times out empty', async () => {
     const log = new EventLog();

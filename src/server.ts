@@ -109,7 +109,22 @@ export function makeTransport(kind = process.env.CHANDELIER_TRANSPORT): Transpor
   return kind === 'panel' ? new PanelTransport() : new Transport();
 }
 
-export function createServer(opts: { transport?: Transport; tmp?: string; tools?: string } = {}) {
+const CHANNEL_NOTE = `
+The designer writes to you from the Chandelier panel in Illustrator: messages arrive as <channel source="…" doc="…" selection="…">text</channel>. Treat each as their request; "this"/"it" = the selection in the tag (uuids usable as refs). Do it, check briefly, then answer in the panel with events {say: "…"} (short: what you changed, or a question).`;
+
+/** "2: Headline (TextFrame, uuid 683), Sun (PathItem, uuid 681)" from the panel's state, for channel tags. */
+function selectionText(state: unknown): { doc?: string; selection: string; selected_text?: string } {
+  const s = (state ?? {}) as { doc?: string | null; count?: number; items?: { uuid: string; type: string; name?: string }[]; text?: { text?: string } };
+  const items = (s.items ?? []).map((i) => `${i.name || i.type} (${i.type}, uuid ${i.uuid})`);
+  const more = (s.count ?? 0) > items.length ? `, +${(s.count ?? 0) - items.length} more` : '';
+  return {
+    ...(s.doc ? { doc: s.doc } : {}),
+    selection: s.count ? `${s.count}: ${items.join(', ')}${more}` : 'nothing selected',
+    ...(s.text?.text ? { selected_text: s.text.text } : {}),
+  };
+}
+
+export function createServer(opts: { transport?: Transport; tmp?: string; tools?: string; channel?: boolean } = {}) {
   const T = opts.transport ?? makeTransport();
   const settings = defaultSettings();
   const ctx: Ctx = { T, rt: new Runtime(T, settings), tmp: opts.tmp ?? mkdtempSync(join(tmpdir(), 'aia-')), created: new Set(), settings, tools: new Map(TOOLS.map((t) => [t.name, t])) };
@@ -123,9 +138,23 @@ export function createServer(opts: { transport?: Transport; tmp?: string; tools?
   }
   // the events tool exists only with the panel transport, so the default tool list stays the same size
   if (T instanceof PanelTransport) { ctx.tools.set(events.name, events); exposed = [...exposed, events]; }
-  const server = new McpServer({ name: 'chandelier', version: VERSION }, { instructions: shown ? INSTRUCTIONS + LEAN_NOTE : INSTRUCTIONS });
+  // channel mode (Claude Code channels, research preview): panel messages are pushed into the session, waking it
+  const channel = T instanceof PanelTransport && (opts.channel ?? process.env.CHANDELIER_CHANNEL === '1');
+  const instructions = (shown ? INSTRUCTIONS + LEAN_NOTE : INSTRUCTIONS) + (channel ? CHANNEL_NOTE : '');
+  const server = new McpServer({ name: 'chandelier', version: VERSION },
+    { instructions, ...(channel ? { capabilities: { experimental: { 'claude/channel': {} } } } : {}) });
+  if (channel) {
+    const P = T as PanelTransport;
+    P.messageSink = (m) => {
+      // no acknowledgement exists: a session started without the channel flag drops this silently
+      void server.server.notification({ method: 'notifications/claude/channel', params: { content: m.text, meta: selectionText(P.state) } } as never).catch(() => {});
+    };
+  }
   for (const tool of exposed) {
-    server.registerTool(tool.name, { description: tool.description, inputSchema: tool.shape }, (args: unknown) => callTool(tool, args ?? {}, ctx));
+    server.registerTool(tool.name, { description: tool.description, inputSchema: tool.shape }, (args: unknown) => {
+      if (T instanceof PanelTransport) T.noteAgentCall();
+      return callTool(tool, args ?? {}, ctx);
+    });
   }
   registerPrompts(server);
   slimToolList(server);

@@ -72,6 +72,18 @@ agent ──MCP──▶ Chandelier server ── PanelTransport ──TCP 127.0
   `activity` {state: thinking}), "Agent is working in Illustrator…" (its scripts run through the panel; held 1.5 s
   after the last one so quick calls don't flicker). Cleared by the agent's `say` or when it waits again
   (`events {wait}` sends `listening`). Animated dots for thinking/working.
+- **Waking the agent: channel mode (2026-11-24).** Claude Code *channels* (research preview,
+  [docs](https://code.claude.com/docs/en/channels-reference)) let an MCP server push messages into a running session.
+  With `CHANDELIER_TRANSPORT=panel CHANDELIER_CHANNEL=1` the server declares `experimental: {"claude/channel": {}}`
+  and pushes each panel message as `notifications/claude/channel` — `{content: text, meta: {doc, selection,
+  selected_text}}` (Claude sees `<channel source="…" doc="…" selection="1: Headline (TextFrame, uuid 683)">make this
+  red</channel>`); an idle session wakes up, a busy one gets it on its next turn. Messages then go only to the
+  channel, not to `events` (each request arrives once); the agent answers with `events {say}`. Pushes are not
+  acknowledged, so the panel shows "thinking" only once the agent makes its next tool call — a session started
+  without the channel flag leaves "Sent · waiting for the agent to pick it up". During the preview a custom channel
+  needs an interactive session started with `claude --dangerously-load-development-channels server:<name>` (ignored
+  with `-p`); Team/Enterprise orgs must enable channels. The panel is the only sender (local socket, token), so no
+  sender allowlist is needed; permission relay is not declared.
 
 ## 4. Try it (developer setup)
 
@@ -95,6 +107,7 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
 | P2 | First live run in Illustrator 29.1 (macOS): panel loads, Node enabled, runtime loads through `evalScript`, `test/live.mjs` green with `CHANDELIER_TRANSPORT=panel`, events seen; measure per-call latency against the bridge | ✅ 2026-11-24 ([§ 7](#7-first-live-run-p2)); fixed: state pushed with the first look, stale `saved` after a document switch, empty selection events on a switch |
 | P3 | Same on Windows (VM) | ⛔ 2026-11-24, rechecked: Illustrator 2027 **native ARM64** blocks every third-party CEP extension by design (built-in list of Adobe ids in `Services.aip`, "not supported on your device") — [§ 8](#8-windows-arm64-p3). CEP on Windows needs x64 Illustrator; Windows ARM needs a UXP panel |
 | P4 | Agent trial: a pairing task ("fix what I select") with a fresh agent; decide whether events are worth shipping | ✅ 2026-11-24 with the owner on the Mac ([§ 9](#9-pairing-trial-p4)): every hand selection arrives within ~0.5 s with uuids; "change colour" / "change font" applied to exactly the selected item by uuid. Open: a fresh agent on its own (local `chandelier-panel` server added) |
+| P4b | Fresh agent on its own (headless `claude -p`, only the panel server, brief: "I'll write to you from the Chandelier panel… handle my requests there"), designer messages played through DevTools | ✅ 2026-11-24 ([§ 10](#10-fresh-agent-trial-p4b)): found the listen → act → `say` loop from the tool description alone; 3/3 requests after a fix (messages written before the agent's first call were skipped) |
 | P5 | Ship or stop: if yes, package the panel (signed ZXP or `npx chandelier-mcp install-panel`), README, plugin skill section; if no, keep the branch for UXP | ❓ owner |
 
 ## 6. Open questions and risks
@@ -184,3 +197,21 @@ acting through a panel-mode MCP client; trial poster (A4: Headline, Subtitle, Su
 - **Verdict for P5 (owner):** events work as designed on macOS; the pairing loop needs no extra tool calls (the
   selection's uuids are the refs). Remaining before shipping: a fresh agent's unprompted use of `events`, the hidden
   panel question, packaging/signing, and no Windows-ARM support (§ 8).
+
+## 10. Fresh-agent trial (P4b)
+
+2026-11-24 · Claude Code 2.1.331 headless (`claude -p`, `--strict-mcp-config` with only the panel-mode server, empty
+working folder: no CLAUDE.md), Illustrator 29.1.0, macOS 27.2.1. A script played the designer through the panel's
+DevTools: select the Sun → "make this blue" → "make the headline a bit smaller" → "thanks, that's all for now".
+
+- **Run 1:** the agent loaded `events`, greeted in the panel and looped `events {say, since, wait: 300, types:
+  ["message"]}` → act → answer, and stopped when told — from the tool description alone. **Bug:** "make this blue"
+  was lost: it arrived before the agent's first `events` call, which (no `since`) started from "now". Fixed: the
+  designer's messages are never skipped — every message not yet handed to the agent is returned (`messagesRead`).
+- **Run 2 (after the fix):** 3/3. "make this blue" → `modify_items {refs: 681}` — the uuid from the event's
+  selection, no search (9.0 s from Send to answer); headline 48 → 41 pt with a clear before/after answer (17.1 s);
+  sign-off with "the document isn't saved yet" (1.9 s). 15 turns, 36 s, $0.28. The activity line went
+  waiting → thinking → working → idle as designed.
+- **Channel mode** (§ 3) can't be tried headless (`--dangerously-load-development-channels` needs an interactive
+  session): a local server `chandelier-channel` (`CHANDELIER_CHANNEL=1`) is set up for the owner to try with
+  `claude --dangerously-load-development-channels server:chandelier-channel`.

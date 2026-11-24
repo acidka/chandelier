@@ -35,6 +35,7 @@ claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill
 node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
 node scripts/cep/install.mjs --link  # dev-install the Chandelier panel (CEP) into Illustrator; --debug (DevTools :8098), --uninstall (docs/panel-plan.md)
 CHANDELIER_TRANSPORT=panel npm run test:live  # the live suite through the panel (open Window > Extensions > Chandelier first)
+claude --dangerously-load-development-channels server:<name>  # with CHANDELIER_CHANNEL=1 on that server: panel chat wakes the session (docs/panel-plan.md)
 ```
 
 ## Rules

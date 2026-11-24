@@ -83,7 +83,23 @@ export class PanelTransport extends Transport {
     }
   }
 
+  /**
+   * Channel mode (CHANDELIER_CHANNEL=1): the designer's panel messages go to this sink (pushed into the Claude Code
+   * session) instead of the event log, so the agent gets each request once. Set by createServer.
+   */
+  messageSink: ((m: { text: string; t?: number }) => void) | null = null;
+  /** seq of the last designer message handed to the agent: newer ones are unread and never skipped */
+  messagesRead = 0;
+  private pickup = false;
+
   get connected(): boolean { return this.sock !== null; }
+
+  /** Any tool call after a pushed message proves the agent got it: the panel shows "thinking". */
+  noteAgentCall(): void {
+    if (!this.pickup) return;
+    this.pickup = false;
+    void this.activity('thinking');
+  }
 
   /** Connect to the panel if it is open. Never throws. */
   ensure(): Promise<boolean> {
@@ -134,6 +150,7 @@ export class PanelTransport extends Transport {
           if (m.event) {
             const { type, ...rest } = m.event;
             if (type === 'paused') this.state = null;
+            if (type === 'message' && this.messageSink) { this.pickup = true; this.messageSink(rest as { text: string; t?: number }); continue; }
             this.events.push({ type, ...rest });
             continue;
           }

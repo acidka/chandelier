@@ -22,9 +22,15 @@ say = text shown to the designer in the panel (an answer, a question, "done"), s
     // the panel's "thinking" line: waiting = listening; handing over the designer's message = thinking
     if (a.wait) await T.activity('listening');
     const since = a.since ?? T.events.last;
-    const evs = await T.events.wait(since, (a.wait ?? 0) * 1000, a.types);
-    if (evs.some((e) => e.type === 'message')) await T.activity('thinking');
-    const body: Record<string, unknown> = { ...(said === undefined ? {} : { said }), events: evs, next: evs.length ? evs[evs.length - 1].seq : Math.max(since, T.events.last), state: T.state, panel: T.connected ? 'connected' : 'not connected' };
+    // the designer's messages are never skipped: one written before this call (or before the first) is still returned
+    const wantsMessages = !a.types?.length || a.types.includes('message');
+    const unread = wantsMessages ? T.events.since(T.messagesRead, ['message']).filter((e) => e.seq <= since) : [];
+    const evs = unread.length
+      ? [...unread, ...T.events.since(since, a.types)]
+      : await T.events.wait(since, (a.wait ?? 0) * 1000, a.types);
+    const read = evs.filter((e) => e.type === 'message');
+    if (read.length) { T.messagesRead = Math.max(T.messagesRead, ...read.map((e) => e.seq)); await T.activity('thinking'); }
+    const body: Record<string, unknown> = { ...(said === undefined ? {} : { said }), events: evs, next: evs.length ? Math.max(since, evs[evs.length - 1].seq) : Math.max(since, T.events.last), state: T.state, panel: T.connected ? 'connected' : 'not connected' };
     if (!T.connected) body.hint = 'Open Window > Extensions > Chandelier in Illustrator (install it once with node scripts/cep/install.mjs).';
     return text(body);
   },
