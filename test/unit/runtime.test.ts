@@ -134,7 +134,7 @@ describe('runtime MRAP retry (B3)', () => {
   it('gives up after n tries and rethrows other errors at once', () => {
     let n = 0;
     expect(() => A.retry(() => { n++; throw mrap(); })).toThrow(/MRAP/);
-    expect(n).toBe(3);
+    expect(n).toBe(4); // 40 ms, 80 ms, then one more after 1 s (busy spells of seconds, panel trial)
     n = 0;
     expect(() => A.retry(() => { n++; throw new Error('boom'); })).toThrow(/boom/);
     expect(n).toBe(1);

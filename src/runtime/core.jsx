@@ -239,18 +239,19 @@ $.global.AIA = (function () {
     try { sp.name = name; } catch (e2) { try { sp.remove(); } catch (e3) {} throw e2; }
     return sp;
   };
-  // Retry fn on Illustrator's transient MRAP error (B3), up to n tries (default 3). Only for steps that are safe
-  // to repeat (set a property, apply a style, add-or-update by name). Counted for status (mrap).
+  // Retry fn on Illustrator's transient MRAP error (B3), up to n tries (default 4: after 40 ms, 80 ms, then 1 s - a
+  // busy spell of seconds was seen while the designer worked in Illustrator, panel trial 2026-11-24). Only for steps
+  // that are safe to repeat (set a property, apply a style, add-or-update by name). Counted for status (mrap).
   A.MRAP = 1346458189;
   A.mrapRetries = 0; A.mrapFailed = 0;
   A.isMrap = function (e) { return !!e && (e.number === A.MRAP || /MRAP/.test(String(e.message))); };
   A.retry = function (fn, n) {
-    n = n || 3;
+    n = n || 4;
     for (var i = 0; ; i++) {
       try { return fn(); } catch (e) {
         if (!A.isMrap(e) || i >= n - 1) throw e;
         A.mrapRetries++;
-        $.sleep(40 * (i + 1));
+        $.sleep(i < 2 ? 40 * (i + 1) : 1000);
       }
     }
   };
