@@ -67,7 +67,7 @@
       for (i = 0; i < ps.length; i++) paintOne(ps[i], s);
     }
     if (s.opacity !== undefined) it.opacity = s.opacity;
-    if (s.blend) { if (!BLEND[s.blend]) throw new Error('Unknown blend "' + s.blend + '".'); it.blendingMode = BlendModes[BLEND[s.blend]]; }
+    if (s.blend) { if (!BLEND[s.blend]) throw new Error('Unknown blend "' + s.blend + '": use normal, multiply, screen, overlay, darken, lighten, color_dodge, color_burn, hard_light, soft_light, difference, exclusion, hue, saturation, color or luminosity.'); it.blendingMode = BlendModes[BLEND[s.blend]]; }
     if (s.name !== undefined) it.name = s.name;
     if (s.note !== undefined) it.note = s.note;
     if (s.hidden !== undefined) it.hidden = s.hidden;

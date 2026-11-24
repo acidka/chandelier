@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ToolDef } from './types.js';
-import { one, refSchema, placeShape, BLENDS, itemsSchema } from './common.js';
+import { one, refSchema, placeShape, blendSchema, itemsSchema } from './common.js';
 
 const ALIGN = ['left', 'center', 'right', 'justify', 'justify_all'] as const;
 /** Character attributes (pt for sizes). */
@@ -35,7 +35,7 @@ const textProps = {
   on_path: one.optional(),
   keep_path: z.boolean().optional(),
   ...charShape, ...paraShape,
-  opacity: z.number().min(0).max(100).optional(), blend: z.enum(BLENDS).optional(),
+  opacity: z.number().min(0).max(100).optional(), blend: blendSchema.optional(),
   name: z.string().optional(), note: z.string().optional(), hidden: z.boolean().optional(), locked: z.boolean().optional(),
 };
 

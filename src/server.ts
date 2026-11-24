@@ -14,7 +14,7 @@ import { VERSION } from './version.js';
 import { defaultSettings } from './settings.js';
 
 export const INSTRUCTIONS = `chandelier drives Adobe Illustrator on this Mac (~5 ms per call).
-Conventions: coordinates [x, y, w, h] from the top-left of the active artboard, y down, in points (configure: units mm/in/px, origin, artboard). Colours "cmyk(100,85,30,25)", "gray(60)", "#1e2a44", "swatch:Name", "swatch:Name@50", "gradient:Name@45", "none". Refs: uuid, "selection", "name:Glob*", "layer:Name", "artboard:N", "@n" (an earlier batch step). Uuids change when a document is reopened.
+Conventions: coordinates [x, y, w, h] from the top-left of the active artboard, y down, in points (configure: units mm/in/px, origin, artboard). Colours "cmyk(100,85,30,25)", "gray(60)", "#1e2a44", "swatch:Name", "swatch:Name@50", "gradient:Name@45", "none". Refs (one or a list): uuid, "selection", "name:Glob*", "layer:Name", "artboard:N", "@n" (an earlier batch step). Uuids change when a document is reopened.
 Load only the tools a job needs (a build: documents, batch or run_script, preview). Fonts match fuzzily; call fonts only when unsure.
 Build a document (aim for ~8 Illustrator calls; no status call first):
 1. documents new (size, units — they become the session units, bleed, artboards, artboard_names, title).
