@@ -335,7 +335,7 @@ repeat, done in one call each. Owner, 2026-11-24: "finish 0.3"; the tool-list si
 - [x] ✅ Recolor: `swatches {action: "recolor"}` — fills, strokes, text runs (merged into spans) and gradient stops → nearest target swatch (`to`: names or `group:Name`, default all global/spot) within `tolerance` (CIE76 ΔE, default 20), or an explicit `map`; tints of a swatch match by the swatch colour and stay tints; locked content counted, not touched; `dry_run`. `swatches {action: "import"}` reads an `.ase` swatch library (CMYK, RGB, Lab, gray; groups; global/spot/process); colour spec `lab(l,a,b)`
 - [x] ✅ Tool profiles: `CHANDELIER_TOOLS=lean` (8 tools + `tools` meta-tool: catalog, query, schema, call; 15.4 KB ≈ 4.9 k tokens) or a list of names; `full` stays the default (53.6 KB; budget raised to 55 KB)
 - [x] ✅ Tests: unit (CSV, patterns, ASE round trip, file lists, profiles, lean server) and `test/live-production.mjs` (macOS, Illustrator 29.1 ru_RU, 2026-11-24: green)
-- [ ] ⏳ Windows: `test/live-production.mjs` in the VM
+- [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 127/127; `live-production` green by parts — merge and recolor in a full run, files on a fresh Illustrator (`ONLY=files`); Illustrator crashed twice at a new/opened document late in full runs (the 0.2.1 known issue; a 4× save-close-open loop alone doesn't reproduce it)
 - [ ] ⏳ Release 0.3.0: version bump, npm (owner approves the staged publish), `main`, tag, GitHub release with the `.mcpb`
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -457,3 +457,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | 0.2.1 macOS live pass green: `live-print` failure not reproduced in 10 runs (alone and after all suites); the test now prints how Illustrator sees the linked image if it recurs — release unblocked |
 | 2026-11-24 | **0.2.1 released**: npm, plugin 0.2.1, tag `v0.2.1`, GitHub release with the `.mcpb`; W1 modal-dialog check carried over to phase 7 |
 | 2026-11-24 | 0.3 features: `data_merge`, `batch {files}`, `swatches {recolor, import}`, tool profiles (`CHANDELIER_TOOLS=lean`, `tools` meta-tool); plan D12, D13; `test/live-production.mjs` green on macOS |
+| 2026-11-24 | 0.3 Windows check (live-production by parts; Illustrator 2027 VM crashes late in long runs, as in 0.2.1); version 0.3.0, plugin launcher `^0.3.0` |

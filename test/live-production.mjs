@@ -2,7 +2,8 @@
 // Live checks for 0.3 production automation (needs a running Illustrator; works only in documents and files it
 // creates, in a temp folder): data_merge (dry run, artboards, grid, files, remove_template), swatches recolor and
 // .ase import, batch {files} (copies, exports, dry run, failures, already-open files, in place).
-//   npm run build && node test/live-production.mjs
+//   npm run build && node test/live-production.mjs   (ONLY=merge|recolor|files runs one part: Illustrator 2027 in the
+//   Windows VM crashes after many operations, 0.2.1 known issue)
 import { mkdtempSync, writeFileSync, existsSync, statSync, mkdirSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,8 +18,10 @@ mkdirSync(join(dir, 'img'));
 writeFileSync(join(dir, 'img', 'red.png'), solid(40, 20, 220, 30, 30));
 writeFileSync(join(dir, 'img', 'blue.png'), solid(20, 40, 30, 30, 220));
 const script = (code) => call('run_script', { code });
+const part = (p) => !process.env.ONLY || process.env.ONLY === p;
 
 // ── data_merge ──
+if (part('merge')) {
 await call('documents', { action: 'new', width: 200, height: 120, title: 'aia-merge' });
 await call('swatches', { action: 'add', name: 'Gold', color: 'cmyk(0,20,90,10)' });
 await call('create_shape', { items: [
@@ -84,7 +87,10 @@ await script('var o = []; for (var k = 0; k < AIA.doc().artboards.length; k++) {
 await call('data_merge', { rows: [{ x: 1 }] }, { expectError: true }); // no placeholders left: nothing to fill
 await call('documents', { action: 'close', discard: true });
 
+}
+
 // ── swatches: import (.ase) and recolor ──
+if (part('recolor')) {
 await call('documents', { action: 'new', width: 300, height: 200, title: 'aia-recolor' });
 writeFileSync(join(dir, 'brand.ase'), writeAse([
   { name: 'Brand Red', model: 'CMYK', values: [0, 0.95, 0.85, 0], type: 0, group: 'Brand' },
@@ -126,7 +132,10 @@ await fills().then((v) => assert((v.items ?? v).find((i) => i.name === 'yellow')
 await call('swatches', { action: 'recolor', to: ['Nope'] }, { expectError: true });
 await call('documents', { action: 'close', discard: true });
 
+}
+
 // ── batch {files}: two scratch files, never anything else ──
+if (part('files')) {
 const src = join(dir, 'src'), out = join(dir, 'out'); mkdirSync(src);
 for (const n of ['a', 'b']) {
   await call('documents', { action: 'new', width: 100, height: 100, title: 'aia-files-' + n });
@@ -150,6 +159,7 @@ await call('get_items', { refs: 'name:Box', fields: ['fill'] }, { check: (v) => 
 await call('batch', { files: [out], steps, save: 'in_place' }, { check: (v) => assert(v.ok === 1 && v.skipped === 1 && /already open/.test(v.results.find((r) => r.skipped).skipped), 'open file skipped ' + JSON.stringify(v)) });
 await call('documents', { action: 'close', discard: true });
 assert(readdirSync(out).sort().join() === 'a.ai,b.ai', 'out holds the two copies');
+}
 
 console.log('files in', dir);
 process.exit((await done()) ? 1 : 0);
