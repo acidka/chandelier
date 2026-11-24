@@ -6,6 +6,7 @@
   var cep = window.__adobe_cep__;
   var req = (typeof require === 'function') ? require : (window.cep_node && window.cep_node.require);
   var $ = function (id) { return document.getElementById(id); };
+  var clients = 0; // connected agents (the chat's Send button needs one)
 
   function fail(msg) {
     $('dot').className = 'dot err';
@@ -30,6 +31,9 @@
     } else if (e.type === 'document') what = e.doc ? 'Document: ' + e.doc : 'No document open';
     else if (e.type === 'saved') what = 'Saved ' + e.doc;
     else if (e.type === 'edited') what = 'Edited ' + e.doc;
+    else if (e.type === 'message' || e.type === 'agent') {
+      return '<b>' + (e.type === 'message' ? 'You' : 'Agent') + '</b> <span class="muted">' + t + '</span><br>' + escapeHtml(e.text);
+    }
     else what = e.type;
     return '<b>' + escapeHtml(what) + '</b> <span class="muted">' + t + (e.after_agent ? ' · agent' : '') + '</span>';
   }
@@ -40,7 +44,12 @@
     $('status').innerHTML = 'Listening on <code>127.0.0.1:' + info.port + '</code>';
     $('agents').textContent = info.clients ? (info.clients + (info.clients === 1 ? ' agent connected' : ' agents connected')) : 'No agent connected';
     var list = info.recent.slice().reverse();
-    $('events').innerHTML = list.length ? list.map(function (e) { return '<li>' + describe(e) + '</li>'; }).join('') : '<li class="muted">Nothing yet</li>';
+    $('events').innerHTML = list.length ? list.map(function (e) {
+      var cls = e.type === 'message' ? ' class="chat me"' : (e.type === 'agent' ? ' class="chat agent"' : '');
+      return '<li' + cls + '>' + describe(e) + '</li>';
+    }).join('') : '<li class="muted">Nothing yet</li>';
+    clients = info.clients;
+    updateSend();
   }
 
   var panel = core.createPanel({
@@ -57,5 +66,20 @@
   });
 
   $('share').addEventListener('change', function () { panel.setSharing(this.checked); });
+
+  // chat: the designer writes to the agent; the agent reads it with the events tool and answers with events {say}
+  function updateSend() {
+    $('send').disabled = !clients || !$('msg').value.trim();
+    $('hint').textContent = clients ? 'The agent reads messages while it waits for events.' : 'No agent connected: start one with CHANDELIER_TRANSPORT=panel.';
+  }
+  function sendMessage() {
+    if (panel.message($('msg').value)) { $('msg').value = ''; }
+    updateSend();
+  }
+  $('msg').addEventListener('input', updateSend);
+  $('msg').addEventListener('keydown', function (ev) {
+    if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); sendMessage(); }
+  });
+  $('send').addEventListener('click', sendMessage);
   window.addEventListener('beforeunload', function () { panel.stop(); });
 })();

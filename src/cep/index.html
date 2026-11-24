@@ -16,6 +16,16 @@
   ol { list-style: none; margin: 6px 0 0; padding: 0; border-top: 1px solid #444; }
   li { padding: 4px 0; border-bottom: 1px solid #3c3c3c; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   li b { font-weight: 600; color: #fff; }
+  li.chat { white-space: pre-wrap; overflow-wrap: anywhere; }
+  li.me b { color: #8cc8ff; }
+  li.agent b { color: #9fe0b5; }
+  #compose { display: flex; gap: 6px; margin: 8px 0 4px; }
+  #msg { flex: 1; min-height: 34px; max-height: 120px; resize: vertical; box-sizing: border-box; padding: 4px 6px;
+    font: inherit; color: #eee; background: #262626; border: 1px solid #555; border-radius: 3px; }
+  #send { align-self: flex-end; padding: 4px 10px; font: inherit; color: #fff; background: #2d6fd3; border: 0;
+    border-radius: 3px; cursor: pointer; }
+  #send:disabled { background: #555; color: #999; cursor: default; }
+  #hint { font-size: 11px; }
   code { font: 11px ui-monospace, Menlo, Consolas, monospace; color: #bbb; }
 </style>
 </head>
@@ -24,6 +34,11 @@
   <div class="row"><span id="dot" class="dot"></span><span id="status">Starting…</span></div>
   <div class="row muted" id="agents">No agent connected</div>
   <label><input type="checkbox" id="share" checked> Share my selection and document changes with the agent</label>
+  <div id="compose">
+    <textarea id="msg" rows="2" placeholder="Write to the agent… (⌘/Ctrl+Enter)"></textarea>
+    <button id="send" disabled>Send</button>
+  </div>
+  <div class="muted" id="hint">The agent reads messages while it waits for events.</div>
   <div class="muted">Recent</div>
   <ol id="events"><li class="muted">Nothing yet</li></ol>
   <script src="panel.js"></script>

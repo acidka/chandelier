@@ -57,6 +57,12 @@ agent ──MCP──▶ Chandelier server ── PanelTransport ──TCP 127.0
   message and logs a `panel` event.
 - **Tool `events {since, wait, types}`** → `{events, next, state, panel}`. `wait` (≤ 300 s) blocks until an event
   arrives, so an agent can wait for the designer.
+- **Chat (2026-11-24, owner's request):** a text box and Send button (⌘/Ctrl+Enter) in the panel. The designer's text
+  goes to every connected agent as a `message` event (`{type: "message", text}`; "this"/"it" = the current selection);
+  `events {say}` shows the agent's answer in the panel (protocol op `say`, plain UTF-8). The panel list shows both
+  sides. Limit: the panel can't wake an idle agent — a message is read when the agent next calls `events`, so to work
+  from the panel the agent loops `events {since, wait: 300, types: ["message"]}` (answering with `say` in the same call).
+  Send is disabled while no agent is connected; messages are kept in the event log (200) until read.
 
 ## 4. Try it (developer setup)
 

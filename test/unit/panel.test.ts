@@ -169,6 +169,45 @@ describe('panel socket', () => {
   });
 });
 
+describe('panel chat', () => {
+  it('the designer writes from the panel; the agent gets a message event (UTF-8 intact)', async () => {
+    expect(panel.message('make it bolder')).toBe(false); // no agent connected: nothing sent
+    makeT();
+    await T!.ensure();
+    expect(panel.message('  ')).toBe(false);
+    expect(panel.message('Зроби заголовок жирнішим')).toBe(true);
+    expect(await until(() => T!.events.since(0, ['message']).length > 0)).toBe(true);
+    expect(T!.events.since(0, ['message'])[0]).toMatchObject({ type: 'message', text: 'Зроби заголовок жирнішим' });
+    expect(panel.info().recent.at(-1)).toMatchObject({ type: 'message' });
+  });
+
+  it("the agent's say shows in the panel only", async () => {
+    makeT();
+    expect(await T!.say('Done — the headline is bold. Ціль досягнута.')).toBe(true);
+    expect(panel.info().recent.at(-1)).toMatchObject({ type: 'agent', text: 'Done — the headline is bold. Ціль досягнута.' });
+    expect(T!.events.since(0, ['message'])).toEqual([]);
+  });
+
+  it('events {say, wait, types: [message]}: answer, then wait for the next request', async () => {
+    makeT();
+    const { server } = createServer({ transport: T! });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await server.connect(a);
+    const client = new Client({ name: 'test', version: '0' });
+    await client.connect(b);
+    await T!.ensure();
+    const cursor = T!.events.last;
+    setTimeout(() => panel.message('now the sun'), 50);
+    const r: any = await client.callTool({ name: 'events', arguments: { since: cursor, say: 'What next?', wait: 5, types: ['message'] } });
+    const body = JSON.parse(r.content[0].text);
+    expect(body.said).toBe(true);
+    expect(body.events).toHaveLength(1);
+    expect(body.events[0]).toMatchObject({ type: 'message', text: 'now the sun' });
+    expect(panel.info().recent.map((e: any) => e.type)).toEqual(expect.arrayContaining(['agent', 'message']));
+    await client.close();
+  });
+});
+
 describe('event log', () => {
   it('long-polls until an event arrives, or times out empty', async () => {
     const log = new EventLog();

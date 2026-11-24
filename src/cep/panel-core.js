@@ -11,6 +11,8 @@
 //   pushed to every client as {"event":{type, t, …}}: document (active document changed, opened, closed), saved,
 //   edited, selection (count, first 10 items with uuids, text cursor). after_agent:true marks a change seen right
 //   after an agent request (probably the agent's own doing). The designer can pause sharing from the panel.
+// - Chat: the designer's text from the panel goes to every client as {"event":{type:"message", text}};
+//   a client's {"id","op":"say","text"} is shown in the panel (the agent's answer) → {"id","ok":true}.
 'use strict';
 const net = require('net');
 const fs = require('fs');
@@ -57,7 +59,9 @@ function createPanel(opts) {
   let last = null;
   const recent = [];
 
-  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-10) });
+  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30) });
+  const remember = (e) => { recent.push(e); if (recent.length > 50) recent.shift(); };
+  const MAX_TEXT = 2000;
   const changed = () => { if (opts.onChange) try { opts.onChange(info()); } catch (e) { /* UI errors never stop the server */ } };
   const send = (sock, obj) => { try { sock.write(JSON.stringify(obj) + '\n'); } catch (e) { /* closed */ } };
   const broadcast = (obj) => { for (const c of clients) send(c, obj); };
@@ -95,7 +99,7 @@ function createPanel(opts) {
       for (const e of events) {
         e.t = Date.now();
         if (afterAgent) e.after_agent = true;
-        recent.push(e); if (recent.length > 50) recent.shift();
+        remember(e);
         broadcast({ event: e });
       }
       afterAgent = false;
@@ -132,6 +136,12 @@ function createPanel(opts) {
         }
         if (m.op === 'js') { queue.push({ sock, id: m.id, code: String(m.code || '') }); pump(); }
         else if (m.op === 'ping') send(sock, { id: m.id, ok: true, result: 'pong' });
+        else if (m.op === 'say') {
+          // the agent's words for the designer: shown in the panel only
+          remember({ type: 'agent', text: String(m.text || '').slice(0, MAX_TEXT), t: Date.now() });
+          changed();
+          send(sock, { id: m.id, ok: true, result: 'shown' });
+        }
         else send(sock, { id: m.id, ok: false, error: 'The panel does not handle "' + m.op + '"' });
       }
     });
@@ -165,6 +175,16 @@ function createPanel(opts) {
       if (server) server.close();
       // remove the discovery file only if it is still ours (another panel may have replaced it)
       try { if (JSON.parse(fs.readFileSync(file, 'utf8')).token === token) fs.unlinkSync(file); } catch (e) { /* gone */ }
+    },
+    /** The designer wrote to the agent from the panel. false (nothing sent) when no agent is connected. */
+    message(text) {
+      text = String(text || '').trim().slice(0, MAX_TEXT);
+      if (!text || !clients.size) return false;
+      const e = { type: 'message', text, t: Date.now() };
+      remember(e);
+      broadcast({ event: e });
+      changed();
+      return true;
     },
     /** Something happened in Illustrator (a CSXS event): look now instead of at the next tick. */
     poke() { setTimeout(poll, 30); },

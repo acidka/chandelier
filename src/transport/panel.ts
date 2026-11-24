@@ -165,6 +165,18 @@ export class PanelTransport extends Transport {
     return p;
   }
 
+  /** Show the agent's words in the panel (the chat). false when the panel isn't open. */
+  async say(text: string): Promise<boolean> {
+    if (!(await this.ensure()) || !this.sock) return false;
+    const s = this.sock;
+    const id = ++this.nextId;
+    return new Promise<boolean>((resolve) => {
+      const t = setTimeout(() => { this.pending.delete(id); resolve(false); }, 3000);
+      this.pending.set(id, (m) => { clearTimeout(t); resolve(!!m.ok); });
+      s.write(JSON.stringify({ id, op: 'say', text }) + '\n'); // plain UTF-8: shown, not run as a script (no ascii escaping)
+    });
+  }
+
   override stop(): void {
     this.stopped = true;
     if (this.retry) clearInterval(this.retry);
