@@ -63,6 +63,10 @@ agent ──MCP──▶ Chandelier server ── PanelTransport ──TCP 127.0
   sides. Limit: the panel can't wake an idle agent — a message is read when the agent next calls `events`, so to work
   from the panel the agent loops `events {since, wait: 300, types: ["message"]}` (answering with `say` in the same call).
   Send is disabled while no agent is connected; messages are kept in the event log (200) until read.
+- **Two tabs (2026-11-24, owner's request):** *Chat* (opens first) holds only the message log (oldest first, scrolled
+  to the newest), the text box and Send; *Status* holds the connection, the agent count, the sharing switch and recent
+  events, with a connection dot on its tab. The chat history (100 messages) is kept apart from events, so selection
+  changes don't push messages out; it lives in the panel's memory and is cleared when the panel reloads.
 
 ## 4. Try it (developer setup)
 

@@ -178,13 +178,14 @@ describe('panel chat', () => {
     expect(panel.message('Зроби заголовок жирнішим')).toBe(true);
     expect(await until(() => T!.events.since(0, ['message']).length > 0)).toBe(true);
     expect(T!.events.since(0, ['message'])[0]).toMatchObject({ type: 'message', text: 'Зроби заголовок жирнішим' });
-    expect(panel.info().recent.at(-1)).toMatchObject({ type: 'message' });
+    expect(panel.info().chat.at(-1)).toMatchObject({ type: 'message' });
   });
 
   it("the agent's say shows in the panel only", async () => {
     makeT();
     expect(await T!.say('Done — the headline is bold. Ціль досягнута.')).toBe(true);
-    expect(panel.info().recent.at(-1)).toMatchObject({ type: 'agent', text: 'Done — the headline is bold. Ціль досягнута.' });
+    expect(panel.info().chat.at(-1)).toMatchObject({ type: 'agent', text: 'Done — the headline is bold. Ціль досягнута.' });
+    expect(panel.info().recent.some((e: any) => e.type === 'agent')).toBe(false); // chat stays out of the event list
     expect(T!.events.since(0, ['message'])).toEqual([]);
   });
 
@@ -203,7 +204,7 @@ describe('panel chat', () => {
     expect(body.said).toBe(true);
     expect(body.events).toHaveLength(1);
     expect(body.events[0]).toMatchObject({ type: 'message', text: 'now the sun' });
-    expect(panel.info().recent.map((e: any) => e.type)).toEqual(expect.arrayContaining(['agent', 'message']));
+    expect(panel.info().chat.map((e: any) => e.type)).toEqual(['agent', 'message']);
     await client.close();
   });
 });

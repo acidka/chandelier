@@ -59,8 +59,10 @@ function createPanel(opts) {
   let last = null;
   const recent = [];
 
-  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30) });
+  const chat = []; // the designer's messages and the agent's answers, apart from events so selections don't push them out
+  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), chat: chat.slice() });
   const remember = (e) => { recent.push(e); if (recent.length > 50) recent.shift(); };
+  const talk = (e) => { chat.push(e); if (chat.length > 100) chat.shift(); };
   const MAX_TEXT = 2000;
   const changed = () => { if (opts.onChange) try { opts.onChange(info()); } catch (e) { /* UI errors never stop the server */ } };
   const send = (sock, obj) => { try { sock.write(JSON.stringify(obj) + '\n'); } catch (e) { /* closed */ } };
@@ -138,7 +140,7 @@ function createPanel(opts) {
         else if (m.op === 'ping') send(sock, { id: m.id, ok: true, result: 'pong' });
         else if (m.op === 'say') {
           // the agent's words for the designer: shown in the panel only
-          remember({ type: 'agent', text: String(m.text || '').slice(0, MAX_TEXT), t: Date.now() });
+          talk({ type: 'agent', text: String(m.text || '').slice(0, MAX_TEXT), t: Date.now() });
           changed();
           send(sock, { id: m.id, ok: true, result: 'shown' });
         }
@@ -181,7 +183,7 @@ function createPanel(opts) {
       text = String(text || '').trim().slice(0, MAX_TEXT);
       if (!text || !clients.size) return false;
       const e = { type: 'message', text, t: Date.now() };
-      remember(e);
+      talk(e);
       broadcast({ event: e });
       changed();
       return true;

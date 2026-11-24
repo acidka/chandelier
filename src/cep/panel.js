@@ -11,7 +11,20 @@
   function fail(msg) {
     $('dot').className = 'dot err';
     $('status').textContent = msg;
+    show('status');
   }
+
+  // tabs: Chat (text box, Send, messages) and Status (connection, sharing switch, recent events)
+  function show(name) {
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].className = 'tab' + (tabs[i].getAttribute('data-page') === name ? ' active' : '');
+    var pages = document.querySelectorAll('.page');
+    for (var j = 0; j < pages.length; j++) pages[j].className = 'page' + (pages[j].id === 'page-' + name ? ' active' : '');
+  }
+  (function () {
+    var tabs = document.querySelectorAll('.tab');
+    for (var i = 0; i < tabs.length; i++) tabs[i].addEventListener('click', function () { show(this.getAttribute('data-page')); });
+  })();
   if (!cep) return fail('Not running inside Illustrator.');
   if (!req) return fail('Node.js is not enabled for this panel (CSXS/manifest.xml: --enable-nodejs).');
 
@@ -31,23 +44,29 @@
     } else if (e.type === 'document') what = e.doc ? 'Document: ' + e.doc : 'No document open';
     else if (e.type === 'saved') what = 'Saved ' + e.doc;
     else if (e.type === 'edited') what = 'Edited ' + e.doc;
-    else if (e.type === 'message' || e.type === 'agent') {
-      return '<b>' + (e.type === 'message' ? 'You' : 'Agent') + '</b> <span class="muted">' + t + '</span><br>' + escapeHtml(e.text);
-    }
     else what = e.type;
     return '<b>' + escapeHtml(what) + '</b> <span class="muted">' + t + (e.after_agent ? ' · agent' : '') + '</span>';
   }
   function escapeHtml(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
 
+  var chatShown = 0;
   function render(info) {
     $('dot').className = 'dot' + (info.clients ? ' on' : '');
+    $('dot').title = info.clients ? 'Agent connected' : 'No agent connected';
     $('status').innerHTML = 'Listening on <code>127.0.0.1:' + info.port + '</code>';
     $('agents').textContent = info.clients ? (info.clients + (info.clients === 1 ? ' agent connected' : ' agents connected')) : 'No agent connected';
     var list = info.recent.slice().reverse();
-    $('events').innerHTML = list.length ? list.map(function (e) {
-      var cls = e.type === 'message' ? ' class="chat me"' : (e.type === 'agent' ? ' class="chat agent"' : '');
-      return '<li' + cls + '>' + describe(e) + '</li>';
-    }).join('') : '<li class="muted">Nothing yet</li>';
+    $('events').innerHTML = list.length ? list.map(function (e) { return '<li>' + describe(e) + '</li>'; }).join('') : '<li class="muted">Nothing yet</li>';
+    // chat: oldest first, scrolled to the newest when a message arrives
+    if (info.chat.length !== chatShown) {
+      chatShown = info.chat.length;
+      $('log').innerHTML = info.chat.map(function (e) {
+        var me = e.type === 'message';
+        return '<li class="' + (me ? 'me' : 'agent') + '"><b>' + (me ? 'You' : 'Agent') + '</b> <span class="muted">' +
+          new Date(e.t).toLocaleTimeString() + '</span>\n' + escapeHtml(e.text) + '</li>';
+      }).join('');
+      $('log').scrollTop = $('log').scrollHeight;
+    }
     clients = info.clients;
     updateSend();
   }
@@ -70,7 +89,8 @@
   // chat: the designer writes to the agent; the agent reads it with the events tool and answers with events {say}
   function updateSend() {
     $('send').disabled = !clients || !$('msg').value.trim();
-    $('hint').textContent = clients ? 'The agent reads messages while it waits for events.' : 'No agent connected: start one with CHANDELIER_TRANSPORT=panel.';
+    $('msg').placeholder = clients ? 'Write to the agent… (⌘/Ctrl+Enter)' : 'No agent connected (see Status)';
+    $('hint').textContent = clients ? 'The agent reads chat messages while it waits for events.' : 'No agent connected: start one with CHANDELIER_TRANSPORT=panel.';
   }
   function sendMessage() {
     if (panel.message($('msg').value)) { $('msg').value = ''; }
