@@ -85,6 +85,16 @@ describe('runtime references', () => {
     expect(ids(A.refs('@1'))).toEqual(['11', '12']);
     expect(() => A.refs('@5')).toThrow(/Unknown step reference/);
   });
+  it('a step reference sees every item, not only the 100 a result lists', () => {
+    const items = Array.from({ length: 150 }, (_, i) => ({ uuid: String(500 + i), typename: 'PathItem' }));
+    A.cmd.__many = () => A.outList(v(items)); // v(): arrays from the runtime's own realm
+    A.cmd.__count = (a: any) => ({ n: A.refs(a.refs).length });
+    const r = A.cmd.batch(v({ steps: [{ cmd: '__many' }, { cmd: '__count', args: { refs: '@0' } }] }));
+    expect(r.results[0].data.items).toHaveLength(100);
+    expect(r.results[0].data.more).toMatch(/50 more/);
+    expect(r.results[1].data.n).toBe(150);
+    delete A.cmd.__many; delete A.cmd.__count;
+  });
   it('errors teach the syntax', () => {
     expect(() => A.refs('99')).toThrow(/No item with uuid 99/);
     expect(() => A.refs('foo')).toThrow(/Unknown reference "foo". Use a uuid/);
