@@ -53,6 +53,8 @@ describe('visual diff', () => {
     expect(diffRegions(page([[20, 20, 20, 20, 0]]), ref)[0].kind).toBe('extra');
     expect(diffRegions(ref, page([[20, 20, 20, 20, 0], [120, 20, 20, 20, 120]]))[0].kind).toBe('changed');
     expect(diffRegions(ref, ref)).toEqual([]);
+    // a light colour is content too (a mid green rendered at grey 152 on Windows was missed)
+    expect(diffRegions(page([]), page([[20, 20, 20, 20, 190]]))[0].kind).toBe('extra');
   });
 });
 

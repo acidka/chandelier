@@ -99,7 +99,6 @@ if (part('diff')) {
     const ex = by('extra');
     assert(ex && ex.items?.some((i) => i.name === 'New'), 'new block reported extra with its item ' + JSON.stringify(ex));
     assert(!d.some((x) => x.items?.some((i) => i.name === 'Stays')), 'the unchanged block is not reported');
-    console.log('     differences', JSON.stringify(d));
   } });
   await call('documents', { action: 'close', discard: true });
 }

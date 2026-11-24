@@ -256,7 +256,8 @@ export function diffRegions(ref: Img, prev: Img, max = 6): DiffRegion[] {
     }
     blobs.push(b);
   }
-  const ink = (g: Float32Array, x0: number, y0: number, x1: number, y1: number) => { let n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if (g[y * w + x] < INK) n++; return n; };
+  // content = anything clearly not paper (light colours count too; INK, the dark-only threshold, missed a mid green)
+  const ink = (img: Img, x0: number, y0: number, x1: number, y1: number) => { let n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * w + x) * 3; if (Math.min(img.rgb[i], img.rgb[i + 1], img.rgb[i + 2]) < 225) n++; } return n; };
   const S = Math.max(2, Math.min(60, Math.round(Math.max(w, h) * 0.05)));
   const sad = (x0: number, y0: number, x1: number, y1: number, dx: number, dy: number, step: number) => {
     let s = 0, n = 0;
@@ -272,7 +273,7 @@ export function diffRegions(ref: Img, prev: Img, max = 6): DiffRegion[] {
     const x0 = b.x0 * B, y0 = b.y0 * B, x1 = Math.min(w, (b.x1 + 1) * B), y1 = Math.min(h, (b.y1 + 1) * B);
     const meanD = b.s / ((x1 - x0) * (y1 - y0)) / 255;
     if (meanD < 0.03) continue; // anti-aliasing and rendering noise (export vs screen capture), not a difference
-    const iR = ink(A, x0, y0, x1, y1), iP = ink(Bg, x0, y0, x1, y1);
+    const iR = ink(ref, x0, y0, x1, y1), iP = ink(prev, x0, y0, x1, y1);
     // local shift: the reference content (box) against the preview moved by (dx, dy)
     const base = sad(x0, y0, x1, y1, 0, 0, 1);
     let best = base, bx = 0, by = 0;
