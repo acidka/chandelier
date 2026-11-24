@@ -168,8 +168,11 @@ Node 26.13 ARM64.
   before the ARM release (Oct 2024) expected users to run the x64 build under emulation (Prism) for CEP; the x64 build
   refused to install in this VM (windows-plan § 11).
 - **UXP is there:** Illustrator 2027 ships `Support Files\Required\UXP\extensions` and `Services.aip` names
-  `UXPCCLibrariesWinArm` — Adobe moved its own Libraries panel to UXP on Windows ARM. A UXP port of the panel is the
-  route for Windows ARM (P5).
+  `UXPCCLibrariesWinArm` — Adobe moved its own Libraries panel to UXP on Windows ARM. A UXP port of the panel would
+  be the route for Windows ARM, **but (checked 2026-11-24) Illustrator does not offer UXP to third-party developers**,
+  not even as a beta — only Adobe's NDA prerelease programme has it (forum threads Feb–Jul 2026, Mapsoft May 2026);
+  Photoshop, Premiere and After Effects do. Revisit when Adobe opens Illustrator UXP; until then Windows ARM keeps
+  the OS bridge without events.
 - **Side finding:** started directly from a scheduled task (`run-interactive.ps1` → `status {launch}`), Illustrator's
   CEP doesn't start at all (`ERROR PlugPlugSetup:` in `%TEMP%\CEP12-ILST.log`, Adobe's panels missing too); started
   through the Windows shell (`Shell.Application.ShellExecute`, parent explorer) it does. Doesn't affect the OS bridge.
