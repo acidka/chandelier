@@ -184,9 +184,8 @@ behind them: [plan](docs/plan.md).
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
 
-**0.4** (2026-11-24): look and print depth — live effects (`effects`), spread traps, colour conversion, PDF/X
-output intents, and a visual diff that says what moved (and by how much), what's missing and what's extra. Release
-pending.
+**0.4 released** (2026-11-24): look and print depth — live effects (`effects`), spread traps, colour conversion, PDF/X
+output intents, and a visual diff that says what moved (and by how much), what's missing and what's extra.
 
 **0.3 released** (2026-11-24): production automation — `data_merge` (variable data into artboards, n-up sheets or files),
 `batch {files}` (the same steps over many files, copies saved), `swatches {recolor, import}` (snap colours to a

@@ -338,7 +338,7 @@ repeat, done in one call each. Owner, 2026-11-24: "finish 0.3"; the tool-list si
 - [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 127/127; `live-production` green by parts — merge and recolor in a full run, files on a fresh Illustrator (`ONLY=files`); Illustrator crashed twice at a new/opened document late in full runs (the 0.2.1 known issue; a 4× save-close-open loop alone doesn't reproduce it)
 - [x] ✅ Release 0.3.0 (2026-11-24): npm `chandelier-mcp@0.3.0` (owner), plugin and marketplace 0.3.0 (launcher `^0.3.0`), `main` fast-forwarded, tag `v0.3.0`, GitHub release with `chandelier-0.3.0.mcpb`
 
-## Milestone 🎯 0.4 — look and print depth 🔄 (features done; Windows check and release open)
+## Milestone 🎯 0.4 — look and print depth ✅ (released 2026-11-24)
 
 Items 8, 10 and 12 of the [gap review](research/feature-gaps.md#recommended-order). Owner, 2026-11-24: "finish 0.4".
 
@@ -348,7 +348,7 @@ Items 8, 10 and 12 of the [gap review](research/feature-gaps.md#recommended-orde
 - [x] ✅ Tool list: full 55.0 KB (budget 56 KB: duplicated colour syntax trimmed from `run_script` and `find_items`), lean unchanged at 15.4 KB
 - [x] ✅ Tests: unit (effect XML, diff on synthetic pages, ICC profiles, output intent round trip) and `test/live-look.mjs` (macOS, Illustrator 29.1 ru_RU, 2026-11-24: green); all 10 macOS live suites green
 - [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 134/134; `live-look` green by parts (effects, print, diff), `live` and `live-print` green. Found and fixed there: ICC folders when the Program Files variables are missing (a scheduled task's environment), and the diff counting only dark pixels as content (a mid green rendered at grey 152 came out `changed` instead of `extra`)
-- [ ] ⏳ Release 0.4.0: version bump, npm (owner), `main`, tag, GitHub release with the `.mcpb`
+- [x] ✅ Release 0.4.0 (2026-11-24): npm `chandelier-mcp@0.4.0` (owner), plugin and marketplace 0.4.0 (launcher `^0.4.0`), `main` fast-forwarded, tag `v0.4.0`, GitHub release with `chandelier-0.4.0.mcpb`
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -473,3 +473,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | **0.3.0 released**: npm, plugin 0.3.0, tag `v0.3.0`, GitHub release with the `.mcpb` |
 | 2026-11-24 | 0.4 features: `effects` tool (11 live effects + raw XML, clear), `path_ops {trap}`, `export {output_intent}`, `swatches {convert}`, `preview` `differences`; plan D14; quirks C26–C29; `test/live-look.mjs` green on macOS |
 | 2026-11-24 | 0.4 Windows check (two fixes: ICC folders without env vars, light colours count as content in the diff); version 0.4.0, plugin launcher `^0.4.0` |
+| 2026-11-24 | **0.4.0 released**: npm, plugin 0.4.0, tag `v0.4.0`, GitHub release with the `.mcpb` |
