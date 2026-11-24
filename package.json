@@ -1,6 +1,6 @@
 {
   "name": "chandelier-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "MCP server that lets AI agents work in Adobe Illustrator fast: one persistent connection (~5 ms per call), batches, typed tools, ExtendScript, print-ready export and preflight.",
   "keywords": [
     "mcp",
