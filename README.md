@@ -111,7 +111,7 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
 - **Fast.** One long-lived bridge process and a helper runtime loaded into Illustrator once; each call sends only a
   command and its arguments. `batch` runs up to 1 000 tool steps in one round trip.
 - **Short build loop.** Create a document, one batch for swatches and styles, one for content, one check
-  (`preview {reference, preflight: true}`), one finish (`documents save {export: [...], close: true}`) — about eight
+  (`preview {reference, preflight: true}`), one finish (`documents save {export: [...]}`) — about eight
   calls to Illustrator for a page.
 - **Full power when tools aren't enough.** `run_script` runs ExtendScript with a helper library (`AIA.text`,
   `AIA.swatch`, `AIA.at(artboard, …)` …), re-runnable `.jsx` builders with arguments, and ready recipes (calendar

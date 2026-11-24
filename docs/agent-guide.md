@@ -22,7 +22,7 @@ the MCP" is no longer needed: a batch or one `run_script` builds, and the same s
 
 **Load only the tools a job needs.** Every tool you load is re-read on every request (the whole list is
 ~14 k tokens). A typical build needs `documents`, `batch` (or `run_script`) and `preview`: `preview {preflight: true}` checks
-and `documents save {export, close: true}` exports, so `preflight` and `export` need not be loaded.
+and `documents save {export}` exports, so `preflight` and `export` need not be loaded.
 
 ## 2. Before you start
 
@@ -93,8 +93,9 @@ The `recreate_design` MCP prompt walks through these steps.
 ## 6. Print export
 
 **One finish call:** `documents save {path: "x.ai", export: [{format: "png", path: "x.png", artboards: [0]},
-{format: "pdf", path: "x.pdf", artboards: "all"}], close: true}` saves, runs each export (same args as `export`)
-and closes; if an export fails the document stays open and the result says what was done.
+{format: "pdf", path: "x.pdf", artboards: "all"}]}` saves and runs each export (same args as `export`). Leave the
+document open for the user to look at; add `close: true` only when they ask or when a job goes through many files
+(`batch {files}` closes each itself). If an export fails the document stays open and the result says what was done.
 
 `export {format: "pdf", artboards: "all", path}` makes a PDF/X-4 with the document's bleed (or `bleed: 3` in
 session units) and returns the measured trim and bleed boxes of every page. It never rebinds the document to the
