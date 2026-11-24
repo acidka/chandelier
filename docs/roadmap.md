@@ -15,7 +15,7 @@ Each phase has **exit criteria**. A phase is done only when they are met and the
 | 4 | Agent efficiency (instructions, skill, script library, benchmarks) | ✅ Done (2026-11-22) | — |
 | 5 | Robustness (MRAP, crashes, hangs, live test suite) | 🔄 MVP part done (2026-11-22); hangs and idempotency in 0.1 | ongoing |
 | 6 | Distribution (npm, Claude Code plugin, `.mcpb`, brand) | 🔄 brand done; packaging in 0.1 | 1–2 days |
-| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | ✅ W0, W2–W8 done (2026-11-24); W1 done except the modal-dialog check; release 0.2.0 pending | — |
+| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | ✅ Released as 0.2.0 (2026-11-24): W0, W2–W8 done; W1 done except the modal-dialog check | — |
 | 8 | Future (CEP/UXP transport, events, effects, data merge) | 🧊 | — |
 
 Estimates are for focused agent-assisted work, live-tested on the owner's Mac.
@@ -413,3 +413,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | W4/W5 done: Illustrator's saveAs to a 260+ char path opens the Save As dialog and hangs → save/open/place refuse such paths on Windows; busy/timeout hints name the links dialog |
 | 2026-11-24 | W8: version 0.2.0; plugin runs `node launch.mjs` (npx.cmd on Windows); README/agent guide for Windows; package, plugin launcher and `.mcpb` checked live in the VM |
 | 2026-11-24 | W7: Windows benchmarks in the VM — M2 C2w-1 meets every MVP target (1.5 min, 11 calls, 0.35 M, quality 10); micro M ≈ C (server adds nothing), per-call speed depends on the VM's state; < 10 ms round trip reworded as a goal (owner); all 115 unit tests pass on Windows. Phase 7 done except W1's modal-dialog check; 0.2.0 ready to release |
+| 2026-11-24 | **0.2.0 released**: npm `chandelier-mcp@0.2.0` (darwin + win32; registry install checked on macOS and in the Windows VM through the plugin launcher), plugin 0.2.0, GitHub Release v0.2.0 with `chandelier-0.2.0.mcpb`; CI green on macOS and Windows |
