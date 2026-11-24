@@ -306,7 +306,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 - [ ] 🧊 Visual diff: compare a preview with a reference image and report misaligned regions
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
 
-## Milestone 🎯 0.2.1 — quick wins 🔄 (features done, tests green on both platforms; release open)
+## Milestone 🎯 0.2.1 — quick wins ✅ (released 2026-11-24)
 
 The 0.1.x / quick-win items of the [gap review](research/feature-gaps.md#recommended-order) plus the two 0.2 extras that
 didn't make 0.2.0 (owner, 2026-11-24: "finish all 0.2.x"). New features go in as options on existing tools where they
@@ -319,17 +319,17 @@ fit, to keep the tool list under its 50 KB budget.
 - [x] ✅ Symbols: new tool `symbols` — `list` (instances per symbol), `create` (items → symbol, replaced by one instance in place, `keep` leaves them; a taken name is refused), `place` (x, y, w/h, layer), `replace`, `expand` (break link), `remove` (refused while instances exist, `force` deletes them); `test/live-checks.mjs`
 - [x] ✅ Image trace: `path_ops {op: "trace", refs, preset}` — placed or embedded images → Image Trace + expand → a group named like the image, the image removed; non-images refused; `test/live-checks.mjs` (a generated PNG). Preset names follow the UI language
 - [x] ✅ Recipe library: `run_script {recipe, args}` runs ready builders shipped in `src/recipes/` (→ `dist/recipes/`, linted as ES3): `calendar-month` (en/uk, Monday/Sunday first, ISO weeks, paragraph styles per role), `labels-sheet`, `business-card` (band into the bleed), `color-chips`, `style-guide` (measures each style sample: a style's size can't be read, B1); `recipe: "list"` reads each file's header; unit test + `test/live-checks.mjs` (renders checked by eye)
-- [ ] ⏳ W1 modal-dialog check on Windows (needs the owner at the VM); seen in the wild: the links dialog during a restart's quit (windows-plan § 15, known issue)
+- [ ] ➡️ W1 modal-dialog check on Windows (needs the owner at the VM); seen in the wild: the links dialog during a restart's quit (windows-plan § 15, known issue) — carried over to phase 7 (W1); not a release blocker: listed as a known issue in the 0.2.1 notes
 - [x] ✅ Regression pass in the Windows VM: all live suites green, unit tests 118/118 (2026-11-24)
 - [x] ✅ macOS live pass (Illustrator 29.1 ru_RU, macOS, Node 22.23, 2026-11-24): all seven suites green (`live`, `live-edit`, `live-release`, `live-layout`, `live-finish`, `live-checks`, `live-print`); the earlier `live-print` failure (preflight missed `rgb_in_cmyk` **and** `low_res` for the linked `LowRes` image, so the image itself wasn't seen as a linked raster) didn't reproduce in 10 runs, alone and after the other suites. The test now records how Illustrator sees `LowRes` and prints it if the check fails again
-- [ ] ⏳ Release 0.2.1: npm publish (owner) → `main`, tag `v0.2.1`, GitHub release with `chandelier-0.2.1.mcpb`
+- [x] ✅ Release 0.2.1 (2026-11-24): npm `chandelier-mcp@0.2.1` (owner; checked from the registry with a live `status`), plugin and marketplace 0.2.1 (launcher `^0.2.0` picks it up), `main` fast-forwarded, tag `v0.2.1`, GitHub release with `chandelier-0.2.1.mcpb`
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
 Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
 
-- [ ] 🧊 0.1.x: safe restart + logs, recipe library, contrast/token checks as `preflight` options, layer-variant and screen-asset `export` options
-- [ ] 🧊 0.2: Windows (phase 7) + `symbols` + image trace
+- [x] ✅ 0.1.x → shipped in 0.2.1: safe restart + logs, recipe library, contrast/token checks as `preflight` options, layer-variant and screen-asset `export` options
+- [x] ✅ 0.2: Windows (phase 7, 0.2.0) + `symbols` + image trace (0.2.1)
 - [ ] 🧊 0.3: `data_merge` (CSV/JSON rows → variations), multi-file jobs with dry run, recolor to a swatch library
 - [ ] 🧊 0.4: live effects, prepress extras (trap stroke, PDF/X output intents), visual diff
 
@@ -441,3 +441,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-24 | 0.2.1 regression pass in the VM (all live suites green); known issue: the links dialog can block `status {restart}`'s quit; live tests can set a per-call client timeout |
 | 2026-11-24 | 0.2.1 macOS live pass: 6 of 7 suites green; `live-print` fails (`rgb_in_cmyk` not reported) — blocks the 0.2.1 release |
 | 2026-11-24 | 0.2.1 macOS live pass green: `live-print` failure not reproduced in 10 runs (alone and after all suites); the test now prints how Illustrator sees the linked image if it recurs — release unblocked |
+| 2026-11-24 | **0.2.1 released**: npm, plugin 0.2.1, tag `v0.2.1`, GitHub release with the `.mcpb`; W1 modal-dialog check carried over to phase 7 |

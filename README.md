@@ -166,8 +166,8 @@ behind them: [plan](docs/plan.md).
 
 **0.1 released** (2026-11-23): on npm, as a Claude Code plugin and as a Claude Desktop bundle, macOS.
 
-**0.2.1** (2026-11-24): recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart
-and a debug log; a fix for tinted swatches (a tint changed the swatch itself). Release pending.
+**0.2.1 released** (2026-11-24): recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart
+and a debug log; a fix for tinted swatches (a tint changed the swatch itself).
 
 **0.2 released** (2026-11-24): **Windows** — the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)): all live suites pass
 with Illustrator 2027 on Windows 11 (ARM64, in a Parallels VM); npm package, plugin and Claude Desktop bundle run on
