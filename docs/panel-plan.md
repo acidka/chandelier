@@ -78,7 +78,7 @@ Then ask the agent: "Call events with wait 60, then tell me what I selected." Un
 |------|------|--------|
 | P1 | Panel core, snapshot, CEP manifest and UI; `PanelTransport`; `events` tool; dev installer; unit tests (fake panel engine, real socket) | ✅ 2026-11-24 (unit tests 149/149) |
 | P2 | First live run in Illustrator 29.1 (macOS): panel loads, Node enabled, runtime loads through `evalScript`, `test/live.mjs` green with `CHANDELIER_TRANSPORT=panel`, events seen; measure per-call latency against the bridge | ✅ 2026-11-24 ([§ 7](#7-first-live-run-p2)); fixed: state pushed with the first look, stale `saved` after a document switch, empty selection events on a switch |
-| P3 | Same on Windows (VM) | ⛔ 2026-11-24: Illustrator 2027 **native ARM64** (the only build that runs in the VM) refuses the panel — "The following extensions are not supported on your device: Chandelier" ([§ 8](#8-windows-arm64-p3)). Needs x64 Windows with Illustrator |
+| P3 | Same on Windows (VM) | ⛔ 2026-11-24, rechecked: Illustrator 2027 **native ARM64** blocks every third-party CEP extension by design (built-in list of Adobe ids in `Services.aip`, "not supported on your device") — [§ 8](#8-windows-arm64-p3). CEP on Windows needs x64 Illustrator; Windows ARM needs a UXP panel |
 | P4 | Agent trial: a pairing task ("fix what I select") with a fresh agent; decide whether events are worth shipping | ⏳ |
 | P5 | Ship or stop: if yes, package the panel (signed ZXP or `npx chandelier-mcp install-panel`), README, plugin skill section; if no, keep the branch for UXP | ❓ owner |
 
@@ -130,9 +130,17 @@ Node 26.13 ARM64.
 - **Refused:** CEP 12 finds and registers the extension (`Adding extension with id 'io.github.acidka.chandelier.panel'`,
   then `WARN Service: io.github.acidka.chandelier.panel not registered properly`), and Illustrator shows "The following
   extensions are not supported on your device. Contact the provider for more information. Chandelier"; no
-  Window > Extensions menu appears. Adobe's own CEP panels (Home, Libraries) do load. No manifest setting that changes
-  this is documented; an Adobe forum thread from before the ARM release (Oct 2024) only expected that users would run
-  the x64 build under emulation (Prism) for CEP extensions — and the x64 build refused to install in this VM (windows-plan § 11).
+  Window > Extensions menu appears. Adobe's own CEP panels (Home, Libraries) do load. **Rechecked: a deliberate block, not
+  our manifest.** Adobe's Libraries panel loads with the same `--enable-nodejs` / `--mixed-context` flags and no
+  ARM-specific setting. The message lives in `Plug-ins\Extensions\Services.aip` (ARM64 build) as
+  `$$$/Services/WinARMCEP/ThirdPartyUnsupported1Str`, raised by `WinARMBlockedCEPExtensionsAlert`, next to a built-in
+  list of Adobe's own extension ids (`com.adobe.ccx.start`, `com.adobe.DesignLibraries.angular`, …): on Windows ARM,
+  Illustrator 2027 loads only those CEP extensions. No manifest, flag or signing changes it. An Adobe forum thread from
+  before the ARM release (Oct 2024) expected users to run the x64 build under emulation (Prism) for CEP; the x64 build
+  refused to install in this VM (windows-plan § 11).
+- **UXP is there:** Illustrator 2027 ships `Support Files\Required\UXP\extensions` and `Services.aip` names
+  `UXPCCLibrariesWinArm` — Adobe moved its own Libraries panel to UXP on Windows ARM. A UXP port of the panel is the
+  route for Windows ARM (P5).
 - **Side finding:** started directly from a scheduled task (`run-interactive.ps1` → `status {launch}`), Illustrator's
   CEP doesn't start at all (`ERROR PlugPlugSetup:` in `%TEMP%\CEP12-ILST.log`, Adobe's panels missing too); started
   through the Windows shell (`Shell.Application.ShellExecute`, parent explorer) it does. Doesn't affect the OS bridge.
