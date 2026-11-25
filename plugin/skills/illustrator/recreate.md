@@ -14,7 +14,8 @@ on a given artboard the panel didn't fit, so the panel shape broke (only one sla
 its colours came out redder than the photo; its ribbon ends hooked down past the panel; and extra pieces (split
 shapes, fade shapes, many shading strips) showed as fans and seams. Those lessons are folded in below (§ 1, § 2, § 3,
 § 5, § 5b, § 6). A fifth run with the measuring, fitting and shading tools (`profile`, `fit`, `shade`) took ~12 min
-and 3 small helper scripts (none for measuring or fitting); its gaps are in § 1, § 3, § 4 and § 5b. How these tests are run:
+and 3 small helper scripts (none for measuring or fitting); judged better than the fourth, still behind the second: it
+missed a small ribbon in a corner and looked flat (3 shaded edges). Its gaps are in § 1, § 3, § 4 and § 5b. How these tests are run:
 `docs/recreate-testing.md` in the repository.
 
 ## 0. Set up for comparing
@@ -98,7 +99,10 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   A long gap (≥ ~300 px) in a fitted list puts a corner where it starts; bridge it with a few points measured
   through the shape on top.
 - `profile` tracks stop 20–60 px short of the panel sides (the profile needs room); add the last points from a
-  `region` close-up, or `rows: true` for steep ends. A track can run on from one edge into a crease or another edge:
+  `region` close-up, or `rows: true` for steep ends. **Corners hide small shapes:** thin bands that narrow into a
+  side make short tracks (under 5 points they are dropped) — a run missed a whole small ribbon at the bottom-left
+  this way. Run `profile` on a `region` around every corner and side (a smaller region = denser points), and count
+  the bands there in the close-up against your build. A track can run on from one edge into a crease or another edge:
   check the overlay and cut its points there.
 - Where two edges coincide in the reference (two ribbons merging, a shape ending on another's edge), they are **one
   shared curve**: build that stretch once and reuse it in both shapes. Two separate measurements 2 px apart leave a
@@ -231,8 +235,10 @@ stacks there double up as a dark wedge. The method behind it:
    (~160 px) so near the panel sides it doesn't reach edges far below; no edge below (paper) → no shade.
    Take a window **minimum** (±40 px) of the distance before smoothing: where a new edge appears below, the band
    clip jumps, and a plain smoothed distance leaves a seam there. A stack that ends inside the panel tapers to zero
-   over 30–60 px, or it leaves a vertical seam. Even so, every strip and stack end is a chance for a fan or seam:
-   shade only the clear edges, with as few stacks as do the job.
+   over 30–60 px, or it leaves a vertical seam. Hand-built strips: every strip and stack end is a chance for a fan or
+   seam. With `shade` clipped to a copy of its shape (above) there are no seams, so **shade every band whose tone
+   changes across it** — a run that shaded only 3 of ~9 band edges was judged flat (v5); the owner's favourite
+   shaded every band.
    Shadow ink: warm and low in black, e.g. cmyk(0,50,100,15) under orange; an ink with K 40 looked grey and dirty.
 4. Opacity per step ≥ ~1.5 %: Illustrator drops smaller steps entirely (a 12 % gradient in 28 steps rendered as
    nothing). So: weak gradients (≤ 10 %) 6–8 steps; strong ones 12–16 steps (item 2). An edge whose strength
@@ -251,6 +257,9 @@ reference's at the same columns.
 2. **Close-up at full size:** `preview {region, max_px: 1400}` over the busy part. The page view hides exactly the
    defects that matter here: pointed tips, hairline slivers, loops, corners, straight bridges. Look for them every
    round.
+
+**Count the bands** in each corner close-up of the reference and of your render: one missing there is a whole
+missing shape (the page view and rmse barely show it).
 
 Change one thing per round (geometry, then colour). Stop when the close-up is clean and what remains in
 `differences` is photo (folds, light, texture) — rmse stops improving there (0.100 → 0.101 on the worked job).

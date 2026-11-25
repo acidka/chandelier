@@ -432,7 +432,8 @@ Carried over from 0.5.2 when it was released.
     (live check 2026-11-25, Illustrator 29.1, macOS: smooth fade, no seams)
   - [ ] From the v5 test (2026-11-25): `create_path` scale per axis or a 4-point map; `fit` extension past the
     data; a long gap in a fit list makes a corner; `shade` with `clip_to` (a copy of the shape), end tapers and a
-    multi-list edge; `profile` tracks reach the image sides and stop at junctions instead of running into a crease
+    multi-list edge; `profile` tracks reach the image sides and stop at junctions instead of running into a crease;
+    short tracks in corners (thin bands narrowing into a side) are dropped under 5 points — v5 missed a ribbon there
   - [ ] Release, so one server has every feature (no `mcp-call` detour)
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured). This job, v5 (2026-11-25): ~12 min (was 16–25), 67 tool calls, 202 k tokens, 3 helper
@@ -606,3 +607,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Release 0.5.2: `preview {image}`, recreate method in the skill, bug fixes #1–#4, #6–#12; launcher asks for `^0.5.2` |
 | 2026-11-25 | Faster free-form recreation, first tools: `preview {image, profile}` (edge tracks), `create_path {fit, tolerance, shade}` (designer-anchor fit, curve-following shading); skill and recreate.md use them instead of hand-written scripts; tool list 55.3 KB |
 | 2026-11-25 | Recreate test v5 with `profile`/`fit`/`shade`: ~12 min (was 16–25), rmse 0.099; recreate.md: whole face in the crop, per-axis mapping before `fit`, edges show through multiply shapes, long gaps, track ends, shared stretches as identical sub-lists, shade clipped to a copy of its shape, one stack where edges coincide |
+| 2026-11-25 | Owner on v5: better than v4, v2 still best — missed a small ribbon at the bottom-left, flat (3 shaded edges). recreate.md: profile every corner, count bands in corner close-ups, shade every band when `shade` is clipped; version labels on the test document's artboards |
