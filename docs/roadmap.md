@@ -434,18 +434,19 @@ Carried over from 0.5.2 when it was released.
     `extend`; long gaps (no extreme anchor at a gap's edge, parabola tangents: 22.6 → 2.3 px off over a 350 px gap);
     `shade` with `clip_to`, `taper` and a multi-list edge; `profile` tracks run on to the sides, break at sharp turns,
     short tracks touching a side kept. Live: `clip_to` worked once, then Illustrator 29.1 went into a state where
-    every new path failed ("Target layer cannot be modified", MRAP) — restart needed; recheck after it
+    every new path failed ("Target layer cannot be modified", MRAP) — restart needed; recheck after it (most likely quirk C32, a locked active layer: fixed as bug #13)
   - [x] ✅ From v6 (2026-11-25): `extend` made spikes at the inner joints of sub-lists (now only outer ends); `shade.to`
     shorter than the edge left a seam (the far side now runs on parallel)
   - [ ] `preview {reference, sample}`: the same points sampled in both images (every run writes a sampling script);
     fit a sub-list's end exactly onto another fitted curve (v6 used a boolean cutter)
-  - [ ] Release, so one server has every feature (no `mcp-call` detour)
+  - [x] ✅ Released in 0.5.3 (2026-11-25), so one server has every feature (no `mcp-call` detour)
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured). This job, v5 (2026-11-25): ~12 min (was 16–25), 67 tool calls, 202 k tokens, 3 helper
     scripts for JSON only ([benchmarks § 2g](research/benchmarks.md)); another image still to do
 - [ ] Recreate suite (owner, 2026-11-25: improve recreation in general, not for one image): 4 cases set up in
-  `tmp/recreate-suite/` (wall calendar, desk-calendar mockup, packaging front, ribbons photo); owner adds logo,
-  illustration, poster, label; baseline run of the current guide on every case
+  `tmp/recreate-suite/` (wall calendar, desk-calendar mockup, packaging front, ribbons photo); ✅ baseline run 1
+  (01, 02, 04 perfect; 03 waits for a better reference, [benchmarks § 2h](research/benchmarks.md)); owner adds logo,
+  illustration, poster, label
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -625,3 +626,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Recreate suite run 1 (guide d86ca20, one fresh agent per case, Chandelier tools only): calendar 3.5 min / rmse 0.089, desk-calendar mockup 4.6 min / 0.111 (close to the approved result), packaging front 9.9 min / 0.175 (wave bands messy), ribbons v8 9.1 min (smooth, but the panel was mapped to a rectangle); benchmarks § 2h; bugs #13–#15; owner's verdicts pending before any guide change |
 | 2026-11-25 | Bugs #13–#15 from recreate suite run 1 fixed: creating with a locked active layer (quirk C32, all create tools), gradient on live text refused with a hint instead of rendering black (quirk C33), `preview {image}` samples read the whole image, also outside `region`; live-release and unit checks |
 | 2026-11-25 | Owner on suite run 1: 01, 02, 04 (v8) perfect; 03 on hold until a better reference photo replaces the current one (benchmarks § 2h) |
+| 2026-11-25 | **0.5.3 released**: recreate tools (`preview {image, profile}`, `create_path {fit, shade, map, extend, clip_to}`), the general recreate guide, bugs #13–#15 |
