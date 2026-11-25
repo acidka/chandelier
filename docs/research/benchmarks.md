@@ -612,10 +612,13 @@ RMSE: `preview {artboard, reference, reference_crop}` with the crop given; compa
 
 | Case | Kind | Time | Tool uses / tokens | Rounds | RMSE (crop px) | What came out | Owner's judgement |
 |------|------|------|--------------------|--------|----------------|---------------|-------------------|
-| 01 | flat wall calendar (M2) | ~3.5 min | 28 / 109 k | 2 | 0.112 → **0.089** ([34,13,1143,1265]) | all dates and ISO weeks right; weekends red (bold in the mini months); 121 live texts, 13 styles | pending |
-| 02 | desk-calendar mockup | ~4.6 min | 35 / 131 k | 2 | 0.136 → **0.111** ([20,24,2360,1280], x and y scaled 2 % apart) | close to the approved result: panel and mark right; body copy word-for-word with the same line breaks. DejaVu fonts missing, so PT Serif / Verdana; metallic wordmark filled solid | pending |
-| 03 | packaging front from an 8-box photo | ~9.9 min | 46 / 172 k | 5 | 0.194 → **0.175** ([88,12,262,384]) | text, rule and logo fine (the script font is thinner than the lettering). **Wave bands messy**: tangled shapes and a muddy left side, where the approved result has clean waves | pending |
-| 04 | ribbons photo (v8) | ~9.1 min | 46 / 156 k | 4 | 0.175 → 0.178 ([8,40,1087,1315], 4-point map) | smooth and layered; every ribbon reaches both sides. **Panel mapped to a rectangle** (both sides straight), but the check list asks for the slanted sides to be kept | pending |
+| 01 | flat wall calendar (M2) | ~3.5 min | 28 / 109 k | 2 | 0.112 → **0.089** ([34,13,1143,1265]) | all dates and ISO weeks right; weekends red (bold in the mini months); 121 live texts, 13 styles | **perfect** |
+| 02 | desk-calendar mockup | ~4.6 min | 35 / 131 k | 2 | 0.136 → **0.111** ([20,24,2360,1280], x and y scaled 2 % apart) | close to the approved result: panel and mark right; body copy word-for-word with the same line breaks. DejaVu fonts missing, so PT Serif / Verdana; metallic wordmark filled solid | **perfect** |
+| 03 | packaging front from an 8-box photo | ~9.9 min | 46 / 172 k | 5 | 0.194 → **0.175** ([88,12,262,384]) | text, rule and logo fine (the script font is thinner than the lettering). **Wave bands messy**: tangled shapes and a muddy left side, where the approved result has clean waves | not counted: the reference photo is too poor; the recreation "looks very promising". On hold until the owner replaces the reference |
+| 04 | ribbons photo (v8) | ~9.1 min | 46 / 156 k | 4 | 0.175 → 0.178 ([8,40,1087,1315], 4-point map) | smooth and layered; every ribbon reaches both sides. **Panel mapped to a rectangle** (both sides straight), but the check list asks for the slanted sides to be kept | **perfect** (the rectangle mapping included) |
+
+Owner, 2026-11-25: 01, 02 and 04 perfect; 03 doesn't count until its reference is replaced. The guide at d86ca20
+works on every counted case, so the gaps below are improvements to judge on the whole suite, not fixes.
 
 Guide gaps that more than one case hit:
 - **§ 1, a tapered face vs a given size.** In 03 (a pinched gable box), a projective map stretched the top; a per-row
