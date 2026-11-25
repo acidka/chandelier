@@ -587,6 +587,16 @@ Chandelier 0.5.1 + `develop`. RMSE: `preview {reference, reference_crop: the pan
 What is left is mostly the photo itself (lid crease, curl, side face, paper grain), not artwork. Pixel RMSE is a rough
 guide here (JPEG photo vs flat render); the close-up and tone-profile checks decided each round.
 
+**Repeatability: fresh subagents from the guide alone** (same day, same setup; artboards in the same document):
+
+| Run | Guide | Time | Tool calls / tokens | Rounds | RMSE (crop) | Owner's judgement |
+|-----|-------|------|---------------------|--------|-------------|-------------------|
+| v2 | first version | ~24 min | 99 / 235 k | 9 | 0.122 (x 0–1098, side face included; x/y scaled 12 % apart) | **best look**: panel shape kept, ribbons follow the panel edges, crisp band contrast |
+| v3 | after v2's gaps | ~16 min | 60 / 183 k | 7 | 0.106 (x 15–996, uniform scale) | flatter: darkest overlap 124 vs the photo's 81, rectangle background |
+
+The rmse ranking and the owner's ranking disagree; the guide now says why (§ 1 object shape, § 3 edges, § 5 tonal
+extremes). Time goes ~55 % to writing the method as code → roadmap "Faster free-form recreation".
+
 ## 3. Targets
 
 | Metric | Target | Status |

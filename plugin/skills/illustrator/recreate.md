@@ -7,7 +7,9 @@ producing lumpy "camouflage" or "mountain" outlines instead of smooth curves.
 Worked through on a real job (2026-11-25, Illustrator 29.1, macOS): a photographed kraft box front with five
 overlapping translucent wave ribbons. RMSE against the photo went 0.116 → 0.100 in six rounds of shape and colour, then 0.095 with
 shading; every mistake below was made there once. A second agent then rebuilt it from this guide alone (smooth result,
-9 rounds, ~24 min); the gaps it hit are folded in below (§ 1 panel box, § 3 ends and crossings, § 5b steps, § 6 rmse).
+9 rounds, ~24 min) and a third with the updated guide (~16 min, 7 rounds). The owner judged the second one best: it
+kept the panel's real shape, followed what the ribbons do at the panel edges and kept crisp band-to-band contrast —
+even though its rmse was not the lowest. Those lessons are folded in below (§ 1, § 3, § 5, § 5b, § 6).
 
 ## 0. Set up for comparing
 
@@ -25,16 +27,20 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   shadows, highlights, paper texture. Recreate only the artwork (flat, at its real size); mention what you left out.
 - **Find the artwork's flat shape and its box** before measuring anything:
   - Use the dieline if you have one. Otherwise the outline of the face as photographed *is* the panel shape when the
-    face is seen nearly head-on (a tapered box front is a real trapezoid — keep it).
+    face is seen nearly head-on (a tapered box front is a real trapezoid — keep it). The box is the shape's bounding
+    box: S comes from its width (here the trapezoid's bottom), and the artboard is that box at S.
   - **Visible perspective** (parallel edges converging, a far side clearly shorter): map every measured point through a
     4-point projective transform (the face's four corners → the flat panel) before fitting. Don't stretch the photo.
   - **One uniform scale**: `S = artwork width in units ÷ that width in px`, the same for x and y. Never scale x and y
     separately to fill an artboard — it distorts every curve (a test run did, 12 % apart). Make the artboard the box at
     that scale instead.
   - The box excludes what isn't this face: side faces, flaps, the table. That box is also your `reference_crop`.
-  - Background/substrate (paper, board colour) fills the whole artboard + bleed, not just the panel outline: outside
-    the panel is cut away anyway, and a white margin costs comparison score for nothing. The panel outline goes on a
-    non-printing "Dieline" layer.
+  - **Keep the object's shape:** the background/substrate (paper, board colour) fills the panel's real outline (the
+    trapezoid) plus bleed, and the artwork is clipped to it — outside stays empty, as on the die. Filling the whole
+    rectangle made the result read as a poster instead of this box front (the run the owner liked least on this
+    point). The outline also goes on a non-printing "Dieline" layer.
+  - Creases and folds of the object (a faint curve that crosses other edges without changing their layer count, a
+    shaded flap, a curl) are not artwork: leave them out and say so.
 - Place paths with `create_path {d, scale: S, x, y}` so you can keep working in image pixels.
 
 ## 2. Decompose into layers
@@ -46,6 +52,10 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   together). Assign every edge to its shape this way, not by guessing what "looks like" one band.
 - The count can disagree along one edge (one layer on the right, two on the left — lighting, a merge). Decide by the
   majority of columns and fix the rest with opacity and shading; don't split the shape.
+- When steps alone don't tell, compare each region's tone with the bare paper's: the multiply factor per channel
+  (region ÷ paper) is about the product of the shapes over it, so it shows how many and which.
+- A band whose tone changes **along** its length with no edge is a gradient fill (a gradient swatch whose stops fade
+  in opacity), not an extra shape.
 
 ## 3. Measure edges densely — never invent
 
@@ -56,14 +66,19 @@ Skip what already exists (a document, a reference artboard) — reuse it.
 - Where two edges coincide in the reference (two ribbons merging, a shape ending on another's edge), they are **one
   shared curve**: build that stretch once and reuse it in both shapes. Two separate measurements 2 px apart leave a
   visible hairline sliver.
-- **Measure right up to the page or panel edge.** Fits that stop 30–70 px short need long extensions, and those show
-  as kinks and straight stretches.
+- **Measure right up to the panel edge, and reproduce what shapes do there.** In the photo the ribbons turned down at
+  the right side as they wrapped over the fold and started at the slanted left side; the run that measured right to
+  the edges and kept that looked like the object, the runs that extended straight did not. Fits that stop 30–70 px
+  short need long extensions, which show as kinks and straight stretches. Check each corner in a close-up.
 - **Extend shapes past the bleed by continuing the end curve itself** (evaluate the last cubic a little beyond t = 1),
   then straight along its end tangent; stop steepening once the slope passes ~1.6. A plain straight line from a
   short fit shows; a zero-length extension leaves a horizontal stub at the edge.
 - **Edges that seem to cross** (a bottom edge running into another shape's top edge): sample the tone in the thin gap
   between them on both sides of the meeting point. One layer's tone on both sides → they merge (one shared curve from
   there); the tone changes → one continues hidden (leave its gap, § 3 above); two layers' tone → they really cross.
+  A tone step about twice the usual size on one curve also means two shapes start or end there: they share it.
+- An edge that ends under another shape: anchor its end point **on** that shape's edge with a free angle; forcing it
+  tangent there gave 25 px errors.
 
 ## 4. Draw smooth curves — designer anchors, fitted
 
@@ -79,7 +94,8 @@ kinks, loops and straight bridges over gaps. Do what a designer does, then fit:
 3. **Fit** the anchors' positions, angles and the handle factor to the measured points (least squares). Report the
    mean error: ≤ 0.5 % of the shape's width is good; a large error means a missing anchor at a bend — add one there.
    Practical details: keep anchor x fixed and fit y; measure each handle's angle relative to the chord to its
-   neighbouring anchors (then ±75° means "forward"); start the handle factor at 0.38.
+   neighbouring anchors (then ±75° means "forward"); start the handle factor at 0.38. A steep end bending into a
+   flat run needs its own knee anchor, or the close-up shows a kink there.
 4. **Keep the bend continuous:** at each anchor the curvature on both sides should be about equal (add the squared
    jumps to the fit's cost). A tangent-continuous joint with a jump in curvature still reads as a corner. Weight: with
    the cost in px² (mean squared distance) and curvature in 1/px, a weight of ~4·10⁵ on the summed squared jumps
@@ -100,6 +116,11 @@ script, never in Python.
   (light needs no black, deep needs some), use a second swatch for the deepest shape.
 - Colour where shapes pile up comes from the overlap, not from the shape: keep a shape's own colour as it looks
   where it is alone.
+- **Match the tonal extremes first:** sample the darkest overlap and the lightest band, get those two right, then the
+  mid-tones. The eye reads the contrast range; tuning to average tone (or rmse) flattens it — a run that matched the
+  mid-tones best still looked flat because its darkest spot came out 124 instead of 81.
+- Calibrate with the 1:1 render (`preview {width}` = the crop width) and samples at fixed points of both images — the
+  same check as § 5b.
 - Expect one calibration round: multiply in a CMYK document doesn't map simply onto the photo's RGB ratios (both test
   runs needed a more yellow ink than the first guess, e.g. cmyk(0,48,100,0) for amber orange). Sample, adjust once,
   sample again.
@@ -130,11 +151,17 @@ A gradient that follows a curve (linear gradients can't; mesh and freeform gradi
 2. Clip the stack with the region under the **exact** Bézier edge: the edge stays crisp. The inner steps (polylines
    every ~1 mm) are invisible only when they are many and weak: **12–16 steps of 3.5–7 % each**; 8 steps of 8–14 %
    show as contour bands in a close-up.
-   Move the steps along the edge's normal, or cap the offset, where an edge turns steep near the page side: a purely
-   vertical offset makes notches there.
+   Offset the steps vertically and let the clip shape the ends; offsets along the normal fold back into facets where
+   the edge turns steep.
+   **Clip each stack to its own band** (between its edge and the next edge below), not to "everything under the
+   edge": where the shading stops (a shape that pinches out, a merge) it otherwise spills into the band below and
+   cuts a vertical seam.
+   Keep it crisp: each band's shading should reach its full strength right under its edge and fade before the next
+   edge, so light bands stay light under dark ones — that band-to-band contrast is the layered-paper look.
 3. The distance to the next edge: only edges **seen** there (measured, not a model's hidden stretch — a hidden edge
-   cuts a seam), smoothed along the edge (±60 px window) so merges and crossings don't make vertical seams; no edge
-   below (paper) → no shade.
+   cuts a seam), smoothed along the edge (±60 px window) so merges and crossings don't make vertical seams; capped
+   (~160 px) so near the panel sides it doesn't reach edges far below; no edge below (paper) → no shade.
+   Shadow ink: warm and low in black, e.g. cmyk(0,50,100,15) under orange; an ink with K 40 looked grey and dirty.
 4. Opacity per step ≥ ~1.5 %: Illustrator drops smaller steps entirely (a 12 % gradient in 28 steps rendered as
    nothing). So: weak gradients (≤ 10 %) 6–8 steps; strong ones 12–16 steps (item 2).
 5. Strength per edge from the profile: `1 − tone at the band's bottom ÷ tone at its top`, roughly (multiply).
