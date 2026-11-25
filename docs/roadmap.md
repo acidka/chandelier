@@ -408,23 +408,32 @@ a file, and the skill said "measure in pixels" without a way to.
   a gradient that follows a curve = stacked multiply steps between an edge and the next seen edge, clipped by the
   exact edge; ≥ 1.5 % opacity per step (smaller steps don't render); check with tone profiles at 1 px per px
 - [x] ✅ Bugs fixed (2026-11-25, [bugs.md](bugs.md)): gradient angles (#1), `preview {reference}` with region/refs (#2), any zoom in `preview {image}` (#3), restart past the links dialog (#4), tool-list headroom 54.1 KB (#6); PDF pages in `preview {image}` verified live (V1); live-release covers them. #7–#12 fixed the same day; #5 reproduced and found to be Illustrator's own (quirk C30, [windows-plan § 16](windows-plan.md))
+- [x] ✅ Release 0.5.2 (2026-11-25): npm, GitHub release with the .mcpb, MCP Registry (0.5.2 latest, checked through its API); faster free-form recreation and the fresh-agent trial carry over to the next milestone
+
+## Milestone 🎯 0.6 — faster free-form recreation ⏳
+
+Carried over from 0.5.2 when it was released.
+
 - [ ] **Faster free-form recreation.** The subagent test (2026-11-25) took ~24 min (99 tool calls, ~235 k tokens,
   ~15 s per call — model time, not Illustrator) against ~3 min for layout jobs such as the calendar. Where it went:
   writing and debugging 7 scripts for the method (profiles, anchor fit, shared curves, shading, batch generator);
   9 full rebuild rounds, ~4 of them on guide gaps (now fixed in recreate.md); ~38 calls through `test/mcp-call.mjs`
   (a new server per call, runtime reloads when switching from the 0.5.1 server: a minute or two at most). Turn the
   hand-written code into tools:
-  - [ ] Edge tracks: `preview {image, profile}` — column profiles, tone steps (sign, size), linked into tracks (the
-    tracker from this session works: `tracks.json` with points per edge)
-  - [ ] Curve fit: `create_path {fit: points, anchors}` — designer anchors fitted server-side (handle and curvature
-    constraints, fixed merge anchors, end extension)
-  - [ ] Curve-following shading as one option (under an edge to the next edge, k/(N+1) steps, clipped by the exact
-    edge) instead of 30–60 generated paths
+  - [x] ✅ Edge tracks: `preview {image, profile: true | {step, min, rows}}` — column (or row) profiles, tone steps
+    linked into tracks by slope prediction, `{id, tone, above, below, pts}`, drawn on the image (`src/edges.ts`;
+    on the job photo 1122 × 1402: 21 tracks in 49 ms)
+  - [x] ✅ Curve fit: `create_path {fit, tolerance}` — anchors at prominent extremes (found on smoothed points, placed
+    on measured ones) with level/vertical handles, Schneider least squares between, split only past the tolerance;
+    several lists = a band (`src/fitcurve.ts`; job tracks: 5 anchors per wave edge at tolerance 2–4)
+  - [ ] Curve fit, rest: curvature-continuity term, fixed merge anchors (shared stretches), end extension
+  - [x] ✅ Curve-following shading: `create_path {fit, shade: {to, steps}}` — 6–16 multiply steps whose near side is
+    the exact fitted edge (no clip), far side k/(N+1) of the way to `to`; window minimum + smoothing of the distance
+    (live check 2026-11-25, Illustrator 29.1, macOS: smooth fade, no seams)
   - [ ] Release, so one server has every feature (no `mcp-call` detour)
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured)
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
-- [x] ✅ Release 0.5.2 (2026-11-25): npm, GitHub release with the .mcpb, MCP Registry (0.5.2 latest, checked through its API); faster free-form recreation and the fresh-agent trial carry over to the next milestone
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -591,3 +600,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Fourth recreate test (v4, ~25 min, judged worst; v2 still best): recreate.md maps the photographed panel onto a given artboard, one clip for everything, gentle ends cut by the outline, hue as well as lightness, extremes in evenly lit parts, fewest whole shapes, shading seams (window-min distance, tapers, skip weak edges), profile route; bugs #11, #12; benchmarks § 2g row |
 | 2026-11-25 | Bugs #7–#12 fixed: `delete_items` of nothing deletes nothing, `layers add` idempotent, `content_box` against each image's background, frame note for a pinned `configure`, `preview` compare file names, clip groups documented; #5 reproduced in the Windows VM and closed as Illustrator's own (quirks C30, C31); live guard lets `configure` and `batch {files}` through |
 | 2026-11-25 | Release 0.5.2: `preview {image}`, recreate method in the skill, bug fixes #1–#4, #6–#12; launcher asks for `^0.5.2` |
+| 2026-11-25 | Faster free-form recreation, first tools: `preview {image, profile}` (edge tracks), `create_path {fit, tolerance, shade}` (designer-anchor fit, curve-following shading); skill and recreate.md use them instead of hand-written scripts; tool list 55.3 KB |

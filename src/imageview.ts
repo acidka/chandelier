@@ -5,7 +5,7 @@
 import { resize, type Img } from './image.js';
 
 export interface Frame { img: Img; ox: number; oy: number; k: number }
-export interface ViewOpts { grid?: number | boolean; sample?: number[][]; max_px?: number }
+export interface ViewOpts { grid?: number | boolean; sample?: number[][]; max_px?: number; tracks?: { id: number; pts: number[][] }[] }
 export interface Sample { at: number[]; hex?: string; rgb?: number[]; cmyk?: number[]; outside?: true }
 export interface View { img: Img; shown_px: [number, number]; zoom: number; grid?: number; content_box?: number[]; background?: string; samples?: Sample[] }
 
@@ -131,6 +131,18 @@ export function view(f: Frame, o: ViewOpts = {}): View {
         for (let x = 0; x < img.w; x++) put(img, x, y, c, major ? 0.8 : 0.55);
         if (y - lastY >= 18 && y > 16 && y < img.h - 10) { label(img, num(u), 2, y + 2); lastY = y; }
       }
+    }
+  }
+  if (o.tracks?.length) {
+    // edge tracks (preview {profile}): each a coloured polyline with its id at the start
+    const pal = [[230, 0, 0], [0, 150, 0], [0, 90, 255], [220, 0, 220], [255, 140, 0], [0, 180, 200]];
+    for (const t of o.tracks) {
+      const c = pal[t.id % pal.length], P = t.pts.map(([x, y]) => [(x - f.ox) * K, (y - f.oy) * K]);
+      for (let i = 1; i < P.length; i++) {
+        const [x0, y0] = P[i - 1], [x1, y1] = P[i], n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
+        for (let s = 0; s <= n; s++) { const x = x0 + (x1 - x0) * s / n, y = y0 + (y1 - y0) * s / n; put(img, x, y, c); put(img, x, y + 1, c); }
+      }
+      if (P.length) label(img, String(t.id), P[0][0] + 2, P[0][1] - 16);
     }
   }
   if (o.sample?.length) {

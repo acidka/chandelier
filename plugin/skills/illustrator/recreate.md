@@ -78,10 +78,13 @@ Skip what already exists (a document, a reference artboard) — reuse it.
 
 ## 3. Measure edges densely — never invent
 
-- Measure **every 25–50 px** along the shape (a column or row profile of the image: positions where the tone steps).
-  Sparse points (every 100–150 px) leave the fit too free: pointed tips and bulges. `preview {sample}` takes only 24
-  points; for profiles save a 1:1 crop (`preview {image, region, save_to}`) and read its pixels in a small Node script
-  (PNG = zlib-inflated rows with a filter byte each; `node:zlib` is enough, no packages).
+- **`preview {image, profile: true}` measures for you:** tone profiles down the columns (`rows: true`: along rows,
+  for steep edges), every tone step linked into a **track** — `{id, tone, above, below, pts}`, drawn on the image
+  with its id. `tone` is the lightness step (+ = lighter below), `above`/`below` the colours either side: the layers.
+  Points come every `step` px (default width ÷ 60); keep it at **25–50 px or less** — sparse points (every
+  100–150 px) leave the fit too free: pointed tips and bulges. Add `region` for one part, `min` (default 8) to skip
+  weak steps. A track may join two edges where they meet or cross; split it there (check the overlay).
+  Points are image px: map them to the artboard with your factor (§ 1) before drawing.
 - Where an edge is hidden (under another shape, off the page), **leave a gap**. Don't fill it with guessed points:
   invented points make shoulders and straight stretches.
 - Where two edges coincide in the reference (two ribbons merging, a shape ending on another's edge), they are **one
@@ -129,10 +132,14 @@ kinks, loops and straight bridges over gaps. Do what a designer does, then fit:
 5. **Shared stretches:** where an edge merges into another (§ 3), the merge anchor is *fixed* to the base curve's point
    and tangent there; fit only the edge's own part, then append the base curve's segments from that anchor on (split
    the base Bézier there if needed, de Casteljau).
-6. A band = its top edge left→right, then its bottom edge right→left, closed; `create_path {d}`.
+6. A band = its top edge left→right, then its bottom edge right→left, closed.
 
-The fit is ~80 lines of plain JavaScript (Nelder–Mead over the free parameters); write it once per job in a Node
-script, never in Python.
+**`create_path {fit: points, tolerance}` does 1–3:** anchors at the prominent peaks and troughs (level handles) and
+leftmost/rightmost points (vertical handles), least-squares handles in between, a further anchor only where the curve
+misses a point by more than `tolerance` (default 1, in the points' units; 2–4 for noisy photos gives fewer anchors).
+A band: `fit: [top, bottom reversed], closed: true` (lists joined by straight lines). Not done by it yet: the
+curvature term (item 4) and fixed merge anchors (item 5) — for those, or a curve that still shows a bend, write the
+fit yourself (plain JavaScript, never Python).
 
 ## 5. Colour
 
@@ -177,6 +184,11 @@ it belonged to. Shading per object (one gradient over a whole wide shape) or a f
 both failed.
 
 A gradient that follows a curve (linear gradients can't; mesh and freeform gradients can't be scripted):
+**`create_path {fit: edge points, shade: {to: next edge's points | distance}, fill: shadow ink, opacity: strength}`**
+builds items 1–4 in one call: N multiply steps (6–16, ~2 % each; `steps` to override) whose near side is the exact
+fitted edge (crisp, no clip needed) and whose far side stops k/(N+1) of the way to `to` (window minimum and smoothing
+of the distance built in). Pass only the stretch of the next edge **seen** there; group the steps afterwards. Item 3's
+cap and end tapers are still yours (shorten `to`'s points, or clip). The method behind it:
 1. Under each edge, N stacked multiply layers in one shadow swatch; layer k (1…N) is bounded by the curve
    `edge + k/(N+1) × (distance to the next visible edge below)` — darkness falls to zero just before that edge. Use
    k/(N+1), not k/N: the last step exactly on the next edge leaves a hairline sliver. This is what Illustrator's Blend

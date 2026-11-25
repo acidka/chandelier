@@ -11,6 +11,7 @@ import { decodePng, encodePng, compare, crop, cropPad, resize, readImage, shrink
 import { view, type Frame } from '../imageview.js';
 import { imageColorMode, imagePpi } from '../imagefile.js';
 import { pdfInfo } from '../pdf.js';
+import { edgeTracks } from '../edges.js';
 
 let n = 0;
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -26,7 +27,7 @@ export const preview: ToolDef = {
   description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it). max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
 reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
 more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
-image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] → hex, rgb, cmyk.`,
+image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone (+ = lighter below), above, below, pts} for create_path fit.`,
   shape: {
     artboard: z.number().min(0).optional(),
     refs: refSchema.optional(),
@@ -45,10 +46,11 @@ image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, pag
     page: z.number().min(1).optional(),
     grid: z.union([z.boolean(), z.number().positive()]).optional(),
     sample: z.array(z.array(z.number()).min(2).max(4)).max(24).optional(),
+    profile: z.union([z.boolean(), z.object({ step: z.number().positive().optional(), min: z.number().positive().optional(), rows: z.boolean().optional() })]).optional(),
   },
   async run(a, ctx) {
     if (a.image) return imagePreview(a, ctx);
-    if (a.grid || a.sample || a.page) return fail('grid, sample and page work with image (a file to look at).');
+    if (a.grid || a.sample || a.page || a.profile) return fail('grid, sample, page and profile work with image (a file to look at).');
     const { more, preflight, info, ...main } = a;
     const res = await render(main, ctx);
     if (res.isError) return res;
@@ -185,10 +187,11 @@ async function imagePreview(a: any, { rt, tmp, settings }: Ctx): Promise<CallToo
     }
     frame = { img, ox, oy, k: 1 };
   }
-  const v = view(frame, { grid: a.grid, sample: a.sample, max_px: max });
+  const tracks = a.profile ? edgeTracks(frame.img, a.profile === true ? {} : a.profile, frame.ox, frame.oy, frame.k) : undefined;
+  const v = view(frame, { grid: a.grid, sample: a.sample, max_px: max, tracks });
   const png = encodePng(v.img);
   const { img: _i, ...stats } = v;
-  const res: Record<string, unknown> = { ...info, ...stats };
+  const res: Record<string, unknown> = { ...info, ...stats, ...(tracks ? { tracks } : {}) };
   if (a.save_to) { const p = resolve(a.save_to); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, png); res.saved_to = p; }
   return { content: [{ type: 'image', data: png.toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(res) }] };
 }
