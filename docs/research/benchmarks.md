@@ -603,6 +603,32 @@ extremes; after v4: map the photographed panel onto a given artboard, one clip f
 time halved (~12 min vs 16–25) and the agent wrote 3 small helper scripts (JSON assembly, none for measuring or
 fitting); ~2 min on code.
 
+## 2h. Recreate suite, run 1: four real jobs from the general guide — 2026-11-25
+
+One fresh subagent per case, working only from [recreate.md](../../plugin/skills/illustrator/recreate.md) at d86ca20
+(the general rewrite), Chandelier tools only, cases one at a time. Each case's `runs.ai` is in the git-ignored
+`tmp/recreate-suite/`; case 04 is artboard v8 in the ribbons document of § 2g. Illustrator 29.1, macOS 27.2, Node 22.23.
+RMSE: `preview {artboard, reference, reference_crop}` with the crop given; comparable only within a case.
+
+| Case | Kind | Time | Tool uses / tokens | Rounds | RMSE (crop px) | What came out | Owner's judgement |
+|------|------|------|--------------------|--------|----------------|---------------|-------------------|
+| 01 | flat wall calendar (M2) | ~3.5 min | 28 / 109 k | 2 | 0.112 → **0.089** ([34,13,1143,1265]) | all dates and ISO weeks right; weekends red (bold in the mini months); 121 live texts, 13 styles | pending |
+| 02 | desk-calendar mockup | ~4.6 min | 35 / 131 k | 2 | 0.136 → **0.111** ([20,24,2360,1280], x and y scaled 2 % apart) | close to the approved result: panel and mark right; body copy word-for-word with the same line breaks. DejaVu fonts missing, so PT Serif / Verdana; metallic wordmark filled solid | pending |
+| 03 | packaging front from an 8-box photo | ~9.9 min | 46 / 172 k | 5 | 0.194 → **0.175** ([88,12,262,384]) | text, rule and logo fine (the script font is thinner than the lettering). **Wave bands messy**: tangled shapes and a muddy left side, where the approved result has clean waves | pending |
+| 04 | ribbons photo (v8) | ~9.1 min | 46 / 156 k | 4 | 0.175 → 0.178 ([8,40,1087,1315], 4-point map) | smooth and layered; every ribbon reaches both sides. **Panel mapped to a rectangle** (both sides straight), but the check list asks for the slanted sides to be kept | pending |
+
+Guide gaps that more than one case hit:
+- **§ 1, a tapered face vs a given size.** In 03 (a pinched gable box), a projective map stretched the top; a per-row
+  bilinear map fixed it. In 04, "keep the trapezoid" and "map onto the given size" contradict each other.
+- `sample` points must lie inside `region` (01, 02, 03).
+- § 3's cap height ÷ 0.7 needs a width check right after it (02, 03: `horizontal_scale` 88–111 %).
+
+Gaps that one case hit:
+- 01: texts in one role can still differ in size; side bearings.
+- 02: the first baseline of area text, leading from baseline gaps, gradient text.
+- 03: opaque paper bands whose colour changes along their length; a fallback for script lettering.
+- 04: `extend` on closed bands built from several lists; band ends that fade out.
+
 ## 3. Targets
 
 | Metric | Target | Status |

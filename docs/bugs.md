@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-25 (bugs #7–#12 fixed) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-25 (bugs #7–#12 fixed; #13–#15 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -9,7 +9,13 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 
 ## Open
 
-None (2026-11-25). Illustrator-side issues seen on Windows are quirks C30, C31. New rows: `| # | Sev. | Found | Where | Bug | Workaround | Fix idea |`.
+Illustrator-side issues seen on Windows are quirks C30, C31.
+
+| # | Sev. | Found | Where | Bug | Workaround | Fix idea |
+|---|------|-------|-------|-----|------------|----------|
+| 13 | 🟠 | 2026-11-25 (suite 02, not yet reproduced) | `create_path {layer: "New"}` | Failed with "Target layer cannot be modified": unlike `create_shape` and `create_text`, it doesn't create a missing layer, and it seems to write to the active layer, which was locked | `layers add` first | Use the same layer resolution as `create_shape` |
+| 14 | 🟠 | 2026-11-25 (suite 02, not yet reproduced) | `create_text {fill: "gradient:Name@90"}` | The text rendered black, with no error | Solid fill, or outline the text | Apply the gradient to text characters, or refuse with a message |
+| 15 | 🟡 | 2026-11-25 (suites 01–03) | `preview {image, region, sample}` | Three agents lost a call because samples outside `region` come back `outside`; the schema doesn't say they must lie inside it | Sample without `region`, or inside it | Say so in the schema, or sample the full image regardless of `region` |
 
 ## To verify
 
