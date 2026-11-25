@@ -594,9 +594,12 @@ guide here (JPEG photo vs flat render); the close-up and tone-profile checks dec
 | v2 | first version | ~24 min | 99 / 235 k | 9 | 0.122 (x 0–1098, side face included; x/y scaled 12 % apart) | **best look**: panel shape kept, ribbons follow the panel edges, crisp band contrast |
 | v3 | after v2's gaps | ~16 min | 60 / 183 k | 7 | 0.106 (x 15–996, uniform scale) | flatter: darkest overlap 124 vs the photo's 81, rectangle background |
 | v4 | after v3's gaps | ~25 min | 66 / 226 k | 8 | 0.113 (x 62–1040, y 40–1362, uniform 0.1 mm/px, panel centred) | **worst**: uniform scale on the given artboard broke the panel shape (one slanted side, ribbons past it), redder and more saturated than the photo, ribbon ends hooked down past the side, shading fans and seams |
+| v5 | after v4's gaps + tools `profile`, `fit`, `shade` (unreleased build via `mcp-call`) | **~12 min** | 67 / 202 k | 12 builds (fast: one process each) | 0.099 (x 12–1000, y 40–1360, uniform 0.0995 mm/px) | pending; own look: smooth, crisp contrast, no hooks or seams; crop cut the face's right part, so only the left side is slanted (as v4) |
 
 The rmse ranking and the owner's ranking disagree; the guide now says why (§ 1 object shape, § 3 edges, § 5 tonal
-extremes; after v4: map the photographed panel onto a given artboard, one clip for everything, hue as well as lightness, fewest whole shapes). Time goes ~55 % to writing the method as code → roadmap "Faster free-form recreation".
+extremes; after v4: map the photographed panel onto a given artboard, one clip for everything, hue as well as lightness, fewest whole shapes). Time goes ~55 % to writing the method as code → roadmap "Faster free-form recreation". With those tools (v5) the
+time halved (~12 min vs 16–25) and the agent wrote 3 small helper scripts (JSON assembly, none for measuring or
+fitting); ~2 min on code.
 
 ## 3. Targets
 

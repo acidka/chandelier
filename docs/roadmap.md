@@ -430,9 +430,13 @@ Carried over from 0.5.2 when it was released.
   - [x] ✅ Curve-following shading: `create_path {fit, shade: {to, steps}}` — 6–16 multiply steps whose near side is
     the exact fitted edge (no clip), far side k/(N+1) of the way to `to`; window minimum + smoothing of the distance
     (live check 2026-11-25, Illustrator 29.1, macOS: smooth fade, no seams)
+  - [ ] From the v5 test (2026-11-25): `create_path` scale per axis or a 4-point map; `fit` extension past the
+    data; a long gap in a fit list makes a corner; `shade` with `clip_to` (a copy of the shape), end tapers and a
+    multi-list edge; `profile` tracks reach the image sides and stop at junctions instead of running into a crease
   - [ ] Release, so one server has every feature (no `mcp-call` detour)
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
-    estimate until measured)
+    estimate until measured). This job, v5 (2026-11-25): ~12 min (was 16–25), 67 tool calls, 202 k tokens, 3 helper
+    scripts for JSON only ([benchmarks § 2g](research/benchmarks.md)); another image still to do
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -601,3 +605,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Bugs #7–#12 fixed: `delete_items` of nothing deletes nothing, `layers add` idempotent, `content_box` against each image's background, frame note for a pinned `configure`, `preview` compare file names, clip groups documented; #5 reproduced in the Windows VM and closed as Illustrator's own (quirks C30, C31); live guard lets `configure` and `batch {files}` through |
 | 2026-11-25 | Release 0.5.2: `preview {image}`, recreate method in the skill, bug fixes #1–#4, #6–#12; launcher asks for `^0.5.2` |
 | 2026-11-25 | Faster free-form recreation, first tools: `preview {image, profile}` (edge tracks), `create_path {fit, tolerance, shade}` (designer-anchor fit, curve-following shading); skill and recreate.md use them instead of hand-written scripts; tool list 55.3 KB |
+| 2026-11-25 | Recreate test v5 with `profile`/`fit`/`shade`: ~12 min (was 16–25), rmse 0.099; recreate.md: whole face in the crop, per-axis mapping before `fit`, edges show through multiply shapes, long gaps, track ends, shared stretches as identical sub-lists, shade clipped to a copy of its shape, one stack where edges coincide |
