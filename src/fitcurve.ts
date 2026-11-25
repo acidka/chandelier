@@ -203,9 +203,16 @@ const curve = (segs: Seg[]) => segs.map((c) => ` C${c.slice(1).map((q) => f(q[0]
  * lines: a band = top edge left → right, then the bottom edge right → left, closed) → SVG path data. */
 export function fitToD(fit: number[][] | number[][][], closed: boolean, o: FitOpts = {}): { d: string; anchors: number } {
   const parts = (Array.isArray(fit[0]?.[0]) ? fit : [fit]) as number[][][];
+  const ext = typeof o.extend === 'number' ? [o.extend, o.extend] : o.extend ?? [0, 0];
+  const raw = parts.map((pts) => fitCurve(pts, { ...o, extend: undefined }));
+  // a list that runs on into the next one (same direction at the joint: sub-lists of one edge, a shared stretch) is
+  // not extended there — that made spikes at every inner joint; a band's turn (top → bottom reversed) is
+  const endDir = (g: Seg[]) => { const c = g[g.length - 1]; return norm(sub(c[3], len(sub(c[3], c[2])) > 1e-9 ? c[2] : c[0])); };
+  const startDir = (g: Seg[]) => { const c = g[0]; return norm(sub(len(sub(c[1], c[0])) > 1e-9 ? c[1] : c[3], c[0])); };
+  const runsOn = (i: number) => i + 1 < raw.length && dot(endDir(raw[i]), startDir(raw[i + 1])) > 0.5;
   let d = '', anchors = 0;
-  parts.forEach((pts, n) => {
-    const segs = fitCurve(pts, o);
+  raw.forEach((g, n) => {
+    const segs = extendSegs(g, [n === 0 || !runsOn(n - 1) ? ext[0] : 0, !runsOn(n) ? ext[1] : 0]);
     const s0 = segs[0][0];
     d += (n === 0 ? 'M' : ' L') + f(s0[0]) + ' ' + f(s0[1]) + curve(segs);
     anchors += segs.length + 1;
@@ -247,7 +254,9 @@ export function shadeToD(parts: number[][][], o: ShadeOpts): { ds: string[]; opa
   const u0 = s[0][ax] - (forward ? ext[0] : ext[1]), u1 = s[s.length - 1][ax] + (forward ? ext[1] : ext[0]);
   const n = 80, U = Array.from({ length: n + 1 }, (_, i) => u0 + (u1 - u0) * i / n);
   const to = typeof o.to === 'number' ? null : [...o.to].sort((p, q) => p[ax] - q[ax]);
-  const raw = U.map((u) => (to ? at(to, u) - at(s, u) : (o.to as number)));
+  // past the ends of `to`, the distance stays as it was there (the far edge runs on parallel, not level)
+  const clamp = (u: number) => (to ? Math.max(to[0][ax], Math.min(to[to.length - 1][ax], u)) : u);
+  const raw = U.map((u) => (to ? at(to, clamp(u)) - at(s, clamp(u)) : (o.to as number)));
   // window minimum, then smoothing along the edge: where the far edge jumps (a new edge appears, two merge or cross)
   // a plain distance makes a seam (recreate.md § 5b)
   const win = (a: number[], r: number, fn: (v: number[]) => number) => a.map((_, i) => fn(a.slice(Math.max(0, i - r), Math.min(n, i + r) + 1)));

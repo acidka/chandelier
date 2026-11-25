@@ -435,6 +435,10 @@ Carried over from 0.5.2 when it was released.
     `shade` with `clip_to`, `taper` and a multi-list edge; `profile` tracks run on to the sides, break at sharp turns,
     short tracks touching a side kept. Live: `clip_to` worked once, then Illustrator 29.1 went into a state where
     every new path failed ("Target layer cannot be modified", MRAP) — restart needed; recheck after it
+  - [x] ✅ From v6 (2026-11-25): `extend` made spikes at the inner joints of sub-lists (now only outer ends); `shade.to`
+    shorter than the edge left a seam (the far side now runs on parallel)
+  - [ ] `preview {reference, sample}`: the same points sampled in both images (every run writes a sampling script);
+    fit a sub-list's end exactly onto another fitted curve (v6 used a boolean cutter)
   - [ ] Release, so one server has every feature (no `mcp-call` detour)
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured). This job, v5 (2026-11-25): ~12 min (was 16–25), 67 tool calls, 202 k tokens, 3 helper
@@ -610,3 +614,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Recreate test v5 with `profile`/`fit`/`shade`: ~12 min (was 16–25), rmse 0.099; recreate.md: whole face in the crop, per-axis mapping before `fit`, edges show through multiply shapes, long gaps, track ends, shared stretches as identical sub-lists, shade clipped to a copy of its shape, one stack where edges coincide |
 | 2026-11-25 | Owner on v5: better than v4, v2 still best — missed a small ribbon at the bottom-left, flat (3 shaded edges). recreate.md: profile every corner, count bands in corner close-ups, shade every band when `shade` is clipped; version labels on the test document's artboards |
 | 2026-11-25 | Tool gaps from v5 closed: `scale [sx, sy]`, `map`, `extend`, gap-safe `fit`, `shade {taper, multi-list}` + `clip_to`, `profile` runs to the sides / breaks at turns / keeps short side tracks; tool list trimmed to 55.8 KB |
+| 2026-11-25 | Recreate test v6 (~16 min, rmse 0.130 on the whole face): both sides slanted, corner bands found, every band shaded; fixes: `extend` only at outer ends, `shade.to` runs on parallel; recreate.md: shading-end steps, edges that change owner (`minus_front`), row profiles on side strips, regions that cut tracks, units of `tolerance`/`extend` with `map`, steep shade ends, region checks |

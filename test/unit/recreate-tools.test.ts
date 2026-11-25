@@ -68,6 +68,12 @@ describe('fit: gaps, extension, map', () => {
     expect(segs[0][0]).toEqual([-5, 0]);
     expect(segs[segs.length - 1][3]).toEqual([38, 0]);
   });
+  it('extend: only the outer ends of an edge made of sub-lists; both edges of a band', () => {
+    const one = fitToD([[[0, 0], [10, 1], [20, 3], [30, 4]], [[30, 4], [40, 4], [50, 3], [60, 1]]], false, { extend: 5 }).d;
+    expect(one.match(/C/g)!.length).toBe(4); // 2 fitted + 2 extensions, none at the joint (v6: spikes there)
+    const band = fitToD([[[0, 0], [30, -5], [60, 0]], [[60, 20], [30, 15], [0, 20]]], true, { extend: 5 }).d;
+    expect(band.match(/C/g)!.length).toBe(6);
+  });
   it('projective map sends the four corners where asked', () => {
     const m = projective([[10, 0], [90, 0], [100, 120], [0, 120]], [[0, 0], [100, 0], [100, 130], [0, 130]]);
     for (const [a, b] of [[[10, 0], [0, 0]], [[100, 120], [100, 130]], [[50, 60]]] as number[][][]) {

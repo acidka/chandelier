@@ -82,6 +82,11 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   majority of columns and fix the rest with opacity and shading; don't split the shape.
 - When steps alone don't tell, compare each region's tone with the bare paper's: the multiply factor per channel
   (region ÷ paper) is about the product of the shapes over it, so it shows how many and which.
+- **A weak step (tone < ~20) running parallel to a top edge 40–100 px below it, lighter below, is that band's
+  shading ending, not a thin shape:** use it as `shade.to`. (A run lost 5 minutes deciding.)
+- **An edge that changes owner** (a ribbon's top runs along another ribbon's top for part of its length, then leaves
+  it): build the shape with the shared top, then cut it with `path_ops {op: "minus_front"}` and a cutter whose edge
+  is the separate stretch; the shared stretch stays identical, and the result keeps its fill, opacity and blend.
 - A band whose tone changes **along** its length with no edge is a gradient fill (a gradient swatch whose stops fade
   in opacity), not an extra shape.
 
@@ -103,7 +108,11 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   crease or another edge); still check the ends in a close-up, `rows: true` for steep ends. **Corners hide small
   shapes:** thin bands narrowing into a side make short tracks (kept from 3 points when they touch a side) — a run
   missed a whole small ribbon at the bottom-left. Run `profile` on a `region` around every corner and side (a smaller
-  region = denser points), and count the bands there in the close-up against your build. A track can run on from one edge into a crease or another edge:
+  region = denser points), with **`rows: true` on every side strip** (column profiles miss steep ends), and count
+  the bands there in the close-up against your build. **Don't let a region cut a track:** make it reach past where
+  the edges end, or the track ends there. Faint edges (tone 6–7) show only with `min: 4` in a small region.
+- Where a track bends sharply between two points (a slope jump), it has run into a crease or another edge: drop the
+  points from there. A track can run on from one edge into a crease or another edge:
   check the overlay and cut its points there.
 - Where two edges coincide in the reference (two ribbons merging, a shape ending on another's edge), they are **one
   shared curve**: build that stretch once and reuse it in both shapes. Two separate measurements 2 px apart leave a
@@ -156,6 +165,9 @@ kinks, loops and straight bridges over gaps. Do what a designer does, then fit:
 **`create_path {fit: points, tolerance}` does 1–3:** anchors at the prominent peaks and troughs (level handles) and
 leftmost/rightmost points (vertical handles), least-squares handles in between, a further anchor only where the curve
 misses a point by more than `tolerance` (default 1, in the points' units; 2–4 for noisy photos gives fewer anchors).
+**Units:** `tolerance` and `extend` are in the units of the points after `map` (with a photo-to-mm map, 0.3–0.4 mm
+≈ 3–4 photo px); without `map`, in the points' own units, before `scale`. With several lists, `extend` lengthens only
+the outer ends of an edge made of sub-lists (and both ends of each edge of a band).
 A band: `fit: [top, bottom reversed], closed: true` (lists joined by straight lines). For noisy photo points use
 tolerance **4** (2 followed the noise as bumps). **Shared stretches (item 5) with `fit`:** each list in `fit: [...]` is
 fitted on its own, so split an edge at the merge point into sub-lists and pass the *same* shared sub-list (same points,
@@ -217,7 +229,10 @@ best (v5):** fit the shade from the shape's own edge points lifted ~1.5 px, then
 shape (`duplicate_items` the shape, `arrange_items {action: "clip"}` with the copy as mask): crisp edge, no hairline,
 no seam where the stack ends. **`clip_to: <shape ref>` does this in the same call** (the near side is lifted
 ~1.5 × tolerance and the paths go into a clip group masked by a copy of the shape, named "… (clip)"); `shade.taper`
-fades a stack that ends inside the panel; `fit` may be several lists (an edge made of a shared stretch and its own). Where two edges coincide (a shape's top running along another's), shade it once: two
+fades a stack that ends inside the panel; `fit` may be several lists (an edge made of a shared stretch and its own).
+Past the ends of `to`'s points the far side runs on parallel to the edge. Along a **steep** stretch (> ~45°) the
+vertical offsets show as contour stairs: start the shade where the edge is flatter and taper it (2–3 mm; a long
+taper of 5–8 mm shows fans). Where two edges coincide (a shape's top running along another's), shade it once: two
 stacks there double up as a dark wedge. The method behind it:
 1. Under each edge, N stacked multiply layers in one shadow swatch; layer k (1…N) is bounded by the curve
    `edge + k/(N+1) × (distance to the next visible edge below)` — darkness falls to zero just before that edge. Use
@@ -260,6 +275,9 @@ reference's at the same columns.
 2. **Close-up at full size:** `preview {region, max_px: 1400}` over the busy part. The page view hides exactly the
    defects that matter here: pointed tips, hairline slivers, loops, corners, straight bridges. Look for them every
    round.
+
+A corner or side checked on its own: `preview {region, reference, reference_crop}` gives that part side by side and
+its own rmse.
 
 **Count the bands** in each corner close-up of the reference and of your render: one missing there is a whole
 missing shape (the page view and rmse barely show it).
