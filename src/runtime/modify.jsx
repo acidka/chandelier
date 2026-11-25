@@ -57,8 +57,18 @@
     return A.outList(done);
   };
 
+  // Refs that name nothing (a missing layer or name, a uuid already gone) delete nothing instead of failing, so a
+  // re-runnable batch can start by clearing its own layer (bug #7). Other ref errors still fail.
+  function softRefs(ref, missing) {
+    if (ref instanceof Array) { var all = []; for (var k = 0; k < ref.length; k++) all = all.concat(softRefs(ref[k], missing)); return all; }
+    try { return A.refs(ref); } catch (e) {
+      if (typeof ref === 'string' && /^(layer:|name:|\d+$)/.test(ref)) { missing.push(ref); return []; }
+      throw e;
+    }
+  }
   A.cmd.delete_items = function (a) {
-    var items = A.refs(a.refs), n = 0, skipped = [], i;
+    if (a.refs === undefined || a.refs === null) A.refs(a.refs);
+    var missing = [], items = softRefs(a.refs, missing), n = 0, skipped = [], i;
     // delete children before parents and never twice (a group and its child both listed)
     var uu = {};
     for (i = 0; i < items.length; i++) uu[items[i].uuid] = items[i];
@@ -75,6 +85,7 @@
       it.remove(); n++;
     }
     var res = { deleted: n };
+    if (missing.length) { res.not_found = missing; A.warn('Nothing found for ' + missing.join(', ') + ': nothing deleted there.'); }
     if (skipped.length) { res.skipped_locked = skipped; A.warn(skipped.length + ' locked item(s) were not deleted' + (a.force ? ' (their layer is locked)' : ': pass force:true to unlock and delete them') + '.'); }
     return res;
   };

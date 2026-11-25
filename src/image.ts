@@ -13,7 +13,8 @@ import jpeg from 'jpeg-js';
 export interface Img { w: number; h: number; rgb: Uint8Array; a?: Uint8Array }
 
 /** A pixel darker than this counts as content (text, rules), so paper tones, JPEG noise and light tints don't. */
-const INK = 150;
+/** compare(): a pixel is content when a channel differs from the image's own background by more than this */
+const INK_DIFF = 40;
 const SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export function decodePng(buf: Buffer): Img {
@@ -183,7 +184,21 @@ export function compare(ref: Img, prev: Img, grid = 4): Comparison {
   const cells = new Float64Array(grid * grid), counts = new Float64Array(grid * grid);
   // a 1 % margin is ignored: photographed or cropped references often carry an edge shadow or border
   const mx = Math.max(2, Math.round(w / 100)), my = Math.max(2, Math.round(h / 100));
-  const bb = (img: Img) => { let x0 = w, y0 = h, x1 = -1, y1 = -1; for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) { const i = (y * w + x) * 3; if (Math.min(img.rgb[i], img.rgb[i + 1], img.rgb[i + 2]) < INK) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } } return x1 < 0 ? null : [x0 / w, y0 / h, (x1 - x0 + 1) / w, (y1 - y0 + 1) / h].map((v) => Math.round(v * 1000) / 1000); };
+  // content = pixels clearly different from the image's own background (median of its border): a photo of a box on
+  // a table has a light background and a kraft panel, so "darker than 150" found the whole photo (bug #8)
+  const bb = (img: Img) => {
+    const ch: number[][] = [[], [], []], st = Math.max(1, Math.floor((w + h) / 400));
+    const take = (x: number, y: number) => { const i = (y * w + x) * 3; for (let k = 0; k < 3; k++) ch[k].push(img.rgb[i + k]); };
+    for (let x = 0; x < w; x += st) { take(x, my); take(x, h - 1 - my); }
+    for (let y = 0; y < h; y += st) { take(mx, y); take(w - 1 - mx, y); }
+    const bg = ch.map((a) => a.sort((p, q) => p - q)[a.length >> 1]);
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = my; y < h - my; y++) for (let x = mx; x < w - mx; x++) {
+      const i = (y * w + x) * 3;
+      if (Math.max(Math.abs(img.rgb[i] - bg[0]), Math.abs(img.rgb[i + 1] - bg[1]), Math.abs(img.rgb[i + 2] - bg[2])) > INK_DIFF) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    return x1 < 0 ? null : [x0 / w, y0 / h, (x1 - x0 + 1) / w, (y1 - y0 + 1) / h].map((v) => Math.round(v * 1000) / 1000);
+  };
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 3;
@@ -268,7 +283,7 @@ export function diffRegions(ref: Img, prev: Img, max = 6): DiffRegion[] {
     }
     blobs.push(b);
   }
-  // content = anything clearly not paper (light colours count too; INK, the dark-only threshold, missed a mid green)
+  // content = anything clearly not paper (light colours count too; a dark-only threshold missed a mid green)
   const ink = (img: Img, x0: number, y0: number, x1: number, y1: number) => { let n = 0; for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = (y * w + x) * 3; if (Math.min(img.rgb[i], img.rgb[i + 1], img.rgb[i + 2]) < 225) n++; } return n; };
   const S = Math.max(2, Math.min(60, Math.round(Math.max(w, h) * 0.05)));
   const sad = (x0: number, y0: number, x1: number, y1: number, dx: number, dy: number, step: number) => {

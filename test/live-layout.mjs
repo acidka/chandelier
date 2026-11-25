@@ -64,7 +64,7 @@ try {
   // preview {reference, save_to} saves the comparison and the plain render
   const pv = await call('preview', { artboard: 0, max_px: 200, save_to: join(tmp, 'ref0.png') });
   const cmp = await call('preview', { artboard: 0, max_px: 200, reference: join(tmp, 'ref0.png'), save_to: join(tmp, 'cmp.png') });
-  check(existsSync(join(tmp, 'cmp.png')) && existsSync(join(tmp, 'cmp.preview.png')), 'preview reference + save_to also saves <name>.preview.png', [pv, cmp]);
+  check(existsSync(join(tmp, 'cmp.png')) && existsSync(join(tmp, 'cmp.compare.png')), 'preview reference + save_to saves the render and <name>.compare.png', [pv, cmp]);
 } finally {
   await call('documents', { action: 'close', name: doc.name, discard: true });
   await call('configure', { units: 'pt', artboard: null });

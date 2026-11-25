@@ -27,7 +27,7 @@ Returns {count, items:[{uuid, name, type, box}]}.`,
 
 export const delete_items: ToolDef = {
   name: 'delete_items',
-  description: 'Delete items by refs (a group and its children listed together are deleted once). Locked items are skipped unless force:true (items on locked layers are always skipped). Returns {deleted, skipped_locked?}.',
+  description: 'Delete items by refs (a group and its children listed together are deleted once). Locked items are skipped unless force:true (items on locked layers are always skipped). A layer:/name:/uuid ref that finds nothing deletes nothing (not_found). Returns {deleted, skipped_locked?, not_found?}.',
   shape: { refs: refSchema, force: z.boolean().optional() },
   step: (a) => ({ cmd: 'delete_items', args: a }),
 };

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Live checks for the 0.1 release (needs a running Illustrator; works only in a document it creates):
 // preview {region} measured from a given artboard, SVG export clipped to the artboard, preflight low_contrast;
-// 0.5.2: gradient angles, region vs page reference, preview {image} of a PDF page (docs/bugs.md).
+// 0.5.2: gradient angles, region vs page reference, preview {image} of a PDF page, re-runnable batches (docs/bugs.md).
 //   npm run build && node test/live-release.mjs
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
@@ -77,6 +77,19 @@ await call('preview', { image: join(tmp, 'page.pdf'), grid: true, sample: [[150,
 await call('documents', { action: 'list' }, { check: (v) => {
   assert(v.filter((d) => /page\.pdf/.test(d.name)).length === 0, 'the PDF was closed');
   assert(v.find((d) => d.active).name === 'live-release', 'live-release is active again');
+} });
+
+// bugs.md #7, #10: a re-runnable batch (clear the layer, add it, draw) works on the first run and the second
+for (const run of [1, 2]) {
+  await call('batch', { steps: [
+    { tool: 'delete_items', args: { refs: 'layer:rerun' } },
+    { tool: 'layers', args: { action: 'add', name: 'rerun', printable: false } },
+    { tool: 'create_shape', args: { shape: 'rect', x: 0, y: 0, w: 10, h: 10, fill: '#00FF00', layer: 'rerun' } },
+  ] }, { check: (v) => assert(v.failed_step === undefined, `re-runnable batch, run ${run}: ` + JSON.stringify(v).slice(0, 300)) });
+}
+await call('layers', { action: 'list' }, { check: (v) => {
+  const l = v.layers.filter((x) => x.name === 'rerun');
+  assert(l.length === 1 && l[0].items === 1 && l[0].printable === false, 'one layer "rerun" with one item: ' + JSON.stringify(l));
 } });
 
 await call('documents', { action: 'close', discard: true });

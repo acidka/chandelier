@@ -5,7 +5,7 @@ import { refSchema, rect } from './common.js';
 export const layers: ToolDef = {
   name: 'layers',
   description: `Layers of the active document. Names may be "Parent/Child" paths; a bare name is looked up at any depth; "@active" / "@first" name the active / top layer; "Layer 1" also finds the localised default layer.
-action: "list" (tree with items, visible, locked, printable, color, sublayers) · "add" (name; parent for a sublayer; position; props) · "update" (name → new_name and props) · "remove" (name; refuses if it has items unless force:true) · "reorder" (name, position) · "activate" (name).
+action: "list" (tree with items, visible, locked, printable, color, sublayers) · "add" (name; parent for a sublayer; position; props; an existing layer just gets the props) · "update" (name → new_name and props) · "remove" (name; refuses if it has items unless force:true) · "reorder" (name, position) · "activate" (name).
 Props: visible, locked, printable (false = non-printing), template, dim_images, color (layer highlight, "#rrggbb"), opacity. position: "top" | "bottom" | "above:Name" | "below:Name".`,
   shape: {
     action: z.enum(['list', 'add', 'update', 'remove', 'reorder', 'activate']).optional(),

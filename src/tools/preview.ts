@@ -23,7 +23,7 @@ async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolRes
 
 export const preview: ToolDef = {
   name: 'preview',
-  description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it). max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG.
+  description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it). max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
 reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
 more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
 image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] → hex, rgb, cmyk.`,
@@ -128,15 +128,24 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   };
   if (c.ink) {
     const R = toRect(c.ink.reference), P = toRect(c.ink.preview);
-    stats.content_box = { reference: R, preview: P, shift: [r2(P[0] - R[0]), r2(P[1] - R[1])], scale: [r2(P[2] / R[2]), r2(P[3] / R[3])] };
+    stats.content_box = contentBoxStats(R, P);
   }
   const composite = encodePng(c.composite);
   if (a.save_to) {
-    const p = resolve(a.save_to), q = p.replace(/(\.png)?$/i, '.preview.png');
-    mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, composite); writeFileSync(q, data);
-    stats.saved_to = p; stats.preview_saved_to = q;
+    // save_to is the render, as without reference; the comparison goes next to it (bug #11: the names were swapped)
+    const p = resolve(a.save_to), q = p.replace(/(\.png)?$/i, '.compare.png');
+    mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, data); writeFileSync(q, composite);
+    stats.saved_to = p; stats.compare_saved_to = q;
   }
   return { content: [{ type: 'image', data: composite.toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(stats) }] };
+}
+
+/** content_box of a comparison. Boxes whose aspect disagrees a lot describe different things (a photo's whole
+ * object, side face included, vs the artwork): a shift and scale from them misled every round (bug #8). */
+export function contentBoxStats(R: number[], P: number[]): Record<string, unknown> {
+  const scale = [r2(P[2] / R[2]), r2(P[3] / R[3])], aspect = scale[0] / scale[1];
+  if (aspect > 1.15 || aspect < 1 / 1.15) return { reference: R, preview: P, note: 'the contents differ in shape (photo, side face or margin?): no shift/scale; use differences and close-ups' };
+  return { reference: R, preview: P, shift: [r2(P[0] - R[0]), r2(P[1] - R[1])], scale };
 }
 
 const VECTOR = /\.(pdf|ai|eps|svgz?)$/i;

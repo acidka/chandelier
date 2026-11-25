@@ -32,8 +32,20 @@ Only touch documents you created or were asked to change. Leave a finished docum
 export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {
   const t = performance.now();
   const r = await callToolInner(tool, args, ctx);
+  const note = !r.isError && POSITIONAL.has(tool.name) ? frameNote(ctx.settings) : null;
+  if (note) r.content.push({ type: 'text', text: note });
   if (LOG) log({ tool: tool.name, ms: Math.round((performance.now() - t) * 10) / 10, ok: !r.isError, error: r.isError ? firstText(r).slice(0, 300) : undefined });
   return r;
+}
+
+// Tools whose arguments or results are positions in the session frame.
+const POSITIONAL = new Set(['create_shape', 'create_path', 'create_text', 'artboards', 'transform_items', 'modify_items', 'get_items', 'find_items', 'place', 'batch', 'align_items', 'duplicate_items', 'get_tree', 'preview']);
+
+/** The frame a pinned configure set, said in every positional result: agents in one session share one server, so
+ * one agent's configure {artboard: 2} silently moved everyone's coordinates (bug #9). Default frame: no note. */
+export function frameNote(s: Ctx['settings']): string | null {
+  if (s.artboard === null && s.origin === 'artboard') return null;
+  return `frame: ${s.origin === 'document' ? 'document origin (y up)' : 'artboard ' + s.artboard}, ${s.units} (session configure, shared by every agent on this server)`;
 }
 
 async function callToolInner(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {

@@ -44,6 +44,7 @@
     }
     if (a.opacity !== undefined) L.opacity = a.opacity;
   }
+  function findChild(parent, name) { try { return parent.layers.getByName(name); } catch (e) { return null; } }
   A.cmd.layers = function (a) {
     var doc = A.doc(), act = a.action || 'list', L, i;
     if (act === 'list') {
@@ -53,8 +54,14 @@
     }
     if (act === 'add') {
       if (!a.name) throw new Error('add needs name.');
-      if (A.findLayer(a.name, doc)) throw new Error('A layer named "' + a.name + '" already exists.');
       var parent = a.parent ? A.layerByName(a.parent) : null;
+      // adding a layer that exists is a no-op that applies the props, like swatches add (bug #10): re-runnable batches
+      var had = parent ? findChild(parent, a.name) : A.findLayer(a.name, doc);
+      if (had) {
+        setLayer(had, a);
+        if (a.activate !== false) doc.activeLayer = had;
+        var info = layerInfo(had, true); info.existed = true; return info;
+      }
       L = parent ? parent.layers.add() : doc.layers.add();
       L.name = a.name;
       setLayer(L, a);
