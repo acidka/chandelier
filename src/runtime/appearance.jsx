@@ -10,14 +10,24 @@
   // Known-flaky operations (MRAP in long sessions, quirk B3) go through A.retry (core.jsx).
 
   // Where new items go: parent (ref of a group, or "layer:Name"), else layer (get or create), else the active layer.
+  // Illustrator refuses to add items to ANY layer while the active layer is locked or hidden ("Target layer cannot
+  // be modified", quirk C32): when the target is elsewhere, make the target's layer active instead.
+  function usable(c) {
+    var doc = A.doc(), act = doc.activeLayer, L;
+    if (!act.locked && act.visible) return c;
+    L = A.layerOf(c);
+    if (L && L !== act && !L.locked && L.visible) { try { doc.activeLayer = L; } catch (e) {} }
+    return c;
+  }
+  A.usableTarget = usable;
   A.container = function (a) {
     if (a.parent !== undefined && a.parent !== null) {
       var s = String(a.parent), p;
       p = s.indexOf('layer:') === 0 ? A.layerByName(s.slice(6)) : A.ref(a.parent);
       if (p.typename !== 'Layer' && p.typename !== 'GroupItem') throw new Error('parent must be a layer ("layer:Name") or a group, not ' + p.typename + '.');
-      return p;
+      return usable(p);
     }
-    if (a.layer) return A.layerGet(a.layer);
+    if (a.layer) return usable(A.layerGet(a.layer));
     var L = A.doc().activeLayer;
     if (L.locked || !L.visible) throw new Error('The active layer "' + L.name + '" is locked or hidden: give layer or parent.');
     return L;
@@ -36,7 +46,7 @@
   function paintOne(p, s) {
     var text = p.typename === 'TextFrame', ca = text ? p.textRange.characterAttributes : null;
     if (s.fill !== undefined) {
-      if (text) ca.fillColor = A.color(s.fill);
+      if (text) { if (String(s.fill).indexOf('gradient:') === 0) A.warn('Text "' + String(p.contents).slice(0, 20) + '" kept its fill: ' + A.GRAD_TEXT); else ca.fillColor = A.color(s.fill); }
       else if (s.fill === 'none') p.filled = false;
       else { p.filled = true; A.setFill(p, s.fill); }
     }

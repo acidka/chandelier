@@ -127,7 +127,7 @@
     var mb = A.metaGet ? A.metaGet('bleed', doc) : null;
     var off = a.offset !== undefined ? A.u(a.offset) : Math.max(mb ? Math.max(mb.left, mb.top, mb.right, mb.bottom) : 0, 3 * 72 / 25.4);
     var len = a.length !== undefined ? A.u(a.length) : 5 * 72 / 25.4, w = a.weight || 0.25, col = registration(doc);
-    var L = A.layerGet(a.layer || 'Crop Marks'), made = [];
+    var L = A.usableTarget(A.layerGet(a.layer || 'Crop Marks')), made = [];
     var g = A.track(L.groupItems.add()); g.name = a.name || 'Crop Marks';
     function line(x1, y1, x2, y2) {
       var p = g.pathItems.add();

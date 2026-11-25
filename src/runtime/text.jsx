@@ -12,13 +12,21 @@
     if (s.character_style) styleByName(A.doc().characterStyles, s.character_style, 'character style').applyTo(r, true);
     A.setCharAttrs(r.characterAttributes, s);
   };
+  // Text colour. A scripted gradient on characters renders black (quirk C33: whatever origin/length or route), so
+  // refuse it instead of producing black text silently (bugs.md #14).
+  A.GRAD_TEXT = 'Gradients on live text render black when set by a script (Illustrator, quirk C33): use a solid colour, ' +
+    'or outline the text (path_ops {op: "outline_text"}) and fill the outlines with the gradient.';
+  A.textColor = function (spec) {
+    if (String(spec).indexOf('gradient:') === 0) throw new Error(A.GRAD_TEXT);
+    return A.color(spec);
+  };
   // Write character attributes (also on a style's characterAttributes: writing is safe, reading is not, B1).
   A.setCharAttrs = function (ca, s) {
     var col = s.fill !== undefined ? s.fill : s.color;
     if (s.font) ca.textFont = A.font(s.font);
     if (s.size !== undefined) ca.size = s.size;
-    if (col !== undefined) ca.fillColor = A.color(col);
-    if (s.stroke !== undefined) { ca.strokeColor = A.color(s.stroke); if (s.stroke !== 'none' && s.stroke_width === undefined) ca.strokeWeight = 1; }
+    if (col !== undefined) ca.fillColor = A.textColor(col);
+    if (s.stroke !== undefined) { ca.strokeColor = A.textColor(s.stroke); if (s.stroke !== 'none' && s.stroke_width === undefined) ca.strokeWeight = 1; }
     if (s.stroke_width !== undefined) ca.strokeWeight = s.stroke_width;
     if (s.leading !== undefined) { if (s.leading === 'auto') ca.autoLeading = true; else { ca.autoLeading = false; ca.leading = s.leading; } }
     if (s.tracking !== undefined) ca.tracking = s.tracking;

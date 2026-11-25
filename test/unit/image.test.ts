@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { decodePng, encodePng, compare, resize, cropPad, type Img } from '../../src/image.js';
+import { decodePng, encodePng, compare, resize, crop, cropPad, type Img } from '../../src/image.js';
 
 const solid = (w: number, h: number, v: number): Img => ({ w, h, rgb: new Uint8Array(w * h * 3).fill(v) });
 
@@ -112,6 +112,13 @@ describe('preview {image} view (imageview)', async () => {
     expect(sampleAt(f, [35, 25]).hex).toBe('#000000');
     expect(sampleAt({ ...f, ox: 50 }, [10, 10])).toEqual({ at: [10, 10], outside: true });
     expect(sampleAt(f, [30, 20, 40, 10]).rgb).toEqual([64, 64, 64]); // half block, half page
+  });
+  it('samples the whole image even outside the shown region (bugs.md #15)', () => {
+    const whole = { img: page(), ox: 0, oy: 0, k: 1 };
+    const region = { img: crop(page(), 60, 0, 40, 50), ox: 60, oy: 0, k: 1 }; // no block in it
+    const v = view(region, { sample: [[35, 25], [80, 10]], sampleFrame: whole });
+    expect(v.samples!.map((s) => s.hex)).toEqual(['#000000', '#808080']);
+    expect(view(region, { sample: [[35, 25]] }).samples![0].outside).toBe(true); // without the whole image: as before
   });
   it('shrinks big images and zooms small regions (≤ 8×, sharp)', () => {
     const big = view({ img: solid(4000, 2000, 255), ox: 0, oy: 0, k: 1 }, { max_px: 1000 });

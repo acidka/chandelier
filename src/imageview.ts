@@ -5,7 +5,11 @@
 import { resize, type Img } from './image.js';
 
 export interface Frame { img: Img; ox: number; oy: number; k: number }
-export interface ViewOpts { grid?: number | boolean; sample?: number[][]; max_px?: number; tracks?: { id: number; pts: number[][] }[] }
+export interface ViewOpts {
+  grid?: number | boolean; sample?: number[][]; max_px?: number; tracks?: { id: number; pts: number[][] }[];
+  /** where samples are read (default the shown frame): the whole image, so points outside a region still sample (bugs.md #15) */
+  sampleFrame?: Frame;
+}
 export interface Sample { at: number[]; hex?: string; rgb?: number[]; cmyk?: number[]; outside?: true }
 export interface View { img: Img; shown_px: [number, number]; zoom: number; grid?: number; content_box?: number[]; background?: string; samples?: Sample[] }
 
@@ -33,7 +37,7 @@ function mean(img: Img, x0: number, y0: number, x1: number, y1: number): number[
 export function sampleAt(f: Frame, at: number[]): Sample {
   const px = (u: number, o: number) => (u - o) * f.k;
   const X = px(at[0], f.ox), Y = px(at[1], f.oy);
-  if (X < 0 || Y < 0 || X >= f.img.w || Y >= f.img.h) return { at, outside: true }; // not in the shown region
+  if (X < 0 || Y < 0 || X >= f.img.w || Y >= f.img.h) return { at, outside: true }; // off the image (or, for a rendered page, the region)
   let c: number[];
   if (at.length >= 4) c = mean(f.img, px(at[0], f.ox), px(at[1], f.oy), px(at[0] + at[2], f.ox), px(at[1] + at[3], f.oy));
   else { const x = px(at[0], f.ox), y = px(at[1], f.oy); c = mean(f.img, x - 1, y - 1, x + 2, y + 2); }
@@ -146,7 +150,7 @@ export function view(f: Frame, o: ViewOpts = {}): View {
     }
   }
   if (o.sample?.length) {
-    out.samples = o.sample.map((at) => sampleAt(f, at));
+    out.samples = o.sample.map((at) => sampleAt(o.sampleFrame ?? f, at));
     o.sample.forEach((at, n) => {
       const x = (at[0] - f.ox) * K, y = (at[1] - f.oy) * K;
       if (at.length >= 4) {

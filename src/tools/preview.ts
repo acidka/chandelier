@@ -27,7 +27,7 @@ export const preview: ToolDef = {
   description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it). max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
 reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
 more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
-image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
+image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] (image: anywhere, not only in region) → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
   shape: {
     artboard: z.number().min(0).optional(),
     refs: refSchema.optional(),
@@ -160,7 +160,7 @@ async function imagePreview(a: any, { rt, tmp, settings }: Ctx): Promise<CallToo
   for (const k of ['reference', 'refs', 'more', 'preflight', 'info']) if (a[k] !== undefined) return fail(`image works alone: drop ${k} (image takes region, grid, sample, page, max_px, save_to).`);
   if (a.region && (a.region[2] <= 0 || a.region[3] <= 0)) return fail('region needs a positive width and height.');
   const id = ++n, max = a.max_px ?? (a.width ? a.width : 1024);
-  let frame: Frame, info: Record<string, unknown>;
+  let frame: Frame, info: Record<string, unknown>, whole: Frame | undefined;
   if (VECTOR.test(path)) {
     const out = join(tmp, `f${id}.png`);
     const env = await rt.cmd<Record<string, any>>('render_file', { path, page: a.page ? Math.round(a.page) : undefined, region: a.region, max_px: max, out });
@@ -179,6 +179,7 @@ async function imagePreview(a: any, { rt, tmp, settings }: Ctx): Promise<CallToo
     const ppi = imagePpi(path); if (ppi) info.ppi = ppi;
     const color = imageColorMode(path); if (color !== 'unknown') info.color = color;
     let ox = 0, oy = 0;
+    whole = { img, ox: 0, oy: 0, k: 1 };
     if (a.region) {
       const [x, y, w, h] = a.region;
       if (x >= img.w || y >= img.h || x + w <= 0 || y + h <= 0) return fail(`region lies outside the image (${img.w} × ${img.h} px).`);
@@ -188,7 +189,7 @@ async function imagePreview(a: any, { rt, tmp, settings }: Ctx): Promise<CallToo
     frame = { img, ox, oy, k: 1 };
   }
   const tracks = a.profile ? edgeTracks(frame.img, a.profile === true ? {} : a.profile, frame.ox, frame.oy, frame.k) : undefined;
-  const v = view(frame, { grid: a.grid, sample: a.sample, max_px: max, tracks });
+  const v = view(frame, { grid: a.grid, sample: a.sample, max_px: max, tracks, sampleFrame: whole });
   const png = encodePng(v.img);
   const { img: _i, ...stats } = v;
   const res: Record<string, unknown> = { ...info, ...stats, ...(tracks ? { tracks } : {}) };
