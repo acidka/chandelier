@@ -9,7 +9,11 @@ overlapping translucent wave ribbons. RMSE against the photo went 0.116 → 0.10
 shading; every mistake below was made there once. A second agent then rebuilt it from this guide alone (smooth result,
 9 rounds, ~24 min) and a third with the updated guide (~16 min, 7 rounds). The owner judged the second one best: it
 kept the panel's real shape, followed what the ribbons do at the panel edges and kept crisp band-to-band contrast —
-even though its rmse was not the lowest. Those lessons are folded in below (§ 1, § 3, § 5, § 5b, § 6). How these tests are run:
+even though its rmse was not the lowest. A fourth run (~25 min, 8 rounds) still lost to it: it kept one uniform scale
+on a given artboard the panel didn't fit, so the panel shape broke (only one slanted side, ribbons running past it);
+its colours came out redder than the photo; its ribbon ends hooked down past the panel; and extra pieces (split
+shapes, fade shapes, many shading strips) showed as fans and seams. Those lessons are folded in below (§ 1, § 2, § 3,
+§ 5, § 5b, § 6). How these tests are run:
 `docs/recreate-testing.md` in the repository.
 
 ## 0. Set up for comparing
@@ -32,14 +36,22 @@ Skip what already exists (a document, a reference artboard) — reuse it.
     box: S comes from its width (here the trapezoid's bottom), and the artboard is that box at S.
   - **Visible perspective** (parallel edges converging, a far side clearly shorter): map every measured point through a
     4-point projective transform (the face's four corners → the flat panel) before fitting. Don't stretch the photo.
-  - **One uniform scale**: `S = artwork width in units ÷ that width in px`, the same for x and y. Never scale x and y
-    separately to fill an artboard — it distorts every curve (a test run did, 12 % apart). Make the artboard the box at
-    that scale instead.
+  - **One uniform scale** when you choose the artboard: `S = artwork width in units ÷ that width in px`, the same for
+    x and y; make the artboard the box at that scale.
+  - **The artboard is given** (a dieline, a set size, a task that names it) and the photographed panel's aspect
+    differs: the given size is the truth, and the photo is foreshortened (taken from above or at an angle). Map the
+    panel's outline in the photo **onto** the panel on the artboard — its corners to the artboard's panel corners
+    (scale x and y separately, or a 4-point projective map when it tapers). Then the whole shape fits and the
+    artwork follows it. Don't keep a uniform scale and let the panel overflow or centre it: a run that did lost the
+    panel's shape (one side cut off) and was judged worse than the run that mapped the panel onto the artboard
+    (x and y 12 % apart), which kept the shape and looked best.
   - The box excludes what isn't this face: side faces, flaps, the table. That box is also your `reference_crop`.
   - **Keep the object's shape:** the background/substrate (paper, board colour) fills the panel's real outline (the
     trapezoid) plus bleed, and the artwork is clipped to it — outside stays empty, as on the die. Filling the whole
     rectangle made the result read as a poster instead of this box front (the run the owner liked least on this
-    point). The outline also goes on a non-printing "Dieline" layer.
+    point). **One clip for everything:** the substrate *and* every shape sit in one clip group with the panel
+    outline, so no shape shows outside any side (a run with ribbons clipped to the bleed rectangle showed them past
+    the slanted side). The outline also goes on a non-printing "Dieline" layer.
   - Creases and folds of the object (a faint curve that crosses other edges without changing their layer count, a
     shaded flap, a curl) are not artwork: leave them out and say so.
 - Place paths with `create_path {d, scale: S, x, y}` so you can keep working in image pixels.
@@ -51,6 +63,11 @@ Skip what already exists (a document, a reference artboard) — reuse it.
 - Count layers from the tones: going down a column, each edge is a shape starting (darker) or ending (lighter). The
   **size of the tone step** tells how many shapes start or end there (a step twice the usual = two shapes end
   together). Assign every edge to its shape this way, not by guessing what "looks like" one band.
+  Shading darkens the tone right under top edges, so step sizes vary between columns: read the tone **at the bottom
+  of each band** (where its shading has faded) and count from that, not from the step right at the edge.
+- **Prefer the fewest whole shapes that explain the tones.** Splitting a shape into lobes, or adding a fade-in shape
+  for a band whose count seems to change, cost one run most of its analysis time and left seams; the preferred run
+  used whole shapes and let opacity and shading absorb the rest.
 - The count can disagree along one edge (one layer on the right, two on the left — lighting, a merge). Decide by the
   majority of columns and fix the rest with opacity and shading; don't split the shape.
 - When steps alone don't tell, compare each region's tone with the bare paper's: the multiply factor per channel
@@ -61,7 +78,9 @@ Skip what already exists (a document, a reference artboard) — reuse it.
 ## 3. Measure edges densely — never invent
 
 - Measure **every 25–50 px** along the shape (a column or row profile of the image: positions where the tone steps).
-  Sparse points (every 100–150 px) leave the fit too free: pointed tips and bulges.
+  Sparse points (every 100–150 px) leave the fit too free: pointed tips and bulges. `preview {sample}` takes only 24
+  points; for profiles save a 1:1 crop (`preview {image, region, save_to}`) and read its pixels in a small Node script
+  (PNG = zlib-inflated rows with a filter byte each; `node:zlib` is enough, no packages).
 - Where an edge is hidden (under another shape, off the page), **leave a gap**. Don't fill it with guessed points:
   invented points make shoulders and straight stretches.
 - Where two edges coincide in the reference (two ribbons merging, a shape ending on another's edge), they are **one
@@ -71,9 +90,14 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   the right side as they wrapped over the fold and started at the slanted left side; the run that measured right to
   the edges and kept that looked like the object, the runs that extended straight did not. Fits that stop 30–70 px
   short need long extensions, which show as kinks and straight stretches. Check each corner in a close-up.
+  The turn at a side is **gentle and cut by the panel outline**: the shape bends a little and the clip ends it. A run
+  that drew the full wrap of the fold (ends bending 80–95° down, rounded, running past the side) got hooks — that
+  much bend is the photo's fold, not artwork.
 - **Extend shapes past the bleed by continuing the end curve itself** (evaluate the last cubic a little beyond t = 1),
-  then straight along its end tangent; stop steepening once the slope passes ~1.6. A plain straight line from a
-  short fit shows; a zero-length extension leaves a horizontal stub at the edge.
+  then straight along its end tangent; stop steepening once the slope passes ~1.6 — unless the end is already
+  steeper, then keep its own tangent (capping it makes a kink). An end tangent pointing backward is a fit error:
+  refit with a knee anchor before extending. A plain straight line from a short fit shows; a zero-length extension
+  leaves a horizontal stub at the edge.
 - **Edges that seem to cross** (a bottom edge running into another shape's top edge): sample the tone in the thin gap
   between them on both sides of the meeting point. One layer's tone on both sides → they merge (one shared curve from
   there); the tone changes → one continues hidden (leave its gap, § 3 above); two layers' tone → they really cross.
@@ -120,6 +144,13 @@ script, never in Python.
 - **Match the tonal extremes first:** sample the darkest overlap and the lightest band, get those two right, then the
   mid-tones. The eye reads the contrast range; tuning to average tone (or rmse) flattens it — a run that matched the
   mid-tones best still looked flat because its darkest spot came out 124 instead of 81.
+  Take the extremes **in evenly lit parts** of the photo: a dark spot inside the photo's shading (the side turning
+  away from the light) is lighting, not ink — an orange multiply ink can't reach it without black, and chasing it
+  makes everything too deep.
+- **Match hue and saturation, not only lightness.** Compare each sample's channel ratios (R:G:B, or hue and chroma),
+  substrate included: a run whose lightness was close came out visibly redder and more saturated than the muted
+  photo, and its kraft looked peach. A photographed print is duller than the ink's pure colour; when in doubt, go
+  greyer.
 - Calibrate with the 1:1 render (`preview {width}` = the crop width) and samples at fixed points of both images — the
   same check as § 5b.
 - Expect one calibration round: multiply in a CMYK document doesn't map simply onto the photo's RGB ratios (both test
@@ -162,9 +193,14 @@ A gradient that follows a curve (linear gradients can't; mesh and freeform gradi
 3. The distance to the next edge: only edges **seen** there (measured, not a model's hidden stretch — a hidden edge
    cuts a seam), smoothed along the edge (±60 px window) so merges and crossings don't make vertical seams; capped
    (~160 px) so near the panel sides it doesn't reach edges far below; no edge below (paper) → no shade.
+   Take a window **minimum** (±40 px) of the distance before smoothing: where a new edge appears below, the band
+   clip jumps, and a plain smoothed distance leaves a seam there. A stack that ends inside the panel tapers to zero
+   over 30–60 px, or it leaves a vertical seam. Even so, every strip and stack end is a chance for a fan or seam:
+   shade only the clear edges, with as few stacks as do the job.
    Shadow ink: warm and low in black, e.g. cmyk(0,50,100,15) under orange; an ink with K 40 looked grey and dirty.
 4. Opacity per step ≥ ~1.5 %: Illustrator drops smaller steps entirely (a 12 % gradient in 28 steps rendered as
-   nothing). So: weak gradients (≤ 10 %) 6–8 steps; strong ones 12–16 steps (item 2).
+   nothing). So: weak gradients (≤ 10 %) 6–8 steps; strong ones 12–16 steps (item 2). An edge whose strength
+   (item 5) is under ~0.1 gets no shading at all.
 5. Strength per edge from the profile: `1 − tone at the band's bottom ÷ tone at its top`, roughly (multiply).
    Shading darkens the base, so lighten the shapes' own opacity after adding it.
 

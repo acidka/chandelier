@@ -94,4 +94,6 @@ In the open document <file>, recreate the design in <reference image> onto the e
 A photographed kraft box front with five translucent wave ribbons (job files in the git-ignored `tmp/`). Document:
 Reference (original) · Front panel (baseline, RMSE 0.095) · v2 · v3 · v4. v2 (first guide, ~24 min) was judged
 best; v3 (updated guide, ~16 min) was flatter and lost the panel's shape — that fed the "object shape, edge
-behaviour, tonal extremes" changes; v4 tests those. Numbers: [benchmarks § 2g](research/benchmarks.md).
+behaviour, tonal extremes" changes; v4 (~25 min) tested those and was judged worst: keeping one uniform scale on a
+given artboard broke the panel shape, its colours were redder than the photo, ribbon ends hooked past the side —
+that fed "map the panel onto the given artboard, one clip, hue and saturation, fewest whole shapes". Numbers: [benchmarks § 2g](research/benchmarks.md).
