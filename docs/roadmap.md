@@ -424,7 +424,7 @@ a file, and the skill said "measure in pixels" without a way to.
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured)
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
-- [x] ✅ Release 0.5.2 (2026-11-25); faster free-form recreation and the fresh-agent trial carry over to the next milestone
+- [x] ✅ Release 0.5.2 (2026-11-25): npm, GitHub release with the .mcpb, MCP Registry (0.5.2 latest, checked through its API); faster free-form recreation and the fresh-agent trial carry over to the next milestone
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
