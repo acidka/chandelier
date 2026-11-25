@@ -15,7 +15,8 @@ One Illustrator document, artboards in a row, all at the same scale and top edge
 | next | **Baseline** | the best known version (e.g. the one made while writing the guide) |
 | then, one per test → | **Test v2, v3, v4…** | each fresh agent's result, on its own artboard to the right of the previous one, with its own layers ("v2 …", "v3 …") and swatches |
 
-Everyone can compare every version with the reference side by side in Illustrator. Nothing is overwritten: a test
+Above each artboard a label names it ("v5 · tools · ~12 min", with the owner's verdict once given) on a locked,
+non-printing layer "Version labels"; add one for every new test. Everyone can compare every version with the reference side by side in Illustrator. Nothing is overwritten: a test
 only adds an artboard and layers.
 
 ## Running one test
