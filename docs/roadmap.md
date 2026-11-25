@@ -408,8 +408,21 @@ a file, and the skill said "measure in pixels" without a way to.
   a gradient that follows a curve = stacked multiply steps between an edge and the next seen edge, clipped by the
   exact edge; ≥ 1.5 % opacity per step (smaller steps don't render); check with tone profiles at 1 px per px
 - [x] ✅ Bugs fixed (2026-11-25, [bugs.md](bugs.md)): gradient angles (#1), `preview {reference}` with region/refs (#2), any zoom in `preview {image}` (#3), restart past the links dialog (#4), tool-list headroom 54.1 KB (#6); PDF pages in `preview {image}` verified live (V1); live-release covers them. Open: #5 (Windows late-run crash, needs a repro)
-- [ ] Tool support so agents don't hand-write the method: edge profiles (`preview {image, profile}`) and a curve
-  fit (`create_path {fit}`); then a fresh-agent trial on another image
+- [ ] **Faster free-form recreation.** The subagent test (2026-11-25) took ~24 min (99 tool calls, ~235 k tokens,
+  ~15 s per call — model time, not Illustrator) against ~3 min for layout jobs such as the calendar. Where it went:
+  writing and debugging 7 scripts for the method (profiles, anchor fit, shared curves, shading, batch generator);
+  9 full rebuild rounds, ~4 of them on guide gaps (now fixed in recreate.md); ~38 calls through `test/mcp-call.mjs`
+  (a new server per call, runtime reloads when switching from the 0.5.1 server: a minute or two at most). Turn the
+  hand-written code into tools:
+  - [ ] Edge tracks: `preview {image, profile}` — column profiles, tone steps (sign, size), linked into tracks (the
+    tracker from this session works: `tracks.json` with points per edge)
+  - [ ] Curve fit: `create_path {fit: points, anchors}` — designer anchors fitted server-side (handle and curvature
+    constraints, fixed merge anchors, end extension)
+  - [ ] Curve-following shading as one option (under an edge to the next edge, k/(N+1) steps, clipped by the exact
+    edge) instead of 30–60 generated paths
+  - [ ] Release, so one server has every feature (no `mcp-call` detour)
+  - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
+    estimate until measured)
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
 - [ ] Release 0.5.2
 
