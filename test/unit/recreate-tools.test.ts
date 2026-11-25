@@ -88,11 +88,11 @@ describe('shadeToD', () => {
   it('stacked steps that add up to the opacity, the last one stopping just short of the far edge', () => {
     const edge = pts(), far = pts().map(([x, y]) => [x, y + 50]);
     const { ds, opacity } = shadeToD([edge], { to: far, opacity: 30 });
-    expect(ds.length).toBe(15); // 30 % in steps of ~2 %
+    expect(ds.length).toBe(20); // 30 % in steps of ~1.5 %
     expect(1 - Math.pow(1 - opacity / 100, ds.length)).toBeCloseTo(0.3, 2);
     // far side of the last step at the far edge: its lowest y ≈ the far edge's lowest (130 + 50)
     const ys = ds[ds.length - 1].match(/L[\d.]+ ([\d.]+)/g)!.map((s) => Number(s.split(' ')[1]));
-    // 15/16 of the 50 gap below the edge's lowest point (130): ≈ 177
+    // 20/21 of the 50 gap below the edge's lowest point (130): ≈ 178
     expect(Math.max(...ys)).toBeGreaterThan(174);
     expect(Math.max(...ys)).toBeLessThan(180);
     expect(ds[0].startsWith('M0 100 C')).toBe(true); // near side = the exact fitted edge

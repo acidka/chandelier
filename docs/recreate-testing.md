@@ -21,6 +21,10 @@ only adds an artboard and layers.
 
 ## Running one test
 
+0. **Unreleased features:** `npm run build`, then reconnect the session's Chandelier server (`/mcp` → reconnect, or
+   restart the session) and check the tool's schema shows them. Agents never use `test/mcp-call.mjs` or anything
+   else that reaches Illustrator outside the Chandelier tools (owner, 2026-11-25: v5 and v6 did, through a second
+   server started from the shell — not allowed).
 1. **Reset the shared session first** — agents in one Claude Code session share one Chandelier server, so a
    `configure` by an earlier agent changes everyone's frame ([bugs.md #9](bugs.md)):
    `configure {artboard: 0, units: "mm"}`.
@@ -52,8 +56,10 @@ In the open document <file>, recreate the design in <reference image> onto the e
 ## Tools
 - Illustrator: the mcp__chandelier__* tools. The server is SHARED: do NOT call configure on it; give artboard: <i>
   in every batch step.
-- Features not yet released: the local build via `node test/mcp-call.mjs '[[...]]' --full` (fresh server per call).
-- Helper code as Node scripts in YOUR folder only: <scratch folder>. No Python.
+- **Illustrator ONLY through the mcp__chandelier__* tools.** No `node test/mcp-call.mjs`, no osascript/AppleScript/JXA,
+  no other process that talks to Illustrator. Long generated steps: write them to a JSON file in your folder and pass
+  it as `batch {steps_file}`.
+- Helper code as Node scripts in YOUR folder only: <scratch folder>, for data only (never to drive Illustrator). No Python.
 
 ## Rules (breaking them voids the test)
 - Don't read other scratch folders, the job's output folder, docs/research/benchmarks.md, docs/bugs.md,

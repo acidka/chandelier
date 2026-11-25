@@ -220,7 +220,7 @@ both failed.
 
 A gradient that follows a curve (linear gradients can't; mesh and freeform gradients can't be scripted):
 **`create_path {fit: edge points, shade: {to: next edge's points | distance}, fill: shadow ink, opacity: strength}`**
-builds items 1–4 in one call: N multiply steps (6–16, ~2 % each; `steps` to override) whose near side is the exact
+builds items 1–4 in one call: N multiply steps (6–48, ~1.5 % each; `steps` to override) whose near side is the exact
 fitted edge (crisp, no clip needed) and whose far side stops k/(N+1) of the way to `to` (window minimum and smoothing
 of the distance built in). Pass only the stretch of the next edge **seen** there; group the steps afterwards. Item 3's
 cap and end tapers are still yours (shorten `to`'s points, or clip). The near side is exact only when the shade's
@@ -262,6 +262,10 @@ stacks there double up as a dark wedge. The method behind it:
    nothing). So: weak gradients (≤ 10 %) 6–8 steps; strong ones 12–16 steps (item 2). An edge whose strength
    (item 5) is under ~0.1 gets no shading at all.
 5. Strength per edge from the profile: `1 − tone at the band's bottom ÷ tone at its top`, roughly (multiply).
+   **Keep it soft: 10–30 % at the edge.** A run that shaded at 50–55 % (in 16 steps of ~4.5 %) was judged worst of
+   its round: "very sharp and pixelated" — dark rims under every edge and visible contour bands. If a band needs
+   more darkness, the shape's own ink or opacity is too light, not the shading too weak. `to` must follow **one**
+   edge: points gathered from several edges (jumping between them) make a ragged far side.
    Shading darkens the base, so lighten the shapes' own opacity after adding it.
 
 Check with numbers, not by eye: render at exactly 1 px per reference px (`preview {width}` = the crop's width in px;

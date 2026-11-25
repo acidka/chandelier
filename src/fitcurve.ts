@@ -263,8 +263,9 @@ export function shadeToD(parts: number[][][], o: ShadeOpts): { ds: string[]; opa
   const toward = (v: number[]) => v.reduce((m, x) => (Math.abs(x) < Math.abs(m) ? x : m));
   const gap = win(win(raw, 3, toward), 4, (v) => v.reduce((t, x) => t + x, 0) / v.length);
   const total = Math.min(100, Math.max(0, o.opacity ?? 30)) / 100;
-  // many weak steps hide the contours (8 steps of 8–14 % show), but under ~1.5 % Illustrator drops a step: 6–16 of ~2 %
-  const N = Math.round(o.steps ?? Math.max(6, Math.min(16, total / 0.02)));
+  // steps of ~1.5 %: fewer, stronger steps show as contour bands (v6: 50 % in 16 steps of 4.5 % looked pixelated);
+  // under ~1.5 % Illustrator drops a step. 6–48 of them
+  const N = Math.round(o.steps ?? Math.max(6, Math.min(48, total / 0.015)));
   const a = 1 - Math.pow(1 - total, 1 / N);
   const sign = Math.sign(gap.reduce((t, x) => t + x, 0)) || 1, lift = o.lift ?? 0;
   const xy = (u: number, v: number) => (ax === 0 ? [u, v] : [v, u]);
