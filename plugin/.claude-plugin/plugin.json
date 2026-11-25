@@ -1,6 +1,6 @@
 {
   "name": "chandelier",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Work in Adobe Illustrator from Claude Code: the Chandelier MCP server (fast persistent connection, batches, typed tools, ExtendScript, print-ready export and preflight), an Illustrator skill, and /ai-preview and /ai-preflight commands. macOS and Windows.",
   "author": {
     "name": "acidka",

@@ -385,7 +385,7 @@ Gap item 16 (phase 8). Owner, 2026-11-24: "do everything needed to close this mi
 - Open after 0.5 (not blocking): signed ZXP (needs Adobe's ZXPSignCmd and a certificate), a test on x64 Windows, the
   hidden-panel check (owner)
 
-## Milestone 🎯 0.5.2 — no extra installs ⏳
+## Milestone 🎯 0.5.2 — no extra installs ✅ (released 2026-11-25)
 
 Owner, 2026-11-25: on another Mac, an agent's first requests after installing Chandelier failed until it had installed
 Python imaging libraries. Session logs show why: to measure or crop a reference image, sample a colour or render a PDF
@@ -424,7 +424,7 @@ a file, and the skill said "measure in pixels" without a way to.
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured)
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
-- [ ] Release 0.5.2
+- [x] ✅ Release 0.5.2 (2026-11-25); faster free-form recreation and the fresh-agent trial carry over to the next milestone
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -590,3 +590,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | [recreate-testing.md](recreate-testing.md): the subagent test flow (reference artboard first, one artboard per test, prompt template, evaluation, where results go) |
 | 2026-11-25 | Fourth recreate test (v4, ~25 min, judged worst; v2 still best): recreate.md maps the photographed panel onto a given artboard, one clip for everything, gentle ends cut by the outline, hue as well as lightness, extremes in evenly lit parts, fewest whole shapes, shading seams (window-min distance, tapers, skip weak edges), profile route; bugs #11, #12; benchmarks § 2g row |
 | 2026-11-25 | Bugs #7–#12 fixed: `delete_items` of nothing deletes nothing, `layers add` idempotent, `content_box` against each image's background, frame note for a pinned `configure`, `preview` compare file names, clip groups documented; #5 reproduced in the Windows VM and closed as Illustrator's own (quirks C30, C31); live guard lets `configure` and `batch {files}` through |
+| 2026-11-25 | Release 0.5.2: `preview {image}`, recreate method in the skill, bug fixes #1–#4, #6–#12; launcher asks for `^0.5.2` |

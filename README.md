@@ -223,10 +223,11 @@ behind them: [plan](docs/plan.md).
 
 ## Status
 
-Current release: **0.5.1** (2026-11-24) on macOS and Windows — npm, MCP Registry, Claude Code plugin and Claude Desktop bundle.
+Current release: **0.5.2** (2026-11-25) on macOS and Windows — npm, MCP Registry, Claude Code plugin and Claude Desktop bundle.
 
 | Release | Date | What it added |
 |---------|------|---------------|
+| **0.5.2** | 2026-11-25 | `preview {image}`: look at image and PDF files (size, crop and zoom with a grid, colour samples, PDF pages) with nothing extra to install; a recreate-from-image method in the skill; bug fixes (gradient angles, re-runnable batches, restart past the links dialog, `content_box` on photos) |
 | **0.5.1** | 2026-11-24 | `install-panel`: `--help` prints usage (instead of installing), clearer next steps (Windows command, wake-up flag, re-run after upgrades) |
 | **0.5** | 2026-11-24 | **Chandelier panel** (experimental): chat with the agent inside Illustrator, selection events, wake-up through Claude Code channels; fixes: finished documents stay open, batch `@n` sees every item, longer MRAP retry |
 | **0.4.1** | 2026-11-24 | Listed in the MCP Registry; README rewritten |
