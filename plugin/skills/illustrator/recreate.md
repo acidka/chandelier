@@ -47,6 +47,8 @@ Skip what already exists (a document, a reference artboard) — reuse it.
     artwork follows it. Don't keep a uniform scale and let the panel overflow or centre it: a run that did lost the
     panel's shape (one side cut off) and was judged worse than the run that mapped the panel onto the artboard
     (x and y 12 % apart), which kept the shape and looked best.
+  - Curved light or dark wedges inside the face's silhouette (from the top corners down) are the photo's folds and
+    light on a curved board, not the panel's outline: the outline stays the die's straight sides.
   - The box excludes what isn't this face: side faces, flaps, the table. That box is also your `reference_crop` —
     and it must hold the **whole** face: a crop that cuts one side off (the face's bottom running past it) loses that
     side's slant, and the result shows one slanted side only.
@@ -123,7 +125,15 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   short need long extensions, which show as kinks and straight stretches. Check each corner in a close-up.
   The turn at a side is **gentle and cut by the panel outline**: the shape bends a little and the clip ends it. A run
   that drew the full wrap of the fold (ends bending 80–95° down, rounded, running past the side) got hooks — that
-  much bend is the photo's fold, not artwork.
+  much bend is the photo's fold, not artwork. **Check every side as a stack:** list the edges top to bottom where
+  they meet the side, in the photo and in your render — the same order, and every band still has height there. In
+  v7 the deep ribbon's bottom hooked down at the right (its end kept the fold's slope of ~2.5) and pinched off the
+  light ribbon under it, so one ribbon no longer reached the side — the one flaw the owner saw. Drop the steep
+  fold points before fitting, so the end keeps the slope it has just inside the fold.
+- Measured points that run **along** the photo's side (a bowed side, slope > ~1.5 next to it) are the side, not
+  the edge: drop them before fitting, or they make a spike at the start.
+- An end hidden by a photo artefact near a side (a curl, a flap): continue the edge with `extend` from the last
+  points seen, keeping its slope — that is not inventing; a straight closing line inside the panel is wrong.
 - **Extend shapes past the bleed by continuing the end curve itself** (evaluate the last cubic a little beyond t = 1;
   with `fit`: `extend: [start, end]` runs the curve on straight along its end directions, no kink),
   then straight along its end tangent; stop steepening once the slope passes ~1.6 — unless the end is already
@@ -227,7 +237,8 @@ cap and end tapers are still yours (shorten `to`'s points, or clip). The near si
 `fit` list (and tolerance) is identical to the shape's own edge; otherwise a hairline shows. **The recipe that worked
 best (v5):** fit the shade from the shape's own edge points lifted ~1.5 px, then clip the stack to a copy of its
 shape (`duplicate_items` the shape, `arrange_items {action: "clip"}` with the copy as mask): crisp edge, no hairline,
-no seam where the stack ends. **`clip_to: <shape ref>` does this in the same call** (the near side is lifted
+no seam where the stack ends. End a stack before its edge comes closer to another edge than the shade's depth
+(where two tops converge): there it runs under the other shape and makes a dark spot. **`clip_to: <shape ref>` does this in the same call** (the near side is lifted
 ~1.5 × tolerance and the paths go into a clip group masked by a copy of the shape, named "… (clip)"); `shade.taper`
 fades a stack that ends inside the panel; `fit` may be several lists (an edge made of a shared stretch and its own).
 Past the ends of `to`'s points the far side runs on parallel to the edge. Along a **steep** stretch (> ~45°) the
@@ -262,9 +273,10 @@ stacks there double up as a dark wedge. The method behind it:
    nothing). So: weak gradients (≤ 10 %) 6–8 steps; strong ones 12–16 steps (item 2). An edge whose strength
    (item 5) is under ~0.1 gets no shading at all.
 5. Strength per edge from the profile: `1 − tone at the band's bottom ÷ tone at its top`, roughly (multiply).
-   **Keep it soft: 10–30 % at the edge.** A run that shaded at 50–55 % (in 16 steps of ~4.5 %) was judged worst of
-   its round: "very sharp and pixelated" — dark rims under every edge and visible contour bands. If a band needs
-   more darkness, the shape's own ink or opacity is too light, not the shading too weak. `to` must follow **one**
+   **Use the measured strength, in fine steps.** A run that shaded at 50–55 % in 16 steps of ~4.5 % was judged
+   "very sharp and pixelated" (contour bands, dark rims); the next one shaded 38–55 % in 24–30 steps of ≤ 2 %
+   (the tool's default now) and was judged nice. Check first that the shapes' own tones at the band bottoms match
+   (otherwise the ink is off, not the shading); then take the strength from the profile. `to` must follow **one**
    edge: points gathered from several edges (jumping between them) make a ragged far side.
    Shading darkens the base, so lighten the shapes' own opacity after adding it.
 
