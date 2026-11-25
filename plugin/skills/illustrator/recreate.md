@@ -1,316 +1,259 @@
 # Recreating a design from an image — the full method
 
-Read this before rebuilding artwork from a photo, mockup, scan or screenshot. It is general: flat layouts, type,
-and above all **free-form shapes** (waves, ribbons, blobs, swooshes, organic bands), where agents usually fail by
-producing lumpy "camouflage" or "mountain" outlines instead of smooth curves.
+Read this before rebuilding artwork from a flat file, a scan, a screenshot, a rendered mockup or a photo of a real
+object. The result is editable print artwork: live text, swatches and styles, clean vector shapes, at the real size.
 
-Worked through on a real job (2026-11-25, Illustrator 29.1, macOS): a photographed kraft box front with five
-overlapping translucent wave ribbons. RMSE against the photo went 0.116 → 0.100 in six rounds of shape and colour, then 0.095 with
-shading; every mistake below was made there once. A second agent then rebuilt it from this guide alone (smooth result,
-9 rounds, ~24 min) and a third with the updated guide (~16 min, 7 rounds). The owner judged the second one best: it
-kept the panel's real shape, followed what the ribbons do at the panel edges and kept crisp band-to-band contrast —
-even though its rmse was not the lowest. A fourth run (~25 min, 8 rounds) still lost to it: it kept one uniform scale
-on a given artboard the panel didn't fit, so the panel shape broke (only one slanted side, ribbons running past it);
-its colours came out redder than the photo; its ribbon ends hooked down past the panel; and extra pieces (split
-shapes, fade shapes, many shading strips) showed as fans and seams. Those lessons are folded in below (§ 1, § 2, § 3,
-§ 5, § 5b, § 6). A fifth run with the measuring, fitting and shading tools (`profile`, `fit`, `shade`) took ~12 min
-and 3 small helper scripts (none for measuring or fitting); judged better than the fourth, still behind the second: it
-missed a small ribbon in a corner and looked flat (3 shaded edges). Its gaps are in § 1, § 3, § 4 and § 5b. How these tests are run:
-`docs/recreate-testing.md` in the repository.
+The method is tested with fresh agents on a suite of real jobs of different kinds (a flat calendar page, a desk
+calendar in a mockup, a packaging front in a product photo, a photographed box with translucent waves; more kinds to
+come). How: `docs/recreate-testing.md` in the repository. Examples below name the kind of job they come from.
+
+## Which sections a job needs
+
+Every job: § 0 set up, § 1 read the image, § 2 list the parts, § 8 compare, § 9 finish. Then by what the design
+contains (most contain several):
+
+| The design has… | Typical jobs | Sections |
+|---|---|---|
+| Text, grids, tables, rules, boxes | calendars, flyers, menus, forms, posters, back panels | § 3 |
+| Logos, icons, geometric marks, wordmarks | brand marks, pictograms, badges | § 4 |
+| Free-form shapes: waves, blobs, swooshes, organic bands, overlapping translucent layers | packaging backgrounds, decorative bands, abstract art | § 5 |
+| Colour that must match (inks, overlaps, a printed or photographed surface) | anything photographed or printed | § 6 |
+| Gradients, shading, shadows, glows | illustrations, layered paper looks | § 7 |
+| A photo of a real object or a mockup (perspective, folds, light) | product photos, box and bag mockups, desk/wall mockups | § 1 (flat shape and box) |
+
+The failure agents make most often, whatever the kind: **guessing instead of measuring** (sizes, positions,
+curves), and **copying the photo instead of the artwork** (light, folds and perspective drawn as if they were print).
 
 ## 0. Set up for comparing
 
-Skip what already exists (a document, a reference artboard) — reuse it.
+Skip what already exists (a document, a reference artboard): reuse it.
 
 - `documents new` at the artwork's real size (units mm or in, bleed). Name layers by role.
 - Put **the reference on its own artboard left of the work**, at the same scale and aligned to it, on a locked,
   non-printing layer "Reference": `artboards {add, rect}` + `place {path, x, y, w, layer}` + `layers {update,
   locked}`. The user compares side by side in Illustrator; previews and exports never show it.
 
-## 1. Read the image — separate artwork from photo
+## 1. Read the image: artwork vs photo, flat shape and box
 
-- `preview {image, grid: true}` (no Python/PIL/Swift): pixel size, `content_box` (the page in a scan or photo).
-- Decide what is **print artwork** and what is **the photo**: perspective, folds and creases, curls, side faces,
-  shadows, highlights, paper texture. Recreate only the artwork (flat, at its real size); mention what you left out.
+- `preview {image, grid: true}` (no Python/PIL/Swift/sips): pixel size, ppi, `content_box` (the page in a scan or
+  photo). `region` zooms a part (up to 8×), `sample` reads colours, `page` renders a PDF or .ai page.
+- Decide what is **print artwork** and what is **the photo or mockup**: perspective, folds and creases, curls, side
+  faces, rings and bindings, shadows, highlights, reflections, paper texture, the table. Recreate only the artwork,
+  flat and at its real size; say what you left out. Creases and folds (a faint line crossing other edges without
+  changing them, a shaded flap, a curl) and curved light or dark wedges on a bent board are not artwork.
+- Several items in one image (a row of boxes, front and back, a set of labels): recreate the one asked for; crop it
+  with `preview {image, region}` and work in that crop.
 - **Find the artwork's flat shape and its box** before measuring anything:
-  - Use the dieline if you have one. Otherwise the outline of the face as photographed *is* the panel shape when the
-    face is seen nearly head-on (a tapered box front is a real trapezoid — keep it). The box is the shape's bounding
-    box: S comes from its width (here the trapezoid's bottom), and the artboard is that box at S.
-  - **Visible perspective** (parallel edges converging, a far side clearly shorter): map every measured point through a
-    4-point projective transform (the face's four corners → the flat panel) before fitting. Don't stretch the photo.
-  - **One uniform scale** when you choose the artboard: `S = artwork width in units ÷ that width in px`, the same for
-    x and y; make the artboard the box at that scale.
-  - **The artboard is given** (a dieline, a set size, a task that names it) and the photographed panel's aspect
-    differs: the given size is the truth, and the photo is foreshortened (taken from above or at an angle). Map the
-    panel's outline in the photo **onto** the panel on the artboard — its corners to the artboard's panel corners
-    (scale x and y separately, or a 4-point projective map when it tapers). Then the whole shape fits and the
-    artwork follows it. Don't keep a uniform scale and let the panel overflow or centre it: a run that did lost the
-    panel's shape (one side cut off) and was judged worse than the run that mapped the panel onto the artboard
-    (x and y 12 % apart), which kept the shape and looked best.
-  - Curved light or dark wedges inside the face's silhouette (from the top corners down) are the photo's folds and
-    light on a curved board, not the panel's outline: the outline stays the die's straight sides.
-  - The box excludes what isn't this face: side faces, flaps, the table. That box is also your `reference_crop` —
-    and it must hold the **whole** face: a crop that cuts one side off (the face's bottom running past it) loses that
-    side's slant, and the result shows one slanted side only.
-  - A side that isn't straight in the photo (concave, bowed by the board) is usually the photo; draw the die's
-    straight side and let the clip take the 1–2 mm difference — or follow it when the dieline says so.
+  - Use the dieline or the given size if there is one: **the given size is the truth.** Otherwise the outline of the
+    face seen nearly head-on *is* the shape (a tapered box front is a real trapezoid: keep it; a rounded label keeps
+    its corners). The box is the shape's bounding box.
+  - **No given size:** one uniform scale, `S = artwork width in units ÷ that width in px`, the same for x and y;
+    the artboard is the box at that scale.
+  - **Given size, and the photographed face's aspect differs** (the photo is foreshortened, or the object is seen at
+    an angle): map the face's outline in the photo **onto** the panel — its corners to the panel's corners: scale x
+    and y separately, or a 4-point projective map when it tapers or shows perspective. The whole shape then fits and
+    the artwork follows it. Keeping one uniform scale and letting the panel overflow (or centring it) cut a side off
+    in a test run and broke the object's shape.
   - In `create_path`: `scale: [sx, sy]` scales x and y apart; `map: {from: 4 photo corners, to: 4 panel corners}`
-    (with `fit`) applies the 4-point map to the points before fitting. The bleed outline = the panel outline offset
-    outward by the bleed (`path_ops {offset}`).
-  - **Keep the object's shape:** the background/substrate (paper, board colour) fills the panel's real outline (the
-    trapezoid) plus bleed, and the artwork is clipped to it — outside stays empty, as on the die. Filling the whole
-    rectangle made the result read as a poster instead of this box front (the run the owner liked least on this
-    point). **One clip for everything:** the substrate *and* every shape sit in one clip group with the panel
-    outline, so no shape shows outside any side (a run with ribbons clipped to the bleed rectangle showed them past
-    the slanted side). In a batch: `arrange_items {action: "clip", refs: ["layer:…" or "@n"…], mask: <outline>}`
-    (the mask is the outline path; it must be a path or compound). The outline also goes on a non-printing "Dieline" layer.
-  - Creases and folds of the object (a faint curve that crosses other edges without changing their layer count, a
-    shaded flap, a curl) are not artwork: leave them out and say so.
-- Place paths with `create_path {d, scale: S, x, y}` so you can keep working in image pixels.
+    (with `fit`) maps measured points before fitting. Shapes and text: convert positions with the same map.
+  - The box holds the **whole** face and nothing else (no side faces, flaps, binding, table). It is also your
+    `reference_crop`; a crop that cuts part of the face off loses that part's shape.
+  - A side that isn't straight in the photo (bowed board, lens) is usually the photo: draw the die's straight side.
+  - **Keep the object's shape:** for a shaped object (a die-cut panel, a label), the background or substrate fills the
+    real outline plus bleed and everything is clipped to it; outside stays empty, as on the die. A filled rectangle
+    makes a box front read as a poster. **One clip for everything** (substrate and every shape in one clip group with
+    the outline): `arrange_items {action: "clip", refs: [...], mask: <outline>}`. The outline also goes on a
+    non-printing "Dieline" layer; the bleed outline is the outline offset outward (`path_ops {offset}`).
+- Work in image pixels when that is easier: `create_path {d, scale: S, x, y}` places pixel coordinates.
 
-## 2. Decompose into layers
+## 2. List the parts — structure, not pixels
 
-- List the parts back to front. Overlapping translucent shapes are **layers with multiply**, not separate flat
-  bands: where two shapes overlap the tone is darker; draw the shapes whole and let the overlap make the step.
-- Count layers from the tones: going down a column, each edge is a shape starting (darker) or ending (lighter). The
-  **size of the tone step** tells how many shapes start or end there (a step twice the usual = two shapes end
-  together). Assign every edge to its shape this way, not by guessing what "looks like" one band.
-  Shading darkens the tone right under top edges, so step sizes vary between columns: read the tone **at the bottom
-  of each band** (where its shading has faded) and count from that, not from the step right at the edge.
-- **Prefer the fewest whole shapes that explain the tones.** Splitting a shape into lobes, or adding a fade-in shape
-  for a band whose count seems to change, cost one run most of its analysis time and left seams; the preferred run
-  used whole shapes and let opacity and shading absorb the rest.
-- The count can disagree along one edge (one layer on the right, two on the left — lighting, a merge). Decide by the
-  majority of columns and fix the rest with opacity and shading; don't split the shape.
-- When steps alone don't tell, compare each region's tone with the bare paper's: the multiply factor per channel
-  (region ÷ paper) is about the product of the shapes over it, so it shows how many and which.
-- **A weak step (tone < ~20) running parallel to a top edge 40–100 px below it, lighter below, is that band's
-  shading ending, not a thin shape:** use it as `shade.to`. (A run lost 5 minutes deciding.)
-- **An edge that changes owner** (a ribbon's top runs along another ribbon's top for part of its length, then leaves
-  it): build the shape with the shared top, then cut it with `path_ops {op: "minus_front"}` and a cutter whose edge
-  is the separate stretch; the shared stretch stays identical, and the result keeps its fill, opacity and blend.
-- A band whose tone changes **along** its length with no edge is a gradient fill (a gradient swatch whose stops fade
-  in opacity), not an extra shape.
+- Back to front, by role: background/substrate, panels and boxes, shapes, logo, images, text blocks, rules.
+- Copy the **structure**, not the artwork: photos and other people's logos you can't redraw cleanly become a named
+  placeholder in their place and size (a product photo in a packaging job, a portrait on a flyer). Say so.
+- Text stays live text; repeated elements (grid cells, icons in a row) are built once and repeated (`grid`, `items`,
+  `duplicate_items`).
+- Fix obvious mistakes in the reference (a wrong date, a typo) and say so; on a client's job the words are theirs:
+  proofread every word against the reference.
+- Plan the swatches (one global swatch per colour role) and paragraph styles (one per text role) before building.
 
-## 3. Measure edges densely — never invent
+## 3. Text, layout and grids
+
+- Measure positions in pixels with `preview {image, region, grid: 10}` and convert with S; snap to the grid the
+  design obviously uses (equal columns, a common margin, a baseline step) instead of copying each pixel.
+- **Font size ≈ cap height in px ÷ 0.7 × S** (x-height ÷ 0.5 for lowercase text). Weight from stroke thickness
+  against the cap height; width from a known word's length.
+- Fonts match fuzzily (`fonts {query}` when unsure). A missing font: the closest installed one, then match widths with
+  `horizontal_scale` so lines break where the reference breaks. Body copy goes in area text.
+- Give every text its paragraph style and every colour its swatch, so the file can be restyled.
+- Tables and calendars: `create_text {grid}` with column props; check the content (dates, weekdays, totals) — a
+  correct-looking grid with a wrong first weekday is the classic miss.
+- Check alignment and spacing in a close-up against the reference: baselines on one line, equal gaps, rules where they
+  start and end.
+
+## 4. Logos, icons and geometric marks
+
+- Look for the **construction** first: circles, arcs, rectangles, regular polygons, equal strokes, symmetry axes,
+  repeated angles. Build from primitives (`create_shape`) and booleans (`path_ops` unite / minus_front / intersect),
+  not from traced outlines; measure the few numbers that define them (radii, stroke widths, angles, centres).
+- Symmetric marks: build one half and mirror it (`duplicate_items` + `transform_items {reflect}`), then unite.
+- Organic parts of a mark (a leaf, a nut, a hand-drawn shape): § 5's measuring and fitting — few anchors, smooth
+  curves.
+- Wordmarks: set them in the closest font first (script, geometric, slab…) and compare letter widths and slant; only a
+  custom lettering that no font approaches gets drawn, and then as a placeholder or a simplified version you say is one.
+- Check the mark alone, large (`preview {refs, max_px}`), next to the reference crop: anchor count, symmetry, smooth
+  joins. Fewer anchors and cleaner geometry beat a closer but lumpy trace.
+
+## 5. Free-form shapes — measure, decompose, fit
+
+Where agents usually fail: lumpy "camouflage" or "mountain" outlines instead of smooth curves, and guessed shapes.
+
+### 5a. Decompose into layers
+
+- Overlapping translucent shapes are **layers with multiply**, not separate flat bands: where two shapes overlap the
+  tone is darker; draw the shapes whole and let the overlap make the step.
+- Count layers from the tones: going across the shapes, each edge is a shape starting (darker) or ending (lighter).
+  The **size of the tone step** tells how many start or end there (a step twice the usual = two shapes end together).
+  Shading darkens the tone right next to edges, so read each band's tone where its shading has faded.
+- **Prefer the fewest whole shapes that explain the tones.** Splitting a shape into lobes or adding fade-in pieces
+  cost a test run most of its time and left seams. When the count disagrees along one edge, decide by the majority
+  and fix the rest with opacity and shading.
+- When steps alone don't tell, compare each region's colour with the bare substrate's: the multiply factor per channel
+  (region ÷ substrate) is about the product of the shapes over it.
+- A weak step (tone < ~20) running parallel to a stronger edge a short way from it, fading away from that edge, is
+  that band's **shading ending**, not a thin shape (§ 7).
+- **An edge that changes owner** (one shape's edge runs along another's for part of its length, then leaves it): build
+  the shape with the shared edge, then cut it with `path_ops {op: "minus_front"}` and a cutter whose edge is the
+  separate stretch; the shared stretch stays identical and the result keeps its fill, opacity and blend.
+- A band whose tone changes **along** its length with no edge is a gradient fill, not an extra shape.
+
+### 5b. Measure edges densely — never invent
 
 - **`preview {image, profile: true}` measures for you:** tone profiles down the columns (`rows: true`: along rows,
-  for steep edges), every tone step linked into a **track** — `{id, tone, above, below, pts}`, drawn on the image
-  with its id. `tone` is the lightness step (+ = lighter below), `above`/`below` the colours either side: the layers.
-  Points come every `step` px (default width ÷ 60); keep it at **25–50 px or less** — sparse points (every
-  100–150 px) leave the fit too free: pointed tips and bulges. Add `region` for one part, `min` (default 8) to skip
-  weak steps. A track may join two edges where they meet or cross; split it there (check the overlay).
-  Points are image px: map them to the artboard with your factor (§ 1) before drawing.
-- Where an edge is hidden (under another shape, off the page), **leave a gap**. Don't fill it with guessed points:
-  invented points make shoulders and straight stretches. **But under translucent (multiply) shapes nothing is
-  hidden:** the edge shows through as a tone step — look for it in a `profile` with a lower `min`, or sample across.
-  `fit` bridges a gap smoothly (no extreme anchor at a gap's edge; within ~3 px of the true curve over a 350 px gap
-  in tests), but it can't know a peak hidden in it: measure through the shape on top where you can.
-- `profile` runs each track on toward the image sides in small steps and breaks a track at a sharp turn (> 35°: a
-  crease or another edge); still check the ends in a close-up, `rows: true` for steep ends. **Corners hide small
-  shapes:** thin bands narrowing into a side make short tracks (kept from 3 points when they touch a side) — a run
-  missed a whole small ribbon at the bottom-left. Run `profile` on a `region` around every corner and side (a smaller
-  region = denser points), with **`rows: true` on every side strip** (column profiles miss steep ends), and count
-  the bands there in the close-up against your build. **Don't let a region cut a track:** make it reach past where
-  the edges end, or the track ends there. Faint edges (tone 6–7) show only with `min: 4` in a small region.
-- Where a track bends sharply between two points (a slope jump), it has run into a crease or another edge: drop the
-  points from there. A track can run on from one edge into a crease or another edge:
-  check the overlay and cut its points there.
-- Where two edges coincide in the reference (two ribbons merging, a shape ending on another's edge), they are **one
-  shared curve**: build that stretch once and reuse it in both shapes. Two separate measurements 2 px apart leave a
-  visible hairline sliver.
-- **Measure right up to the panel edge, and reproduce what shapes do there.** In the photo the ribbons turned down at
-  the right side as they wrapped over the fold and started at the slanted left side; the run that measured right to
-  the edges and kept that looked like the object, the runs that extended straight did not. Fits that stop 30–70 px
-  short need long extensions, which show as kinks and straight stretches. Check each corner in a close-up.
-  The turn at a side is **gentle and cut by the panel outline**: the shape bends a little and the clip ends it. A run
-  that drew the full wrap of the fold (ends bending 80–95° down, rounded, running past the side) got hooks — that
-  much bend is the photo's fold, not artwork. **Check every side as a stack:** list the edges top to bottom where
-  they meet the side, in the photo and in your render — the same order, and every band still has height there. In
-  v7 the deep ribbon's bottom hooked down at the right (its end kept the fold's slope of ~2.5) and pinched off the
-  light ribbon under it, so one ribbon no longer reached the side — the one flaw the owner saw. Drop the steep
-  fold points before fitting, so the end keeps the slope it has just inside the fold.
-- Measured points that run **along** the photo's side (a bowed side, slope > ~1.5 next to it) are the side, not
-  the edge: drop them before fitting, or they make a spike at the start.
-- An end hidden by a photo artefact near a side (a curl, a flap): continue the edge with `extend` from the last
-  points seen, keeping its slope — that is not inventing; a straight closing line inside the panel is wrong.
-- **Extend shapes past the bleed by continuing the end curve itself** (evaluate the last cubic a little beyond t = 1;
-  with `fit`: `extend: [start, end]` runs the curve on straight along its end directions, no kink),
-  then straight along its end tangent; stop steepening once the slope passes ~1.6 — unless the end is already
-  steeper, then keep its own tangent (capping it makes a kink). An end tangent pointing backward is a fit error:
-  refit with a knee anchor before extending. A plain straight line from a short fit shows; a zero-length extension
-  leaves a horizontal stub at the edge.
-- **Edges that seem to cross** (a bottom edge running into another shape's top edge): sample the tone in the thin gap
-  between them on both sides of the meeting point. One layer's tone on both sides → they merge (one shared curve from
-  there); the tone changes → one continues hidden (leave its gap, § 3 above); two layers' tone → they really cross.
-  A tone step about twice the usual size on one curve also means two shapes start or end there: they share it.
-- An edge that ends under another shape: anchor its end point **on** that shape's edge with a free angle; forcing it
-  tangent there gave 25 px errors.
+  for steep or vertical edges), every tone step linked into a **track** `{id, tone, above, below, pts}`, drawn on the
+  image with its id. `tone` is the lightness step (+ = lighter below/right), `above`/`below` the colours either side.
+  Points come every `step` px (default width ÷ 60): keep it at **25–50 px or less** — sparse points leave the fit too
+  free (pointed tips, bulges). `region` for one part (a smaller region = denser points), `min` (default 8) to skip weak
+  steps (`min: 4` in a small region finds faint edges). Points are image px: map them (§ 1) before drawing.
+- Tracks run on toward the image sides and break at sharp turns (> 35°). Still check the overlay: a track can join
+  two edges where they meet, or run into a crease — cut its points where the slope jumps.
+- **Corners and sides hide small shapes:** thin bands narrowing into a side make short tracks. Profile a `region`
+  around every corner and side (`rows: true` on side strips) and make it reach past where the edges end — a region
+  that cuts a track ends it there. Count the bands there against your build (§ 8).
+- Where an edge is hidden (under an opaque shape, off the page), **leave a gap**: invented points make shoulders and
+  straight stretches. `fit` bridges gaps smoothly. Under translucent shapes nothing is hidden: the edge shows through
+  as a tone step — find it with a lower `min`.
+- Where two edges coincide (two shapes merging, a shape ending on another's edge), they are **one shared curve**: use
+  the same points for both (§ 5c). Two measurements 2 px apart leave a hairline sliver.
+- **At the panel's sides, reproduce what shapes do there, gently.** Measure right up to the side; a fit that stops
+  30–70 px short needs a long extension, which shows. A shape that wraps over a fold in a photo bends a little and the
+  clip ends it — the full wrap (ends bending 80–95°) is the fold, not artwork: drop those points so the end keeps the
+  slope it has just inside the fold. Points that run **along** the photo's side are the side, not the edge: drop them.
+  **Check every side as a stack:** the edges meeting the side, in order, in the reference and in your render — same
+  order, every band still with height there (a hooked end once pinched a whole shape off before the side).
+- An end hidden by a photo artefact near a side (a curl, a flap): continue the edge with `extend` from the last points
+  seen, keeping its slope; that is not inventing.
+- **Edges that seem to cross:** sample the tone in the thin gap on both sides of the meeting point. One shape's tone
+  on both sides → they merge (shared curve from there); the tone changes → one continues hidden; two shapes' tone →
+  they really cross. An edge that ends under another shape: anchor its end **on** that edge, with a free angle.
 
-## 4. Draw smooth curves — designer anchors, fitted
+### 5c. Draw smooth curves — designer anchors, fitted
 
-Never draw a curve through the measured points (polyline, Catmull–Rom, or an exact curve fit): it follows the
-measurement noise and that *is* the lumpy look. Never let a fit place anchors freely either: on noisy data it makes
-kinks, loops and straight bridges over gaps. Do what a designer does, then fit:
+Never draw a curve through the measured points (polyline, Catmull–Rom, an exact fit): it follows the measurement
+noise and that *is* the lumpy look. Never let a fit place anchors freely either. Do what a designer does:
 
-1. **Anchors only where the shape needs them:** the two ends, each peak and trough, and an extra one only at a real
-   bend (a knee). A wave across a page needs 4–6 anchors per edge.
-2. **Handles horizontal at peaks and troughs** (vertical at leftmost/rightmost points), forward-pointing everywhere
-   (angle within ±75° of the direction of travel), **length ⅓ to ½ of the segment** (0.3–0.55). Short handles make
-   near-corners; backward handles make loops.
-3. **Fit** the anchors' positions, angles and the handle factor to the measured points (least squares). Report the
-   mean error: ≤ 0.5 % of the shape's width is good; a large error means a missing anchor at a bend — add one there.
-   Practical details: keep anchor x fixed and fit y; measure each handle's angle relative to the chord to its
-   neighbouring anchors (then ±75° means "forward"); start the handle factor at 0.38. A steep end bending into a
-   flat run needs its own knee anchor, or the close-up shows a kink there.
-4. **Keep the bend continuous:** at each anchor the curvature on both sides should be about equal (add the squared
-   jumps to the fit's cost). A tangent-continuous joint with a jump in curvature still reads as a corner. Weight: with
-   the cost in px² (mean squared distance) and curvature in 1/px, a weight of ~4·10⁵ on the summed squared jumps
-   keeps the fit within ~1 px of what it was while removing visible bends.
-5. **Shared stretches:** where an edge merges into another (§ 3), the merge anchor is *fixed* to the base curve's point
-   and tangent there; fit only the edge's own part, then append the base curve's segments from that anchor on (split
-   the base Bézier there if needed, de Casteljau).
-6. A band = its top edge left→right, then its bottom edge right→left, closed.
+1. **Anchors only where the shape needs them:** the ends, each peak and trough, an extra one only at a real bend. A
+   wave across a page needs 4–6 anchors per edge.
+2. **Handles level at peaks and troughs** (vertical at leftmost/rightmost points), pointing forward, **⅓ to ½ of the
+   segment** long. Short handles make near-corners; backward handles make loops.
+3. **Fit** them to the measured points by least squares; a large error means a missing anchor at a bend.
+4. **Keep the bend continuous:** equal curvature on both sides of an anchor; a tangent-continuous joint with a jump in
+   curvature still reads as a corner.
+5. **Shared stretches** are built once and used by every shape that has them.
+6. A band = one edge forward, the other edge reversed, closed.
 
-**`create_path {fit: points, tolerance}` does 1–3:** anchors at the prominent peaks and troughs (level handles) and
-leftmost/rightmost points (vertical handles), least-squares handles in between, a further anchor only where the curve
-misses a point by more than `tolerance` (default 1, in the points' units; 2–4 for noisy photos gives fewer anchors).
-**Units:** `tolerance` and `extend` are in the units of the points after `map` (with a photo-to-mm map, 0.3–0.4 mm
-≈ 3–4 photo px); without `map`, in the points' own units, before `scale`. With several lists, `extend` lengthens only
-the outer ends of an edge made of sub-lists (and both ends of each edge of a band).
-A band: `fit: [top, bottom reversed], closed: true` (lists joined by straight lines). For noisy photo points use
-tolerance **4** (2 followed the noise as bumps). **Shared stretches (item 5) with `fit`:** each list in `fit: [...]` is
-fitted on its own, so split an edge at the merge point into sub-lists and pass the *same* shared sub-list (same points,
-same `tolerance`) in every shape that uses it: the curve comes out identical, no slivers. A different tolerance in one
-shape changes the curve and brings the slivers back; the joint between two sub-lists is a straight segment, so end
-them where both run the same direction (or the joint shows a slight bend). Not done by it yet: the curvature term
-(item 4) — for that, or a curve that still shows a bend, write the fit yourself (plain JavaScript, never Python).
+**`create_path {fit: points, tolerance}` does 1–3:** anchors at prominent extremes with level/vertical handles,
+least-squares handles between, another anchor only where the curve misses a point by more than `tolerance`. Noisy
+photo points: tolerance ≈ 3–4 px (2 follows the noise as bumps). **Units:** `tolerance` and `extend` are in the
+points' units after `map` (with a px→mm map, 0.3–0.4 mm); without `map`, before `scale`.
+- A band: `fit: [edge A, edge B reversed], closed: true` (lists joined by straight lines).
+- **Shared stretches:** each list in `fit: [...]` is fitted on its own, so split an edge at the merge point and pass the
+  *same* sub-list (same points, same tolerance) in every shape that uses it: identical curves, no slivers. End
+  sub-lists where both run the same direction, or the joint shows a slight bend.
+- `extend: [start, end]` runs the ends on straight along their direction (past the bleed or under a clip); with
+  several lists only the outer ends of an edge are extended. Don't extend a steep end that is really a fold (5b).
+- Not done by the tool: the curvature term (item 4). A curve that still shows a bend at an anchor: add points there
+  or write the fit yourself (plain JavaScript, never Python).
 
-## 5. Colour
+## 6. Colour
 
-- `preview {image, sample: [[x, y, w, h], …]}` on areas with one layer, two layers, three…, and on the paper.
-- One global swatch per ink; overlapping shapes: `blend: "multiply"` with an opacity per shape, tuned so the sampled
-  one-, two- and three-layer tones match. If one ink cannot give both the clean light layers and the dark overlaps
-  (light needs no black, deep needs some), use a second swatch for the deepest shape.
-- Colour where shapes pile up comes from the overlap, not from the shape: keep a shape's own colour as it looks
-  where it is alone.
-- **Match the tonal extremes first:** sample the darkest overlap and the lightest band, get those two right, then the
-  mid-tones. The eye reads the contrast range; tuning to average tone (or rmse) flattens it — a run that matched the
-  mid-tones best still looked flat because its darkest spot came out 124 instead of 81.
-  Take the extremes **in evenly lit parts** of the photo: a dark spot inside the photo's shading (the side turning
-  away from the light) is lighting, not ink — an orange multiply ink can't reach it without black, and chasing it
-  makes everything too deep.
-- **Match hue and saturation, not only lightness.** Compare each sample's channel ratios (R:G:B, or hue and chroma),
-  substrate included: a run whose lightness was close came out visibly redder and more saturated than the muted
-  photo, and its kraft looked peach. A photographed print is duller than the ink's pure colour; when in doubt, go
-  greyer.
-- Calibrate with the 1:1 render (`preview {width}` = the crop width) and samples at fixed points of both images — the
-  same check as § 5b.
-- Expect one calibration round: multiply in a CMYK document doesn't map simply onto the photo's RGB ratios (both test
-  runs needed a more yellow ink than the first guess, e.g. cmyk(0,48,100,0) for amber orange). Sample, adjust once,
-  sample again.
+- `preview {image, sample: [[x, y, w, h], …]}` on flat areas: each colour alone, overlaps, the substrate.
+- One global swatch per ink. Overlapping translucent shapes: `blend: "multiply"` with an opacity per shape, tuned so
+  the sampled one-, two- and three-layer tones match; a second swatch for the deepest one if one ink can't do both.
+  Keep a shape's own colour as it looks where it is alone.
+- **Match the tonal extremes first** (darkest and lightest areas), then the mid-tones: the eye reads the contrast
+  range; tuning to average tone (or rmse) flattens it. Take them in **evenly lit** parts of a photo: a dark spot in the
+  photo's shade is lighting, not ink.
+- **Match hue and saturation, not only lightness** (channel ratios, substrate included). A photographed or printed
+  colour is duller than the ink's pure colour; when in doubt, go greyer.
+- Flat files and screenshots: sample and use the colour as is (convert to CMYK for print). Photos: calibrate with a
+  1:1 render (`preview {width}` = the crop's width) and samples at the same points of both images; expect one round
+  (multiply in CMYK doesn't map simply onto RGB ratios: amber orange needed cmyk(0,48,100,0), more yellow than guessed).
 
-## 5b. Shading, gradients and shadows
+## 7. Gradients, shading and shadows
 
-Flat fills give the "8 colours" look. Measure the tone **inside** each region (a profile across it), then decide per
-effect what it is:
+Flat fills give the "8 colours" look. Measure the tone **inside** each region (a profile across it), then decide:
 
 | Seen in the image | What it usually is | Build it as |
 |---|---|---|
-| Tone changing across a curved shape, restarting at every edge | Artwork: soft shadow of the layer above (paper-cut, layered look) | A gradient **that follows the curve** (below) |
-| Tone changing in one straight direction | Artwork or lighting | Linear/radial gradient swatch (`swatches {add, kind: "gradient"}`), fill `"gradient:Name@angle"` (Illustrator's convention: 90 = first stop at the bottom) |
-| A soft blob of shadow or glow | Artwork | Shape + `effects {blur}` (or `feather`), multiply, clipped to where it falls |
-| Thin light or dark line along an edge | Artwork: edge highlight / crease | Stroke on that edge, 0.25–0.5 pt, screen (light) or multiply (dark), low opacity |
-| Light falling across the whole object, folds, side faces, grain | Photo and material (the board itself) | Leave out of print artwork; a substrate preview goes on its own layer |
+| Tone changing in one straight direction | Artwork (or lighting) | Linear/radial gradient swatch (`swatches {add, kind: "gradient"}`), fill `"gradient:Name@angle"` (90 = first stop at the bottom) |
+| Tone changing across a curved shape, restarting at every edge | Artwork: soft shadow of the layer above (layered paper look) | A gradient **that follows the curve** (below) |
+| A soft blob of shadow or glow | Artwork | Shape + `effects {blur}` (or `feather`), multiply or screen, clipped to where it falls |
+| A thin light or dark line along an edge | Artwork: highlight / crease line | Stroke on that edge, 0.25–0.5 pt, screen or multiply, low opacity |
+| Light across the whole object, folds, side faces, grain, reflections | Photo and material | Leave out of print artwork |
 
-**Shade the regions you see, not the objects you built.** With overlapping translucent shapes, the visible bands are
-the spaces between consecutive edges; in the worked job every band darkened toward its own top edge, whichever shape
-it belonged to. Shading per object (one gradient over a whole wide shape) or a fixed-size blur (thin bands drown)
-both failed.
+**Shade the regions you see, not the objects you built:** with overlapping translucent shapes the visible bands are
+the spaces between consecutive edges, and each band shades from its own edge, whichever shape it belongs to. One
+gradient over a whole wide shape, or a fixed-size blur, both failed.
 
-A gradient that follows a curve (linear gradients can't; mesh and freeform gradients can't be scripted):
-**`create_path {fit: edge points, shade: {to: next edge's points | distance}, fill: shadow ink, opacity: strength}`**
-builds items 1–4 in one call: N multiply steps (6–48, ~1.5 % each; `steps` to override) whose near side is the exact
-fitted edge (crisp, no clip needed) and whose far side stops k/(N+1) of the way to `to` (window minimum and smoothing
-of the distance built in). Pass only the stretch of the next edge **seen** there; group the steps afterwards. Item 3's
-cap and end tapers are still yours (shorten `to`'s points, or clip). The near side is exact only when the shade's
-`fit` list (and tolerance) is identical to the shape's own edge; otherwise a hairline shows. **The recipe that worked
-best (v5):** fit the shade from the shape's own edge points lifted ~1.5 px, then clip the stack to a copy of its
-shape (`duplicate_items` the shape, `arrange_items {action: "clip"}` with the copy as mask): crisp edge, no hairline,
-no seam where the stack ends. End a stack before its edge comes closer to another edge than the shade's depth
-(where two tops converge): there it runs under the other shape and makes a dark spot. **`clip_to: <shape ref>` does this in the same call** (the near side is lifted
-~1.5 × tolerance and the paths go into a clip group masked by a copy of the shape, named "… (clip)"); `shade.taper`
-fades a stack that ends inside the panel; `fit` may be several lists (an edge made of a shared stretch and its own).
-Past the ends of `to`'s points the far side runs on parallel to the edge. Along a **steep** stretch (> ~45°) the
-vertical offsets show as contour stairs: start the shade where the edge is flatter and taper it (2–3 mm; a long
-taper of 5–8 mm shows fans). Where two edges coincide (a shape's top running along another's), shade it once: two
-stacks there double up as a dark wedge. The method behind it:
-1. Under each edge, N stacked multiply layers in one shadow swatch; layer k (1…N) is bounded by the curve
-   `edge + k/(N+1) × (distance to the next visible edge below)` — darkness falls to zero just before that edge. Use
-   k/(N+1), not k/N: the last step exactly on the next edge leaves a hairline sliver. This is what Illustrator's Blend
-   does between two paths.
-2. Clip the stack with the region under the **exact** Bézier edge: the edge stays crisp. The inner steps (polylines
-   every ~1 mm) are invisible only when they are many and weak: **12–16 steps of 3.5–7 % each**; 8 steps of 8–14 %
-   show as contour bands in a close-up.
-   Offset the steps vertically and let the clip shape the ends; offsets along the normal fold back into facets where
-   the edge turns steep.
-   **Clip each stack to its own band** (between its edge and the next edge below), not to "everything under the
-   edge": where the shading stops (a shape that pinches out, a merge) it otherwise spills into the band below and
-   cuts a vertical seam.
-   Keep it crisp: each band's shading should reach its full strength right under its edge and fade before the next
-   edge, so light bands stay light under dark ones — that band-to-band contrast is the layered-paper look.
-3. The distance to the next edge: only edges **seen** there (measured, not a model's hidden stretch — a hidden edge
-   cuts a seam), smoothed along the edge (±60 px window) so merges and crossings don't make vertical seams; capped
-   (~160 px) so near the panel sides it doesn't reach edges far below; no edge below (paper) → no shade.
-   Take a window **minimum** (±40 px) of the distance before smoothing: where a new edge appears below, the band
-   clip jumps, and a plain smoothed distance leaves a seam there. A stack that ends inside the panel tapers to zero
-   over 30–60 px, or it leaves a vertical seam. Hand-built strips: every strip and stack end is a chance for a fan or
-   seam. With `shade` clipped to a copy of its shape (above) there are no seams, so **shade every band whose tone
-   changes across it** — a run that shaded only 3 of ~9 band edges was judged flat (v5); the owner's favourite
-   shaded every band.
-   Shadow ink: warm and low in black, e.g. cmyk(0,50,100,15) under orange; an ink with K 40 looked grey and dirty.
-4. Opacity per step ≥ ~1.5 %: Illustrator drops smaller steps entirely (a 12 % gradient in 28 steps rendered as
-   nothing). So: weak gradients (≤ 10 %) 6–8 steps; strong ones 12–16 steps (item 2). An edge whose strength
-   (item 5) is under ~0.1 gets no shading at all.
-5. Strength per edge from the profile: `1 − tone at the band's bottom ÷ tone at its top`, roughly (multiply).
-   **Use the measured strength, in fine steps.** A run that shaded at 50–55 % in 16 steps of ~4.5 % was judged
-   "very sharp and pixelated" (contour bands, dark rims); the next one shaded 38–55 % in 24–30 steps of ≤ 2 %
-   (the tool's default now) and was judged nice. Check first that the shapes' own tones at the band bottoms match
-   (otherwise the ink is off, not the shading); then take the strength from the profile. `to` must follow **one**
-   edge: points gathered from several edges (jumping between them) make a ragged far side.
-   Shading darkens the base, so lighten the shapes' own opacity after adding it.
+**A gradient that follows a curve** (linear gradients can't; mesh and freeform gradients can't be scripted):
+`create_path {fit: edge points, shade: {to: the next edge's points | a distance}, fill: shadow ink, opacity: strength,
+clip_to: <the shape>}` builds it in one call: multiply steps of ~1.5 % (6–48 of them) from the edge (full strength) to
+nothing just before `to`, inside a clip group masked by a copy of the shape, so the edge stays crisp with no hairline.
+- **Shade every band whose tone changes across it** (shading only a few edges looked flat), each from its own edge.
+- **Strength from the profile:** `1 − tone where the shading has faded ÷ tone at the edge`, roughly. First check that
+  the shapes' own tones (where the shading has faded) match — otherwise the ink is off, not the shading. Fine steps
+  matter more than the number: 50 % in steps of 4.5 % looked "very sharp and pixelated"; 38–55 % in steps of ≤ 2 %
+  (the default) looked fine. An edge with strength under ~0.1 gets none.
+- `to` follows **one** edge, only where it is seen (points jumping between edges make a ragged far side); past its
+  points the shading runs on parallel. End a stack before its edge comes closer to another edge than the shading's
+  depth (it runs under the other shape and makes a dark spot). Where two edges coincide, shade once (two stacks make a
+  dark wedge).
+- A stack ending inside the panel: `taper` (2–3 mm; longer shows fans). Along a steep stretch (> ~45°) the offsets show
+  as contour stairs: start where the edge is flatter.
+- Shadow ink warm and low in black (cmyk(0,50,100,15) under orange; K 40 looked grey and dirty). Shading darkens the
+  base: lighten the shapes' own opacity after adding it.
+- Check with numbers: render at 1 px per reference px and compare tone profiles across the bands at the same columns.
 
-Check with numbers, not by eye: render at exactly 1 px per reference px (`preview {width}` = the crop's width in px;
-with one uniform scale, § 1, x and y map the same way) and compare tone profiles across the bands with the
-reference's at the same columns.
+## 8. Compare — every round, two views
 
-## 6. Compare — every round, two views
+1. **Whole page:** `preview {reference, reference_crop: the face's pixel box}` → rmse, `content_box`, `differences`
+   (shifted — with the shift and items —, missing, extra, changed).
+2. **Close-up at full size:** `preview {region, max_px: 1400}` over the busy parts and **every corner and side**. The
+   page view hides what matters: wrong letters, misaligned baselines, pointed tips, hairline slivers, loops, kinks,
+   contour bands. `preview {region, reference, reference_crop}` compares one part side by side with its own rmse.
+- **Count** in each close-up of the reference and your render: lines of text, grid rows, bands, icons. One missing is
+  a whole missing part, and the page view and rmse barely show it.
+- Change one thing per round (geometry, then colour). Stop when the close-ups are clean and what remains in
+  `differences` is photo (folds, light, texture).
+- **Don't steer by rmse alone.** Photo areas inside the crop (side faces, curls, light) can outweigh the artwork, and a
+  bug that darkens where the photo is dark *lowers* rmse. Use it as a trend between rounds with the same crop; decide
+  tone questions by samples and profiles at fixed points. `content_box` gives a `note` instead of a shift when the
+  two boxes differ in shape (a side face in the photo).
 
-1. **Whole page:** `preview {reference, reference_crop: the page's pixel box}` → rmse, `content_box`,
-   `differences` (shifted / missing / extra / changed with the items).
-2. **Close-up at full size:** `preview {region, max_px: 1400}` over the busy part. The page view hides exactly the
-   defects that matter here: pointed tips, hairline slivers, loops, corners, straight bridges. Look for them every
-   round.
+## 9. Finish
 
-A corner or side checked on its own: `preview {region, reference, reference_crop}` gives that part side by side and
-its own rmse.
-
-**Count the bands** in each corner close-up of the reference and of your render: one missing there is a whole
-missing shape (the page view and rmse barely show it).
-
-Change one thing per round (geometry, then colour). Stop when the close-up is clean and what remains in
-`differences` is photo (folds, light, texture) — rmse stops improving there (0.100 → 0.101 on the worked job).
-
-**Don't steer by rmse alone.** Photo areas inside the crop (shaded side faces, curls, creases, lighting) can weigh
-more than all the artwork together, and a geometry bug that happens to darken where the photo is dark *lowers* rmse
-(a test run went 0.122 → 0.098 from broken curve ends smeared along a shaded side face, and back when fixed). Use
-rmse only as a trend between rounds with the same crop; treat a sudden drop after a geometry change as suspicious and
-look at the close-up; decide tone questions by profiles at fixed columns. `content_box` compares the content's
-bounds, each against its own background; when the two boxes differ in shape (a side face or curl in the photo)
-it gives a `note` instead of a shift and scale. `save_to` keeps the render; the comparison goes to `<name>.compare.png`.
-
-## 7. Finish
-
-Name every shape and layer by role ("Ribbon D (deep)", "Kraft paper"), put the cut or panel outline on a
-non-printing "Dieline" layer, clip artwork that runs off the page to the bleed, save, leave the document open, and
-report what differs from the reference and why (photo effects left out, guessed hidden parts).
+Name every shape and layer by role ("Background", "Logo", "Wave 2 (deep)", "Body copy"), put the cut or panel outline on
+a non-printing "Dieline" layer, clip artwork that runs off the page to the bleed, `preflight`, save, leave the
+document open, and report what differs from the reference and why (photo effects left out, placeholders, guessed
+hidden parts, fonts substituted).

@@ -38,25 +38,25 @@ Name layers and groups. Keep scripts re-runnable.
 
 ## Recreating a design from an image
 
-**Read [recreate.md](recreate.md) first** — the full method: reference artboard, separating artwork from photo,
-layers from tone steps, dense measuring, smooth curves (designer anchors fitted to the points), colour, and the
-two-view compare loop. Short version:
+**Read [recreate.md](recreate.md) first** — the full method for any kind of design (layouts and type, logos and
+marks, free-form shapes, colour, gradients and shading, photos and mockups), with a table of which sections a job
+needs. Short version:
 
 1. Look at the image with `preview {image: "<path>", grid: true}`: pixel size, ppi, and `content_box` (the page's
-   pixel box). Format from the aspect ratio (1.414 A-series, 1.294 Letter). **Don't use Python/PIL, OpenCV, Swift or
-   sips for images:** they may be missing and installing them costs the user time; `preview {image}` needs nothing.
-2. List parts and roles. Copy the structure, not artwork: no photos or other people's logos — leave a named
-   placeholder. Fix obvious mistakes and say so.
+   pixel box). **Don't use Python/PIL, OpenCV, Swift or sips for images:** they may be missing and installing them
+   costs the user time; `preview {image}` needs nothing.
+2. Separate artwork from photo or mockup (perspective, folds, light, bindings: left out). Find the artwork's flat shape
+   and its size (a given size or dieline is the truth; map the photographed face onto it). List parts and roles; copy
+   the structure, not artwork: no photos or other people's logos — leave a named placeholder. Fix obvious mistakes and
+   say so (recreate.md § 1–2).
 3. Measure in pixels: `preview {image, region: [x, y, w, h], grid: 10}` zooms a part (up to 8×) with labelled lines;
    `sample: [[x, y], [x, y, w, h]]` returns hex, RGB and naive CMYK. A PDF or .ai page (a die-cut template, an
-   exported proof) works the same with `page` (rendered by Illustrator, in session units). One factor `S = page width in pt ÷ page width in px`; font size ≈ cap height px ÷ 0.7 × S.
+   exported proof) works the same with `page` (rendered by Illustrator, in session units). One factor `S = page width in pt ÷ page width in px`; font size ≈ cap height px ÷ 0.7 × S (recreate.md § 3).
 4. Build with the loop above, then `preview {reference: "<image>", reference_crop: [x, y, w, h]}`: fix what
-   `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); repeat until the full-size close-up is clean (recreate.md § 6).
-5. Free-form shapes (waves, ribbons, blobs): `preview {image, profile: true}` returns each edge as a track of
-   points (with the colours on both sides); `create_path {fit: pts}` draws it smooth (anchors on peaks and troughs,
-   level handles); a band = `fit: [top, bottom reversed], closed: true`. No scripts needed for measuring or fitting.
-   Shading that follows a curve: `create_path {fit: edge, shade: {to: next edge}, fill, opacity}`. Check a
-   full-size close-up for tips, slivers and corners every round (recreate.md § 3–6).
+   `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); repeat until full-size close-ups of every corner are clean (recreate.md § 8).
+5. Logos and marks: construction from primitives and booleans, not traces (§ 4). Free-form shapes (waves, blobs,
+   bands): `preview {image, profile: true}` returns each edge as a track of points; `create_path {fit: pts}` draws it
+   smooth with few anchors; shading that follows a curve is `create_path {fit, shade, clip_to}` (§ 5, § 7).
 6. **Proofread every word against the reference** — on a client's job the words are theirs.
 7. Missing font? Pick the closest installed one (`fonts {query}`) and match widths with the style's `hscale` so lines
    break where the reference breaks; put body copy in area text.
