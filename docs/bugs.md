@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-25 (fixes) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-25 (subagent test) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -12,6 +12,8 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 | # | Sev. | Found | Where | Bug | Workaround | Fix idea |
 |---|------|-------|-------|-----|------------|----------|
 | 5 | 🟡 | 2026-11-24, Windows VM, Illustrator 2027 ARM64 | Illustrator under long live runs | Illustrator crashed twice at a new/opened document **late in full live runs**; a 4× save-close-open loop alone doesn't reproduce it. May be Illustrator's own | Run the live suites by parts (`ONLY=…`); the runtime reloads after a crash | Reproduce with a long mixed run, find the call; report to Adobe if it is theirs. Not fixed 2026-11-25: needs a long run in the VM to reproduce first |
+| 7 | 🟡 | 2026-11-25, subagent recreate test | `delete_items {refs: "layer:X"}` | Fails with "No layer named …" when the layer doesn't exist, so a re-runnable batch that starts by clearing its layer breaks on the first run | `stop_on_error: false`, or `run_script` with `AIA.fresh(name)` | A missing layer (or a name pattern matching nothing) deletes nothing: `{deleted: 0}` plus a warning, not an error; unit test |
+| 8 | 🟡 | 2026-11-25, subagent recreate test | `preview {reference}` `content_box` | Content is "pixels darker than 150" in both images; in a photo with a background or margin (a box on a table) that finds the whole photo box, while the render's content is the artwork — the reported scale/shift (e.g. [0.96, 0.6], shift 36 mm) stays wrong every round and misleads | Ignore `content_box` for photos; compare tone profiles and close-ups ([recreate.md § 6](../plugin/skills/illustrator/recreate.md)) | Find content against each image's own background (median of the border, as `preview {image}` does), and report `content_box: null` with a note when the two disagree wildly in aspect; unit test with a photo-like fixture |
 
 ## To verify
 

@@ -572,3 +572,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Recreate method § 5b: shading and gradients that follow curves (per visible band, stacked multiply steps, profile checks) |
 | 2026-11-25 | [bugs.md](bugs.md): one list of known bugs (6 open) and unverified parts (4) |
 | 2026-11-25 | Bug fixes #1–#4, #6, V1 verified (docs/bugs.md); live-release extended; tool list 55.5 → 54.1 KB |
+| 2026-11-25 | Recreate guide tested by a fresh subagent (smooth result from the guide alone, 9 rounds, ~24 min); its gaps folded into recreate.md (panel box and uniform scale, ends, crossings, shading steps, rmse caution); bugs #7, #8 logged |
