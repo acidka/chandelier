@@ -67,9 +67,16 @@ function fitPiece(p: P[], t1: P, t2: P, tol: number, out: Seg[], depth = 0): voi
   }
   if (depth > 12 || p.length < 4) { out.push(c); return; }
   at = Math.max(1, Math.min(p.length - 2, at));
-  const tc = norm(sub(p[at - 1], p[at + 1]));
+  const tc = mul(tangentAt(p, at), -1);
   fitPiece(p.slice(0, at + 1), t1, tc, tol, out, depth + 1);
   fitPiece(p.slice(at), mul(tc, -1), t2, tol, out, depth + 1);
+}
+
+/** Direction of travel at inner point i: derivative of the parabola through i−1, i, i+1 (chord-length spaced), so
+ * the nearer neighbour counts more — across a long gap a plain p[i+1] − p[i−1] would point along the gap. */
+function tangentAt(p: P[], i: number): P {
+  const a = sub(p[i], p[i - 1]), b = sub(p[i + 1], p[i]), h1 = len(a) || 1e-9, h2 = len(b) || 1e-9;
+  return norm(add(mul(a, h2 / (h1 * (h1 + h2))), mul(b, h1 / (h2 * (h1 + h2)))));
 }
 
 /** moving average (±r points), ends kept */
@@ -107,7 +114,11 @@ function endTangent(p: P[], tol: number): P {
   return norm(sub(p[j], p[0]));
 }
 
-export interface FitOpts { tolerance?: number }
+export interface FitOpts {
+  tolerance?: number;
+  /** continue the curve past its first / last point along its end direction (a number = both ends) */
+  extend?: number | number[];
+}
 
 /** Points (in order, ≥ 2) → Bézier segments. Anchors at extremes with horizontal / vertical handles, then split where
  * the curve misses a point by more than tolerance (default 1, in the points' units). */
@@ -129,8 +140,11 @@ export function fitCurve(pts: number[][], o: FitOpts = {}): Seg[] {
     for (let j = Math.max(1, i - 2); j <= Math.min(p.length - 2, i + 2); j++) if (hi ? p[j][axis] > p[b][axis] : p[j][axis] < p[b][axis]) b = j;
     return b;
   };
-  for (const e of extremes(s, 1, prom)) { const i = exact(e, 1), dx = p[i + 1][0] - p[i - 1][0]; if (Math.abs(dx) > 1e-9) cuts.set(i, [Math.sign(dx), 0]); }
-  for (const e of extremes(s, 0, prom)) { const i = exact(e, 0), dy = p[i + 1][1] - p[i - 1][1]; if (Math.abs(dy) > 1e-9 && !cuts.has(i)) cuts.set(i, [0, Math.sign(dy)]); }
+  // a point next to a long gap (> 3 × the usual spacing) is no extreme: the real peak may lie in the gap
+  const sp = p.slice(1).map((q, i) => len(sub(q, p[i]))).sort((x, y) => x - y), gapAt = 3 * sp[sp.length >> 1];
+  const nearGap = (i: number) => len(sub(p[i], p[i - 1])) > gapAt || len(sub(p[i + 1], p[i])) > gapAt;
+  for (const e of extremes(s, 1, prom)) { const i = exact(e, 1), dx = p[i + 1][0] - p[i - 1][0]; if (Math.abs(dx) > 1e-9 && !nearGap(i)) cuts.set(i, [Math.sign(dx), 0]); }
+  for (const e of extremes(s, 0, prom)) { const i = exact(e, 0), dy = p[i + 1][1] - p[i - 1][1]; if (Math.abs(dy) > 1e-9 && !cuts.has(i) && !nearGap(i)) cuts.set(i, [0, Math.sign(dy)]); }
   // two extremes a couple of points apart (a corner-ish turn) → keep the first
   const idx = [...cuts.keys()].sort((a, b) => a - b).filter((i, n, a) => n === 0 || i - a[n - 1] >= 3);
   const out: Seg[] = [];
@@ -144,7 +158,42 @@ export function fitCurve(pts: number[][], o: FitOpts = {}): Seg[] {
     if (!last) t1 = T!;
     from = i;
   }
+  return extendSegs(out, o.extend);
+}
+
+/** Straight continuation along the end directions (handles on the line: no kink), for shapes that must run past the
+ * bleed or under a clip edge. */
+function extendSegs(segs: Seg[], ext?: number | number[]): Seg[] {
+  const [a, b] = typeof ext === 'number' ? [ext, ext] : ext ?? [0, 0];
+  const dir = (p: P, q: P, r: P) => norm(len(sub(q, p)) > 1e-9 ? sub(q, p) : sub(r, p)); // from p toward q (or r)
+  const out = segs.slice();
+  if (a > 0) {
+    const c = segs[0], T = dir(c[0], c[1], c[3]), q = sub(c[0], mul(T, a));
+    out.unshift([q, add(q, mul(T, a / 3)), sub(c[0], mul(T, a / 3)), c[0]]);
+  }
+  if (b > 0) {
+    const c = segs[segs.length - 1], T = dir(c[3], c[2], c[0]), q = sub(c[3], mul(T, b));
+    out.push([c[3], sub(c[3], mul(T, b / 3)), add(q, mul(T, b / 3)), q]);
+  }
   return out;
+}
+
+/** 4-point projective map: from[i] → to[i] (photo corners → panel corners). Solves the 8 coefficients. */
+export function projective(from: number[][], to: number[][]): (p: number[]) => number[] {
+  const A: number[][] = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = from[i], [u, v] = to[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u], [0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+  }
+  for (let c = 0; c < 8; c++) { // Gauss–Jordan with partial pivoting
+    let piv = c;
+    for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+    if (Math.abs(A[piv][c]) < 1e-12) throw new Error('map: the four points must form a quadrilateral (no three in a line).');
+    [A[c], A[piv]] = [A[piv], A[c]];
+    for (let r = 0; r < 8; r++) if (r !== c) { const k = A[r][c] / A[c][c]; for (let j = c; j < 9; j++) A[r][j] -= k * A[c][j]; }
+  }
+  const h = A.map((row, i) => row[8] / row[i]);
+  return ([x, y]) => { const w = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w]; };
 }
 
 const f = (v: number) => String(Math.round(v * 100) / 100);
@@ -164,19 +213,29 @@ export function fitToD(fit: number[][] | number[][][], closed: boolean, o: FitOp
   return { d: d + (closed ? ' Z' : ''), anchors };
 }
 
-export interface ShadeOpts { to: number | number[][]; steps?: number; opacity?: number; tolerance?: number }
+export interface ShadeOpts extends FitOpts {
+  to: number | number[][];
+  steps?: number;
+  opacity?: number;
+  /** fade the stack to nothing over this length at both ends (a stack ending inside the panel otherwise cuts a seam) */
+  taper?: number;
+  /** move the near side this far outward (the shape's own clip then makes the crisp edge: no hairline) */
+  lift?: number;
+}
 
 /** create_path {fit, shade}: shading that follows a curve. Under (or beside) the fitted edge, a fade from `opacity`
  * at the edge to nothing at `to` (a distance, or the next edge's points), built as stacked paths: each one's near
- * side is the exact fitted edge (crisp), its far side lies k/(N+1) of the way to `to`. Multiply-stacked, they give a
- * linear fade with no clip and no gradient mesh (recreate.md § 5b). Returns path data and the opacity of each step. */
-export function shadeToD(pts: number[][], o: ShadeOpts): { ds: string[]; opacity: number } {
-  const segs = fitCurve(pts, { tolerance: o.tolerance });
+ * side is the fitted edge (crisp; or lifted outward when the stack is clipped by its shape), its far side lies
+ * k/(N+1) of the way to `to`. Multiply-stacked, they give a linear fade with no gradient mesh (recreate.md § 5b).
+ * `parts`: the edge as one list or several (fitted one by one, as in fit). Returns path data and the opacity of each step. */
+export function shadeToD(parts: number[][][], o: ShadeOpts): { ds: string[]; opacity: number } {
+  const segsOf = parts.map((pts) => fitCurve(pts, { tolerance: o.tolerance }));
+  const pts = parts.flat();
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
   const ax = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys) ? 0 : 1, bx = 1 - ax; // along, across
   // the fitted edge, sampled densely and ordered along its main axis
   const s: number[][] = [];
-  for (const c of segs) for (let i = 0; i <= 40; i++) s.push(bez(c, i / 40));
+  for (const segs of segsOf) for (const c of segs) for (let i = 0; i <= 40; i++) s.push(bez(c, i / 40));
   const forward = s[s.length - 1][ax] >= s[0][ax];
   s.sort((p, q) => p[ax] - q[ax]);
   const at = (l: number[][], u: number) => {
@@ -184,7 +243,9 @@ export function shadeToD(pts: number[][], o: ShadeOpts): { ds: string[]; opacity
     for (let i = 1; i < l.length; i++) if (l[i][ax] >= u) { const a = l[i - 1], b = l[i], k = (u - a[ax]) / ((b[ax] - a[ax]) || 1); return a[bx] + k * (b[bx] - a[bx]); }
     return l[l.length - 1][bx];
   };
-  const u0 = s[0][ax], u1 = s[s.length - 1][ax], n = 80, U = Array.from({ length: n + 1 }, (_, i) => u0 + (u1 - u0) * i / n);
+  const ext = typeof o.extend === 'number' ? [o.extend, o.extend] : o.extend ?? [0, 0];
+  const u0 = s[0][ax] - (forward ? ext[0] : ext[1]), u1 = s[s.length - 1][ax] + (forward ? ext[1] : ext[0]);
+  const n = 80, U = Array.from({ length: n + 1 }, (_, i) => u0 + (u1 - u0) * i / n);
   const to = typeof o.to === 'number' ? null : [...o.to].sort((p, q) => p[ax] - q[ax]);
   const raw = U.map((u) => (to ? at(to, u) - at(s, u) : (o.to as number)));
   // window minimum, then smoothing along the edge: where the far edge jumps (a new edge appears, two merge or cross)
@@ -196,13 +257,31 @@ export function shadeToD(pts: number[][], o: ShadeOpts): { ds: string[]; opacity
   // many weak steps hide the contours (8 steps of 8–14 % show), but under ~1.5 % Illustrator drops a step: 6–16 of ~2 %
   const N = Math.round(o.steps ?? Math.max(6, Math.min(16, total / 0.02)));
   const a = 1 - Math.pow(1 - total, 1 / N);
-  const top = 'M' + f(segs[0][0][0]) + ' ' + f(segs[0][0][1]) + curve(segs);
+  const sign = Math.sign(gap.reduce((t, x) => t + x, 0)) || 1, lift = o.lift ?? 0;
+  const xy = (u: number, v: number) => (ax === 0 ? [u, v] : [v, u]);
+  // near side: the exact curve(s), extended; or, lifted, a dense polyline just outside the edge
+  const exact = () => {
+    const segs = segsOf.map((g, i) => extendSegs(g, [i === 0 ? ext[0] : 0, i === segsOf.length - 1 ? ext[1] : 0]));
+    return segs.map((g, i) => (i === 0 ? 'M' : ' L') + f(g[0][0][0]) + ' ' + f(g[0][0][1]) + curve(g)).join('');
+  };
+  const lifted = () => { const l = U.map((u) => xy(u, at(s, u) - sign * lift)); if (!forward) l.reverse(); return l.map((p, i) => (i ? ' L' : 'M') + f(p[0]) + ' ' + f(p[1])).join(''); };
+  const near = lift > 0 ? lifted() : exact();
+  const taper = Math.max(0, o.taper ?? 0);
   const ds: string[] = [];
   for (let k = 1; k <= N; k++) {
     // k/(N+1): the last step stops short of the far edge (exactly on it leaves a hairline sliver)
-    const far = U.map((u, i) => { const v = at(s, u) + gap[i] * k / (N + 1); return ax === 0 ? [u, v] : [v, u]; });
+    const far = U.map((u, i) => xy(u, at(s, u) + gap[i] * k / (N + 1)));
     if (forward) far.reverse(); // back along the far side, against the edge's direction
-    ds.push(top + far.map((p) => ' L' + f(p[0]) + ' ' + f(p[1])).join('') + ' Z');
+    let d = near + far.map((p) => ' L' + f(p[0]) + ' ' + f(p[1])).join('') + ' Z';
+    if (taper > 0) {
+      // step k covers a shorter stretch: fewer steps overlap toward the ends, so the shade fades out there
+      const cut = taper * k / N, v0 = u0 + cut, v1 = u1 - cut;
+      if (v1 - v0 < 1e-6) continue;
+      const span = U.filter((u) => u >= v0 && u <= v1), all = [v0, ...span, v1];
+      const nearL = all.map((u) => xy(u, at(s, u) - sign * lift)), farL = all.map((u) => xy(u, at(s, u) + gap[Math.round((u - u0) / ((u1 - u0) || 1) * n)] * k / (N + 1))).reverse();
+      d = [...nearL, ...farL].map((p, i) => (i ? ' L' : 'M') + f(p[0]) + ' ' + f(p[1])).join('') + ' Z';
+    }
+    ds.push(d);
   }
   return { ds, opacity: Math.round(a * 10000) / 100 };
 }

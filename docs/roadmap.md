@@ -430,10 +430,11 @@ Carried over from 0.5.2 when it was released.
   - [x] ✅ Curve-following shading: `create_path {fit, shade: {to, steps}}` — 6–16 multiply steps whose near side is
     the exact fitted edge (no clip), far side k/(N+1) of the way to `to`; window minimum + smoothing of the distance
     (live check 2026-11-25, Illustrator 29.1, macOS: smooth fade, no seams)
-  - [ ] From the v5 test (2026-11-25): `create_path` scale per axis or a 4-point map; `fit` extension past the
-    data; a long gap in a fit list makes a corner; `shade` with `clip_to` (a copy of the shape), end tapers and a
-    multi-list edge; `profile` tracks reach the image sides and stop at junctions instead of running into a crease;
-    short tracks in corners (thin bands narrowing into a side) are dropped under 5 points — v5 missed a ribbon there
+  - [x] ✅ Gaps from the v5 test (2026-11-25): `create_path` `scale: [sx, sy]` and `map` (4-point, before `fit`);
+    `extend`; long gaps (no extreme anchor at a gap's edge, parabola tangents: 22.6 → 2.3 px off over a 350 px gap);
+    `shade` with `clip_to`, `taper` and a multi-list edge; `profile` tracks run on to the sides, break at sharp turns,
+    short tracks touching a side kept. Live: `clip_to` worked once, then Illustrator 29.1 went into a state where
+    every new path failed ("Target layer cannot be modified", MRAP) — restart needed; recheck after it
   - [ ] Release, so one server has every feature (no `mcp-call` detour)
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured). This job, v5 (2026-11-25): ~12 min (was 16–25), 67 tool calls, 202 k tokens, 3 helper
@@ -608,3 +609,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Faster free-form recreation, first tools: `preview {image, profile}` (edge tracks), `create_path {fit, tolerance, shade}` (designer-anchor fit, curve-following shading); skill and recreate.md use them instead of hand-written scripts; tool list 55.3 KB |
 | 2026-11-25 | Recreate test v5 with `profile`/`fit`/`shade`: ~12 min (was 16–25), rmse 0.099; recreate.md: whole face in the crop, per-axis mapping before `fit`, edges show through multiply shapes, long gaps, track ends, shared stretches as identical sub-lists, shade clipped to a copy of its shape, one stack where edges coincide |
 | 2026-11-25 | Owner on v5: better than v4, v2 still best — missed a small ribbon at the bottom-left, flat (3 shaded edges). recreate.md: profile every corner, count bands in corner close-ups, shade every band when `shade` is clipped; version labels on the test document's artboards |
+| 2026-11-25 | Tool gaps from v5 closed: `scale [sx, sy]`, `map`, `extend`, gap-safe `fit`, `shade {taper, multi-list}` + `clip_to`, `profile` runs to the sides / breaks at turns / keeps short side tracks; tool list trimmed to 55.8 KB |

@@ -139,6 +139,7 @@
   function makePath(s) {
     var c = A.container(s), subs = [], i, k;
     var ox = s.x || 0, oy = s.y || 0, sc = s.scale === undefined ? 1 : s.scale;
+    var sx = sc instanceof Array ? sc[0] : sc, sy = sc instanceof Array ? sc[1] : sc;
     if (s.d !== undefined) {
       var sp = A.svgPath(s.d);
       for (i = 0; i < sp.length; i++) if (sp[i].pts.length > 1) subs.push(sp[i]);
@@ -148,7 +149,7 @@
     else throw new Error('create_path needs points, paths or d.');
     if (!subs.length) throw new Error('The path has no drawable segments.');
     if (s.closed !== undefined && s.d === undefined) for (i = 0; i < subs.length; i++) subs[i].closed = !!s.closed;
-    function tr(p) { return A.P(ox + p[0] * sc, oy + p[1] * sc); }
+    function tr(p) { return A.P(ox + p[0] * sx, oy + p[1] * sy); }
     var it, anyClosed = false;
     for (i = 0; i < subs.length; i++) if (subs[i].closed) anyClosed = true;
     if (subs.length === 1) it = build(c.pathItems.add(), subs[0].pts, subs[0].closed, tr);
@@ -163,5 +164,25 @@
     else { if (s.fill === undefined) s = A.merge(s, { fill: 'none' }); if (s.stroke === undefined) s = A.merge(s, { stroke: 'none' }); }
     return A.finish(it, s);
   }
-  A.cmd.create_path = function (a) { return A.outList(A.createEach(a, makePath)); };
+  A.cmd.create_path = function (a) {
+    if (a.clip_to === undefined) return A.outList(A.createEach(a, makePath));
+    // clip_to: the new paths go into a clip group masked by a copy of that path (shading inside its shape)
+    var src = A.ref(a.clip_to);
+    if (src.typename !== 'PathItem' && src.typename !== 'CompoundPathItem') throw new Error('clip_to must be a path or compound path, not ' + src.typename + '.');
+    var made = A.createEach(a, makePath), m = null, g, i;
+    try {
+      m = src.duplicate(made[0], ElementPlacement.PLACEBEFORE);
+      m.name = src.name ? src.name + ' (clip)' : ''; // the copy must not answer the source's name: refs
+
+      g = A.groupOf(made.concat([m]));
+      m.move(g, ElementPlacement.PLACEATBEGINNING);
+      if (m.typename === 'CompoundPathItem') m.pathItems[0].clipping = true; else m.clipping = true;
+      g.clipped = true;
+    } catch (e) {
+      for (i = 0; i < made.length; i++) { try { made[i].remove(); } catch (e2) {} }
+      if (m) { try { m.remove(); } catch (e3) {} }
+      throw e;
+    }
+    return A.outList([g]);
+  };
 })($.global.AIA);

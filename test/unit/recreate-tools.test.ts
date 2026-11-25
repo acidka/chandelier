@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { encodePng, type Img } from '../../src/image.js';
 import { edgeTracks } from '../../src/edges.js';
-import { fitCurve, fitToD, shadeToD } from '../../src/fitcurve.js';
+import { fitCurve, fitToD, shadeToD, projective } from '../../src/fitcurve.js';
 import { create_path } from '../../src/tools/create_path.js';
 import { preview } from '../../src/tools/preview.js';
 
@@ -53,10 +53,35 @@ describe('fitCurve', () => {
   });
 });
 
+describe('fit: gaps, extension, map', () => {
+  const W = (x: number) => 100 + 40 * Math.sin(x / 120);
+  it('a long gap: no extreme anchor at its edge, the curve stays near the truth inside it', () => {
+    const p: number[][] = [];
+    for (let x = 0; x <= 1000; x += 17) if (x < 300 || x > 650) p.push([x, Math.round(W(x) + Math.sin(x * 7.3) * 0.8)]);
+    const segs = fitCurve(p, { tolerance: 2 });
+    let m = 0;
+    for (const c of segs) for (let i = 0; i <= 40; i++) { const [x, y] = bez(c, i / 40); m = Math.max(m, Math.abs(y - W(x))); }
+    expect(m).toBeLessThan(4); // was 22.6 px before gaps were handled
+  });
+  it('extend runs on straight along the end directions', () => {
+    const segs = fitCurve([[0, 0], [10, 0], [20, 0], [30, 0]], { extend: [5, 8] });
+    expect(segs[0][0]).toEqual([-5, 0]);
+    expect(segs[segs.length - 1][3]).toEqual([38, 0]);
+  });
+  it('projective map sends the four corners where asked', () => {
+    const m = projective([[10, 0], [90, 0], [100, 120], [0, 120]], [[0, 0], [100, 0], [100, 130], [0, 130]]);
+    for (const [a, b] of [[[10, 0], [0, 0]], [[100, 120], [100, 130]], [[50, 60]]] as number[][][]) {
+      const r = m(a);
+      if (b) { expect(r[0]).toBeCloseTo(b[0], 6); expect(r[1]).toBeCloseTo(b[1], 6); }
+    }
+    expect(() => projective([[0, 0], [1, 1], [2, 2], [3, 3]], [[0, 0], [1, 0], [1, 1], [0, 1]])).toThrow(/quadrilateral/);
+  });
+});
+
 describe('shadeToD', () => {
   it('stacked steps that add up to the opacity, the last one stopping just short of the far edge', () => {
     const edge = pts(), far = pts().map(([x, y]) => [x, y + 50]);
-    const { ds, opacity } = shadeToD(edge, { to: far, opacity: 30 });
+    const { ds, opacity } = shadeToD([edge], { to: far, opacity: 30 });
     expect(ds.length).toBe(15); // 30 % in steps of ~2 %
     expect(1 - Math.pow(1 - opacity / 100, ds.length)).toBeCloseTo(0.3, 2);
     // far side of the last step at the far edge: its lowest y ≈ the far edge's lowest (130 + 50)
@@ -66,8 +91,16 @@ describe('shadeToD', () => {
     expect(Math.max(...ys)).toBeLessThan(180);
     expect(ds[0].startsWith('M0 100 C')).toBe(true); // near side = the exact fitted edge
   });
+  it('several edge lists, taper and lift', () => {
+    const e = pts();
+    const { ds } = shadeToD([e.slice(0, 21), e.slice(20)], { to: 30, steps: 6, opacity: 12, taper: 60, lift: 2 });
+    expect(ds).toHaveLength(6);
+    // tapered: the deepest step is the shortest
+    const xs = (d: string) => d.match(/[ML]([-\d.]+) /g)!.map((t) => Number(t.slice(1)));
+    expect(Math.min(...xs(ds[5]))).toBeGreaterThan(Math.min(...xs(ds[0])));
+  });
   it('a distance instead of an edge; steps given', () => {
-    const { ds } = shadeToD(pts(), { to: -20, steps: 4, opacity: 10 });
+    const { ds } = shadeToD([pts()], { to: -20, steps: 4, opacity: 10 });
     expect(ds).toHaveLength(4);
   });
 });
@@ -87,10 +120,20 @@ describe('create_path {fit, shade}', () => {
     expect(a.items[0]).toMatchObject({ blend: 'multiply', stroke: 'none' });
     expect(a.fit).toBeUndefined();
   });
+  it('map, extend and clip_to pass through; scale per axis is the runtime\'s', () => {
+    const a = step({ fit: pts(), extend: 20, map: { from: [[0, 0], [1, 0], [1, 1], [0, 1]], to: [[0, 0], [2, 0], [2, 2], [0, 2]] }, clip_to: '@0', scale: [1, 2] });
+    // mapped ×2 (start [0, 100] → [0, 200]), then extended 20 back along the start direction
+    const [x0, y0] = a.d.match(/^M([-\d.]+) ([-\d.]+)/).slice(1).map(Number);
+    expect(Math.hypot(x0, y0 - 200)).toBeCloseTo(20, 1);
+    expect(x0).toBeLessThan(0);
+    expect(a).toMatchObject({ clip_to: '@0', scale: [1, 2] });
+    expect(a.map).toBeUndefined();
+  });
   it('clear errors', () => {
     expect(() => step({ fit: pts(), d: 'M0 0' })).toThrow(/give one/);
     expect(() => step({ fit: [[1, 2]] })).toThrow(/≥ 2 points/);
     expect(() => step({ points: [[0, 0], [1, 1]], shade: { to: 3 } })).toThrow(/shade needs fit/);
+    expect(() => step({ points: [[0, 0], [1, 1]], extend: 3 })).toThrow(/extend needs fit/);
   });
 });
 

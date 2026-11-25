@@ -18,8 +18,7 @@ export const create_shape: ToolDef = {
   description: `Create shapes. rect / rounded_rect (r) / ellipse / polygon (sides) / star (points, inner) take a box x, y, w, h (top-left; polygon and star are inscribed in it); line takes x1, y1, x2, y2.
 Default paint: no fill + 1 pt black stroke when neither fill nor stroke is given (lines: black stroke).
 ${STYLE_HELP}
-Placement: layer (name, created if missing) or parent (group ref / "layer:Name"); default the active layer.
-Many at once: items:[{…}, …] — each item's props override the shared ones given at the top level (e.g. shared fill, per-item x/y).
+Placement: layer (created if missing) or parent (group ref / "layer:Name"). Many at once: items:[{…}] (top-level props shared).
 Returns {count, items:[{uuid, name, type, box}]}.`,
   shape: { ...shapeProps, ...placeShape, items: itemsSchema(5000) },
   step: (a) => ({ cmd: 'create_shape', args: a }),

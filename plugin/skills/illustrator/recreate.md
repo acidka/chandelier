@@ -52,8 +52,9 @@ Skip what already exists (a document, a reference artboard) — reuse it.
     side's slant, and the result shows one slanted side only.
   - A side that isn't straight in the photo (concave, bowed by the board) is usually the photo; draw the die's
     straight side and let the clip take the 1–2 mm difference — or follow it when the dieline says so.
-  - `create_path` has one `scale`: for x and y apart, map the points yourself (multiply x and y, or the 4-point map)
-    before `fit`. The bleed outline = the panel outline offset outward by the bleed (`path_ops {offset}`).
+  - In `create_path`: `scale: [sx, sy]` scales x and y apart; `map: {from: 4 photo corners, to: 4 panel corners}`
+    (with `fit`) applies the 4-point map to the points before fitting. The bleed outline = the panel outline offset
+    outward by the bleed (`path_ops {offset}`).
   - **Keep the object's shape:** the background/substrate (paper, board colour) fills the panel's real outline (the
     trapezoid) plus bleed, and the artwork is clipped to it — outside stays empty, as on the die. Filling the whole
     rectangle made the result read as a poster instead of this box front (the run the owner liked least on this
@@ -96,13 +97,13 @@ Skip what already exists (a document, a reference artboard) — reuse it.
 - Where an edge is hidden (under another shape, off the page), **leave a gap**. Don't fill it with guessed points:
   invented points make shoulders and straight stretches. **But under translucent (multiply) shapes nothing is
   hidden:** the edge shows through as a tone step — look for it in a `profile` with a lower `min`, or sample across.
-  A long gap (≥ ~300 px) in a fitted list puts a corner where it starts; bridge it with a few points measured
-  through the shape on top.
-- `profile` tracks stop 20–60 px short of the panel sides (the profile needs room); add the last points from a
-  `region` close-up, or `rows: true` for steep ends. **Corners hide small shapes:** thin bands that narrow into a
-  side make short tracks (under 5 points they are dropped) — a run missed a whole small ribbon at the bottom-left
-  this way. Run `profile` on a `region` around every corner and side (a smaller region = denser points), and count
-  the bands there in the close-up against your build. A track can run on from one edge into a crease or another edge:
+  `fit` bridges a gap smoothly (no extreme anchor at a gap's edge; within ~3 px of the true curve over a 350 px gap
+  in tests), but it can't know a peak hidden in it: measure through the shape on top where you can.
+- `profile` runs each track on toward the image sides in small steps and breaks a track at a sharp turn (> 35°: a
+  crease or another edge); still check the ends in a close-up, `rows: true` for steep ends. **Corners hide small
+  shapes:** thin bands narrowing into a side make short tracks (kept from 3 points when they touch a side) — a run
+  missed a whole small ribbon at the bottom-left. Run `profile` on a `region` around every corner and side (a smaller
+  region = denser points), and count the bands there in the close-up against your build. A track can run on from one edge into a crease or another edge:
   check the overlay and cut its points there.
 - Where two edges coincide in the reference (two ribbons merging, a shape ending on another's edge), they are **one
   shared curve**: build that stretch once and reuse it in both shapes. Two separate measurements 2 px apart leave a
@@ -115,7 +116,7 @@ Skip what already exists (a document, a reference artboard) — reuse it.
   that drew the full wrap of the fold (ends bending 80–95° down, rounded, running past the side) got hooks — that
   much bend is the photo's fold, not artwork.
 - **Extend shapes past the bleed by continuing the end curve itself** (evaluate the last cubic a little beyond t = 1;
-  with `fit`: append 2–3 points along the end's direction, out past the bleed),
+  with `fit`: `extend: [start, end]` runs the curve on straight along its end directions, no kink),
   then straight along its end tangent; stop steepening once the slope passes ~1.6 — unless the end is already
   steeper, then keep its own tangent (capping it makes a kink). An end tangent pointing backward is a fit error:
   refit with a knee anchor before extending. A plain straight line from a short fit shows; a zero-length extension
@@ -214,7 +215,9 @@ cap and end tapers are still yours (shorten `to`'s points, or clip). The near si
 `fit` list (and tolerance) is identical to the shape's own edge; otherwise a hairline shows. **The recipe that worked
 best (v5):** fit the shade from the shape's own edge points lifted ~1.5 px, then clip the stack to a copy of its
 shape (`duplicate_items` the shape, `arrange_items {action: "clip"}` with the copy as mask): crisp edge, no hairline,
-no seam where the stack ends. Where two edges coincide (a shape's top running along another's), shade it once: two
+no seam where the stack ends. **`clip_to: <shape ref>` does this in the same call** (the near side is lifted
+~1.5 × tolerance and the paths go into a clip group masked by a copy of the shape, named "… (clip)"); `shade.taper`
+fades a stack that ends inside the panel; `fit` may be several lists (an edge made of a shared stretch and its own). Where two edges coincide (a shape's top running along another's), shade it once: two
 stacks there double up as a dark wedge. The method behind it:
 1. Under each edge, N stacked multiply layers in one shadow swatch; layer k (1…N) is bounded by the curve
    `edge + k/(N+1) × (distance to the next visible edge below)` — darkness falls to zero just before that edge. Use

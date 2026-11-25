@@ -34,8 +34,8 @@ export function edgeTracks(src: Img, o: ProfileOpts = {}, ox = 0, oy = 0, k = 1)
   const step = Math.max(1, Math.round(o.step ? o.step * k : Math.max(2, w / 60)));
   const min = o.min ?? 8, half = Math.max(1, Math.round(step / 3)), near = 8;
   const lum = (i: number) => rgb[i] * 0.3 + rgb[i + 1] * 0.59 + rgb[i + 2] * 0.11;
-  const cols: { x: number; edges: { y: number; tone: number }[] }[] = [];
-  for (let x = Math.min(half, w - 1); x < w; x += step) {
+  /** tone steps down column x: [{y, tone}] */
+  const column = (x: number) => {
     // lightness down the column, averaged over ±half px across (JPEG noise) and ±2 px along
     const c = new Float64Array(h);
     for (let y = 0; y < h; y++) {
@@ -53,11 +53,17 @@ export function edgeTracks(src: Img, o: ProfileOpts = {}, ox = 0, oy = 0, k = 1)
       const last = e[e.length - 1];
       if (last && y - last.y < near) { if (Math.abs(g) > Math.abs(last.g)) { last.y = y; last.g = g; } } else e.push({ y, g });
     }
-    cols.push({ x, edges: e.map((q) => ({ y: q.y, tone: Math.round(at(q.y + near) - at(q.y - near)) })).filter((q) => Math.abs(q.tone) >= min) });
-  }
+    return e.map((q) => ({ y: q.y, tone: Math.round(at(q.y + near) - at(q.y - near)) })).filter((q) => Math.abs(q.tone) >= min);
+  };
+  const cols: { x: number; edges: { y: number; tone: number }[] }[] = [];
+  for (let x = Math.min(half, w - 1); x < w; x += step) cols.push({ x, edges: column(x) });
   // link: each edge joins the open track of the same sign that predicts it best (slope from its last two points),
   // across gaps of up to 3 columns
   const tracks: Raw[] = [], maxDy = Math.max(10, 3 * step);
+  const turn = (a: number[], b: number[], c: number[]) => {
+    const d = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]);
+    return Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) * 180 / Math.PI;
+  };
   for (const col of cols) {
     const cand: [number, number, number][] = [];
     col.edges.forEach((e, i) => tracks.forEach((t, j) => {
@@ -65,6 +71,8 @@ export function edgeTracks(src: Img, o: ProfileOpts = {}, ox = 0, oy = 0, k = 1)
       if (Math.sign(t.tones[0]) !== Math.sign(e.tone) || col.x - p[0] > 3 * step) return;
       const pred = q ? p[1] + (p[1] - q[1]) / (p[0] - q[0]) * (col.x - p[0]) : p[1];
       const d = Math.abs(e.y - pred);
+      // a sharp turn (> 35°) is another edge (a crease, a shape meeting this one): start a new track there
+      if (q && t.pts.length >= 3 && turn(q, p, [col.x, e.y]) > 35) return;
       if (d <= maxDy) cand.push([d + (col.x - p[0]) / step, i, j]);
     }));
     cand.sort((a, b) => a[0] - b[0]);
@@ -77,7 +85,7 @@ export function edgeTracks(src: Img, o: ProfileOpts = {}, ox = 0, oy = 0, k = 1)
     col.edges.forEach((e, i) => { if (!usedE.has(i)) tracks.push({ pts: [[col.x, e.y]], tones: [e.tone] }); });
   }
   // colours a few px either side of each point (3 × 3 mean), median along the track
-  const side = (x: number, y: number) => {
+  const colour = (x: number, y: number) => {
     const s = [0, 0, 0]; let n = 0;
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
       const xx = Math.max(0, Math.min(w - 1, x + dx)), yy = Math.max(0, Math.min(h - 1, y + dy)), i = (yy * w + xx) * 3;
@@ -86,12 +94,28 @@ export function edgeTracks(src: Img, o: ProfileOpts = {}, ox = 0, oy = 0, k = 1)
     return s.map((v) => v / n);
   };
   const r2 = (v: number) => Math.round(v * 100) / 100;
-  const out = tracks.filter((t) => t.pts.length >= 5)
+  // run each track on toward the image sides in small steps while the same edge is found where its slope points
+  const fine = Math.max(2, Math.round(step / 4));
+  for (const t of tracks) for (const dir of [-1, 1]) {
+    for (let guard = 0; guard < 4 * step; guard++) {
+      const P = dir > 0 ? t.pts[t.pts.length - 1] : t.pts[0], Q = dir > 0 ? t.pts[t.pts.length - 2] : t.pts[1];
+      const x = P[0] + dir * fine;
+      if (!Q || x < 0 || x >= w) break;
+      const pred = P[1] + (P[1] - Q[1]) / (P[0] - Q[0]) * (x - P[0]);
+      const hit = column(x).filter((e) => Math.sign(e.tone) === Math.sign(t.tones[0]) && Math.abs(e.y - pred) <= Math.max(3, fine))
+        .sort((a, b) => Math.abs(a.y - pred) - Math.abs(b.y - pred))[0];
+      if (!hit) break;
+      if (dir > 0) { t.pts.push([x, hit.y]); t.tones.push(hit.tone); } else { t.pts.unshift([x, hit.y]); t.tones.unshift(hit.tone); }
+    }
+  }
+  // short tracks count when they touch a side (thin bands narrowing into a corner)
+  const side = (t: Raw) => t.pts[0][0] <= 2 * step || t.pts[t.pts.length - 1][0] >= w - 1 - 2 * step;
+  const out = tracks.filter((t) => t.pts.length >= 5 || (t.pts.length >= 3 && side(t)))
     .map((t) => ({ t, tone: Math.round(t.tones.reduce((a, b) => a + b, 0) / t.tones.length) }))
     .sort((a, b) => b.t.pts.length * Math.abs(b.tone) - a.t.pts.length * Math.abs(a.tone))
     .slice(0, o.max_tracks ?? 30);
   return out.map(({ t, tone }, id) => {
-    const up = t.pts.map(([x, y]) => side(x, y - near)), dn = t.pts.map(([x, y]) => side(x, y + near));
+    const up = t.pts.map(([x, y]) => colour(x, y - near)), dn = t.pts.map(([x, y]) => colour(x, y + near));
     const med = (a: number[][]) => hex([0, 1, 2].map((c) => median(a.map((v) => v[c]))));
     const pts = t.pts.map(([x, y]) => (o.rows ? [r2(ox + y / k), r2(oy + x / k)] : [r2(ox + x / k), r2(oy + y / k)]));
     return { id, tone, above: med(up), below: med(dn), n: pts.length, pts };

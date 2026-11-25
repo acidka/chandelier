@@ -27,7 +27,7 @@ export const preview: ToolDef = {
   description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it). max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
 reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
 more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
-image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone (+ = lighter below), above, below, pts} for create_path fit.`,
+image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
   shape: {
     artboard: z.number().min(0).optional(),
     refs: refSchema.optional(),
