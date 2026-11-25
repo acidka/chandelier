@@ -443,6 +443,9 @@ Carried over from 0.5.2 when it was released.
   - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
     estimate until measured). This job, v5 (2026-11-25): ~12 min (was 16–25), 67 tool calls, 202 k tokens, 3 helper
     scripts for JSON only ([benchmarks § 2g](research/benchmarks.md)); another image still to do
+- [ ] Recreate suite (owner, 2026-11-25: improve recreation in general, not for one image): 4 cases set up in
+  `tmp/recreate-suite/` (wall calendar, desk-calendar mockup, packaging front, ribbons photo); owner adds logo,
+  illustration, poster, label; baseline run of the current guide on every case
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -617,3 +620,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Recreate test v6 (~16 min, rmse 0.130 on the whole face): both sides slanted, corner bands found, every band shaded; fixes: `extend` only at outer ends, `shade.to` runs on parallel; recreate.md: shading-end steps, edges that change owner (`minus_front`), row profiles on side strips, regions that cut tracks, units of `tolerance`/`extend` with `map`, steep shade ends, region checks |
 | 2026-11-25 | Owner on v6: degraded, worse than v5 (sharp, pixelated: shading 50–55 % in 4.5 % steps). `shade` now 6–48 steps of ~1.5 %; recreate.md: soft shading 10–30 %, `to` along one edge. Tests: Illustrator only through the Chandelier MCP tools (no `mcp-call` from the shell); rebuild + reconnect for unreleased features |
 | 2026-11-25 | Recreate test v7 (Chandelier tools only, ~12 min): owner "nice", one ribbon short of the right side. recreate.md: side stack check (edge order, every band reaches the side), drop fold/side points before fitting, hidden ends via `extend`, measured shading strength in fine steps, end stacks before converging edges, fold wedges aren't the outline |
+| 2026-11-25 | Recreate suite: 4 real-job cases of different kinds with task cards in the git-ignored `tmp/recreate-suite/`; recreate-testing.md: guide changes are judged on every case, one case at a time |

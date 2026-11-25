@@ -5,6 +5,26 @@ the same reference, each on a new artboard in one document, and we compare. Used
 example below); results go to [benchmarks § 2g](research/benchmarks.md), guide gaps into recreate.md, tool bugs into
 [bugs.md](bugs.md).
 
+## The suite: several kinds of design
+
+One reference trains a guide for that reference (seven rounds on one photo, 2026-11-25). The guide must work on any
+design, so every change is checked on a **suite** of real jobs of different kinds, kept in the git-ignored
+`tmp/recreate-suite/` (one folder per case: `reference.*`, `task.md` with size, scope, what is artwork vs photo and
+the checks; `approved-result.*` and earlier runs for the evaluator only):
+
+| Case | Kind | Tests |
+|---|---|---|
+| 01 | flat wall-calendar page (benchmark M2) | layout measuring, type, grids, editable text and styles |
+| 02 | rendered mockup of a desk-calendar page | a page seen in a mockup, two panels, body copy, brand mark, leaving out the binding |
+| 03 | product photo of several boxes, one front | picking one panel, given dieline size, logo and script wordmark, wave bands, photo placeholder |
+| 04 | photographed box front with translucent ribbons | free-form curves, overlaps, curve-following shading, photo vs artwork |
+| to come | logo/icon, flat illustration with gradients, poster, label | owner adds real jobs |
+
+Rules: cases run **one at a time** (one Illustrator, one shared Chandelier session); each case has its own document
+`tmp/recreate-suite/NN-case/runs.ai` laid out as below; a guide change counts when it doesn't make any case worse
+(the owner's judgement per case), not when it fixes the case that prompted it. Fixes go into the general method; a
+case-specific trick stays out of the guide.
+
 ## Layout of the test document
 
 One Illustrator document, artboards in a row, all at the same scale and top edge:
