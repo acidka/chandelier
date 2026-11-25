@@ -9,7 +9,8 @@ overlapping translucent wave ribbons. RMSE against the photo went 0.116 → 0.10
 shading; every mistake below was made there once. A second agent then rebuilt it from this guide alone (smooth result,
 9 rounds, ~24 min) and a third with the updated guide (~16 min, 7 rounds). The owner judged the second one best: it
 kept the panel's real shape, followed what the ribbons do at the panel edges and kept crisp band-to-band contrast —
-even though its rmse was not the lowest. Those lessons are folded in below (§ 1, § 3, § 5, § 5b, § 6).
+even though its rmse was not the lowest. Those lessons are folded in below (§ 1, § 3, § 5, § 5b, § 6). How these tests are run:
+`docs/recreate-testing.md` in the repository.
 
 ## 0. Set up for comparing
 

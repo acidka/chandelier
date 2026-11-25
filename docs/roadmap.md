@@ -587,3 +587,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Bug fixes #1–#4, #6, V1 verified (docs/bugs.md); live-release extended; tool list 55.5 → 54.1 KB |
 | 2026-11-25 | Recreate guide tested by a fresh subagent (smooth result from the guide alone, 9 rounds, ~24 min); its gaps folded into recreate.md (panel box and uniform scale, ends, crossings, shading steps, rmse caution); bugs #7, #8 logged |
 | 2026-11-25 | Third recreate test (v3, ~16 min); owner prefers v2: recreate.md now keeps the object's shape, the shapes' behaviour at the panel edges, band contrast and tonal extremes, plus v3's gaps; bugs #9 (shared `configure`), #10 logged; benchmarks § 2g repeatability table |
+| 2026-11-25 | [recreate-testing.md](recreate-testing.md): the subagent test flow (reference artboard first, one artboard per test, prompt template, evaluation, where results go) |

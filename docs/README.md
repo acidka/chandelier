@@ -22,6 +22,7 @@ tools aren't enough. The [README](../README.md) is the short tour; this folder i
 | [plan.md](plan.md) | Goals, principles, architecture, decisions with **pros and cons**, tool catalogue, risks, testing |
 | [roadmap.md](roadmap.md) | Phases, milestones (MVP … 0.5 ✅), checkboxes, exit criteria, change log |
 | [bugs.md](bugs.md) | Known bugs and unverified parts, with workarounds and fix ideas |
+| [recreate-testing.md](recreate-testing.md) | Testing the recreate guide with fresh subagents: reference artboard first, one artboard per test, prompt template, evaluation |
 | [windows-plan.md](windows-plan.md) | The Windows version: bridge options, COM details, steps W0–W8, risks, decisions |
 | [panel-plan.md](panel-plan.md) | The Chandelier panel (CEP, experimental in 0.5): chat, selection events, channel wake-up; design, protocol, live trials (P1–P5), limits |
 | [logo-plan.md](logo-plan.md) | How the logo and GitHub hero were designed through Chandelier, and what that job found |
