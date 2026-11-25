@@ -389,3 +389,24 @@ Version 0.2.0 (package, server, plugin, marketplace). Checked in the VM (§ 12),
 - The MCP SDK's client waits 60 s per request by default; a restart can take longer, so `live-lib.mjs`'s `call()`
   takes a `timeout` and `live-safe-restart.mjs` gives the restart 5 min.
 
+## 16. Late-run crash (bugs #5) and the 0.5.2 regression pass (2026-11-25)
+
+Same VM (Windows 11 Pro ARM64, 4 vCPU, 6 GB, Parallels 27.1, macOS 27.2), Illustrator 2027 31.0.0.84, Node 26.13, `develop` at
+`cb9f6bf`/`5a082a4`.
+
+- **Long mixed run** (every live suite, twice in a row): round 1 crashed Illustrator in `live-production`'s
+  `batch {files}` part, right after a dry run over two files (access violation, offset 0x3a8bcc); every later call
+  timed out (the MCP client's 60 s) because the crashed process stayed as a frozen copy held by `WerFault`.
+- **Second session** (fresh launch, `live-edit` ×2, `live-look`, then the files part): crashed at the same point
+  (offset 0x4913c8 — the same as the 0.2.1 crash at a `documents new`).
+- **Narrowing:** on a freshly started Illustrator the files part passed 3/3; the same batch replayed call by call
+  (open, modify, save copy, export PNG, close; two files, two rounds) and 8 dry runs on one file never crashed.
+  So no single call triggers it: Illustrator itself fails after hundreds of calls in one session →
+  [quirk C30](research/illustrator-quirks.md); bugs #5 closed as not ours. Workaround: run suites by parts; restart
+  Illustrator between big production batches.
+- **Also seen under load:** `live-edit`'s undo check removed two `create_shape` calls at once on the first run
+  after a long session, passed on the re-run → [quirk C31](research/illustrator-quirks.md).
+- **Regression pass** on Windows for this round's fixes: `live`, `live-layout`, `live-finish`, `live-release`
+  (incl. the re-runnable batch, bugs #7/#10) and `live-look` (after its rollback test stopped relying on a failing
+  `delete_items`) pass; `live-edit` passes except C31 on its first run.
+

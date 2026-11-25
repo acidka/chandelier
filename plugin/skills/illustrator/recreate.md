@@ -51,7 +51,8 @@ Skip what already exists (a document, a reference artboard) — reuse it.
     rectangle made the result read as a poster instead of this box front (the run the owner liked least on this
     point). **One clip for everything:** the substrate *and* every shape sit in one clip group with the panel
     outline, so no shape shows outside any side (a run with ribbons clipped to the bleed rectangle showed them past
-    the slanted side). The outline also goes on a non-printing "Dieline" layer.
+    the slanted side). In a batch: `arrange_items {action: "clip", refs: ["layer:…" or "@n"…], mask: <outline>}`
+    (the mask is the outline path; it must be a path or compound). The outline also goes on a non-printing "Dieline" layer.
   - Creases and folds of the object (a faint curve that crosses other edges without changing their layer count, a
     shaded flap, a curl) are not artwork: leave them out and say so.
 - Place paths with `create_path {d, scale: S, x, y}` so you can keep working in image pixels.
@@ -224,7 +225,8 @@ more than all the artwork together, and a geometry bug that happens to darken wh
 (a test run went 0.122 → 0.098 from broken curve ends smeared along a shaded side face, and back when fixed). Use
 rmse only as a trend between rounds with the same crop; treat a sudden drop after a geometry change as suspicious and
 look at the close-up; decide tone questions by profiles at fixed columns. `content_box` compares the content's
-bounds and misleads when the photo has a margin or background around the artwork (it measures the whole photo box).
+bounds, each against its own background; when the two boxes differ in shape (a side face or curl in the photo)
+it gives a `note` instead of a shift and scale. `save_to` keeps the render; the comparison goes to `<name>.compare.png`.
 
 ## 7. Finish
 

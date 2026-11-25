@@ -3,7 +3,7 @@
 // creates, in a temp folder): data_merge (dry run, artboards, grid, files, remove_template), swatches recolor and
 // .ase import, batch {files} (copies, exports, dry run, failures, already-open files, in place).
 //   npm run build && node test/live-production.mjs   (ONLY=merge|recolor|files runs one part: Illustrator 2027 in the
-//   Windows VM crashes after many operations, 0.2.1 known issue)
+//   Windows VM crashes after many operations, quirk C30)
 import { mkdtempSync, writeFileSync, existsSync, statSync, mkdirSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

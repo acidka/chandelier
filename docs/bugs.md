@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-25 (subagent test) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-25 (bugs #7–#12 fixed) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -9,15 +9,7 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 
 ## Open
 
-| # | Sev. | Found | Where | Bug | Workaround | Fix idea |
-|---|------|-------|-------|-----|------------|----------|
-| 5 | 🟡 | 2026-11-24, Windows VM, Illustrator 2027 ARM64 | Illustrator under long live runs | Illustrator crashed twice at a new/opened document **late in full live runs**; a 4× save-close-open loop alone doesn't reproduce it. May be Illustrator's own | Run the live suites by parts (`ONLY=…`); the runtime reloads after a crash | Reproduce with a long mixed run, find the call; report to Adobe if it is theirs. Not fixed 2026-11-25: needs a long run in the VM to reproduce first |
-| 7 | 🟡 | 2026-11-25, subagent recreate test | `delete_items {refs: "layer:X"}` | Fails with "No layer named …" when the layer doesn't exist, so a re-runnable batch that starts by clearing its layer breaks on the first run | `stop_on_error: false`, or `run_script` with `AIA.fresh(name)` | A missing layer (or a name pattern matching nothing) deletes nothing: `{deleted: 0}` plus a warning, not an error; unit test |
-| 8 | 🟡 | 2026-11-25, subagent recreate test | `preview {reference}` `content_box` | Content is "pixels darker than 150" in both images; in a photo with a background or margin (a box on a table) that finds the whole photo box, while the render's content is the artwork — the reported scale/shift (e.g. [0.96, 0.6], shift 36 mm) stays wrong every round and misleads | Ignore `content_box` for photos; compare tone profiles and close-ups ([recreate.md § 6](../plugin/skills/illustrator/recreate.md)) | Find content against each image's own background (median of the border, as `preview {image}` does), and report `content_box: null` with a note when the two disagree wildly in aspect; unit test with a photo-like fixture |
-| 9 | 🟠 | 2026-11-25, subagent tests | Session settings (`configure`) | Agents in one Claude Code session share one Chandelier server, so a `configure {artboard: 2}` by a subagent silently changed the reference artboard for everyone: a later `artboards {add, rect}` landed 118 mm off, measured from that artboard | Set `configure` explicitly before position-sensitive calls; use `artboard:` per batch step instead of changing the session | Return the settings that applied in every result that takes positions (`frame: "artboard 2, mm"`), and warn when they differ from the server's defaults; consider per-call settings only for subagents |
-| 10 | 🟡 | 2026-11-25, subagent test | `layers {add}` in re-runnable batches | Reported by the subagent, not yet reproduced: adding a layer that exists isn't a no-op the way `swatches {add}` is, so re-running a steps file needs a delete step first | `run_script` `AIA.fresh(name)` | Make `add` idempotent (return the existing layer, apply props) |
-| 11 | 🟡 | 2026-11-25, subagent test v4 | `preview {reference, save_to}` | `save_to` gets the 3-panel comparison and the plain render goes to `preview_saved_to` — easy to misread (the agent thought `save_to` was the render) | Read `preview_saved_to` for the render | Name both in the result (`compare_saved_to`, `render_saved_to`) and say it in the description |
-| 12 | 🟡 | 2026-11-25, subagent test v4 | `create_path` / batch | No way to make a clip group (or group) from batch steps, so a clipped build needs `run_script` | `run_script` with a clip group | A `group {refs, clip: ref}` step (or `create_path {clip_group}`) |
+None (2026-11-25). Illustrator-side issues seen on Windows are quirks C30, C31. New rows: `| # | Sev. | Found | Where | Bug | Workaround | Fix idea |`.
 
 ## To verify
 
@@ -33,6 +25,13 @@ Recent fixes found during work (older ones are in the roadmap change log):
 
 | Fixed | Bug | Where it is recorded |
 |-------|-----|----------------------|
+| 2026-11-25 | #5 Windows late-run crash: reproduced twice (access violations inside `Illustrator.exe` 31.0.0.84 after hundreds of calls in one session; the same steps on a fresh Illustrator pass 3/3) — Illustrator's own, so it moved to [quirk C30](research/illustrator-quirks.md) with its workaround; a related undo merge under load is C31 | `windows-plan.md` § 16 |
+| 2026-11-25 | #7 `delete_items` with a ref that finds nothing (`layer:X` missing, `name:` matching nothing, a uuid already gone) failed; it now deletes nothing there and reports `not_found` with a warning, so a re-runnable batch can clear its layer on the first run. Other ref errors still fail | `test/live-release.mjs` (re-runnable batch, runs 1 and 2), unit `bugs-1125.test.ts` |
+| 2026-11-25 | #8 `preview {reference}` `content_box` took "pixels darker than 150" as content, so a photo's whole box (and its side face) set a wrong shift/scale every round; content is now measured against each image's own background (median of its border), and boxes whose aspect differs by more than 15 % give a `note` instead of a shift/scale. On the box photo: v2's artboard shift −0.2 mm, scale [1, 1] | unit `bugs-1125.test.ts`; live check on the recreate job |
+| 2026-11-25 | #9 one shared server per session: a subagent's `configure {artboard: 2}` moved everyone's frame silently. Positional tool results now say a pinned frame (`frame: artboard 2, mm (session configure, shared …)`); none in the default frame | unit `bugs-1125.test.ts` |
+| 2026-11-25 | #10 `layers {add}` of an existing layer failed; it now applies the props and returns `existed: true` (like `swatches add`) | `test/live-release.mjs` |
+| 2026-11-25 | #11 `preview {reference, save_to}` wrote the comparison to `save_to` and the render to `preview_saved_to`; `save_to` is now the render (as without a reference), the comparison goes to `<name>.compare.png` (`compare_saved_to`) | `test/live-layout.mjs` |
+| 2026-11-25 | #12 "no clip groups from batch steps" was a docs gap: `arrange_items {action: "clip", refs, mask}` works in batches; recreate.md § 1 now says so | — |
 | 2026-11-25 | #1 `gradient:Name@a` ignored the angle: Illustrator reads `GradientColor.angle` as 0 and a new gradient fill keeps the old rotation (in the gradient's matrix). Fills are now turned to the asked angle from the matrix (`A.setFill`); `get_items` reads the angle from the matrix; no angle = 0° | `test/live-release.mjs` (set, change, read back) |
 | 2026-11-25 | #2 `preview {reference}` with `region` or `refs` compared against the whole reference; the runtime now reports the page, and the same part of the reference is cut (white outside the page) | `test/live-release.mjs` (region vs page: rmse 0.04), unit test `cropPad` |
 | 2026-11-25 | #3 `preview {image}` zoomed only in whole steps; any factor up to 8× now | unit test |

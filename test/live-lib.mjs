@@ -20,7 +20,8 @@ export function guard(client) {
   const first = (r) => { try { return JSON.parse(r.content.find((c) => c.type === 'text')?.text ?? ''); } catch { return null; } };
   client.callTool = async (req, ...rest) => {
     const { name, arguments: args = {} } = req;
-    const free = name === 'status' || name === 'configure' || (name === 'documents' && (['new', 'list', 'open'].includes(args.action) || (args.action === 'activate' && mine.has(args.name))));
+    // configure changes only server settings; batch {files} works only on the files it opens (already open ones are skipped)
+    const free = name === 'status' || name === 'configure' || (name === 'batch' && args.files) || (name === 'documents' && (['new', 'list', 'open'].includes(args.action) || (args.action === 'activate' && mine.has(args.name))));
     if (mine.size && !free) {
       const st = first(await raw({ name: 'status', arguments: {} }));
       const active = st?.documents?.find((d) => d.active)?.name;
