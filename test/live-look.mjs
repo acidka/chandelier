@@ -54,7 +54,7 @@ if (part('print')) {
   await call('run_script', { code: 'var p = AIA.find("light"), t = AIA.find("word").textRange.characterAttributes; return [p.stroked, AIA.colorStr(p.strokeColor), p.strokeWidth, p.strokeOverprint, AIA.colorStr(t.strokeColor), t.strokeWeight, t.overprintStroke];' }, { check: (v) => {
     assert(JSON.stringify(v.result) === '[true,"cmyk(0,10,100,0)",0.6,true,"cmyk(0,10,100,0)",0.6,true]', 'trap stroke = own fill, 2 × width, overprint ' + JSON.stringify(v.result));
   } });
-  await call('batch', { steps: [{ tool: 'create_shape', args: { x: 0, y: 0, w: 5, h: 5, fill: 'cmyk(0,0,0,0)', name: 'tmp' } }, { tool: 'path_ops', args: { op: 'trap', refs: 'name:dark' } }, { tool: 'delete_items', args: { refs: 'name:nope' } }], rollback: true }, { expectError: true });
+  await call('batch', { steps: [{ tool: 'create_shape', args: { x: 0, y: 0, w: 5, h: 5, fill: 'cmyk(0,0,0,0)', name: 'tmp' } }, { tool: 'path_ops', args: { op: 'trap', refs: 'name:dark' } }, { tool: 'modify_items', args: { refs: 'name:nope', opacity: 50 } }], rollback: true }, { expectError: true });
   await call('find_items', { name: 'dark' }, { check: (v) => assert(v.total === 1, 'rollback after trap keeps the trapped item (not "created")') });
   // output intent
   const pdf = join(dir, 'fogra.pdf');
