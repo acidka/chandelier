@@ -96,13 +96,34 @@ Skip what already exists (a document, a reference artboard): reuse it.
   upright. The path's radius is the baseline: top arc = ring's centre radius − cap height / 2, bottom arc = centre
   radius + cap height / 2. Size from the angle the text spans: measure the arc length of the reference's text at its
   baseline radius and match it with `horizontal_scale` or tracking, not size.
+  - The two arcs may have different sizes, and the ring may not share the disc's centre: measure the ring's own
+    centre for the text paths.
+  - Match the span by the **angles of the first and last letters** in a close-up; scale tracking by the ratio of the
+    spans. `baseline_shift` in the style moves path text in or out radially.
+- **Size without capitals** (lowercase-heavy text, x-height dominant): font size ≈ x-height ÷ the font's x-height
+  ratio (≈ 0.5; e.g. Source Sans 0.486) × S; cap height ÷ 0.7 only for capitals.
 
 ## 4. Logos, icons and geometric marks
 
+- **Read the structure before measuring** (flat logos, emblems): `preview {image, region, grid}` zooms over each part
+  — which shape is on top, where a band changes colour, what is a stroke. Profile tracks then give coordinates only:
+  on flat multi-colour art one track can jump from one shape's edge to another's, and `above`/`below` are averaged
+  colours; split a track where its colour pair changes.
 - Look for the **construction** first: circles, arcs, rectangles, regular polygons, equal strokes, symmetry axes,
   repeated angles. Build from primitives (`create_shape`) and booleans (`path_ops` unite / minus_front / intersect),
   not from traced outlines; measure the few numbers that define them (radii, stroke widths, angles, centres).
 - Symmetric marks: build one half and mirror it (`duplicate_items` + `transform_items {reflect}`), then unite.
+- **Constant-width outlines** (a frame, a loop drawn with one pen width): measure both edges, take their mean as the
+  centreline and draw it as a **stroke** (`create_path {fit, stroke_width}` with `join: "miter"`), not as a filled
+  band — a stroke keeps the width constant by construction. Corners: place the anchor at the **centreline**
+  intersection; a miter tip sticks out by w / (2·sin(θ/2)) beyond it. Need a fill: `path_ops {op: "outline_stroke"}`.
+- **Interlocking bands that change colour along their length** (a blue band running on as a red one): two shapes,
+  the one below continues under the other; the colour boundary is the top shape's end or corner — layer order, not a
+  cut.
+- **Small illustrative detail inside a mark** (continents on a globe, leaves, ornament): keep the silhouette's main
+  turns and the parts big enough to see at print size (≥ ~1 mm); simplify the rest. Read it from a zoom with a fine
+  `grid` (one cell ≈ the detail's size), point by point, then fit with a loose tolerance — or, when the `scene` tool
+  is listed, analyze a crop of just that part (§ 5.0 step 5).
 - Organic parts of a mark (a leaf, a nut, a hand-drawn shape): § 5's measuring and fitting — few anchors, smooth
   curves.
 - Wordmarks: set them in the closest font first (script, geometric, slab…) and compare letter widths and slant; only a
@@ -128,7 +149,9 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
 2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
    `drop < 0.05` drops every tiny region at once, e.g. small text and texture), `text x y w h` over each text block,
-   `r10 logo` on marks, `rN circle` / `rect` to force a primitive, `c0 = swatch:…` for brand inks, `name` the parts.
+   `r10 logo` on marks, `rN circle` / `rect` to force a primitive — only when the **whole** outline is that primitive
+   (a disc with a lobe is not a circle: keep it free and fix the round stretch afterwards) —, `c0 = swatch:…` for
+   brand inks, `name` the parts.
    Hints are suggestions: take `ramp …` only for a gradient that is artwork, `layers rA rB` only when the overlap
    really is two translucent inks (the new inks must look right in the summary), `cN = cM` when two inks are one.
    Edits add up; `undo`, `undo 3` or `reset` go back. Check the new summary.
@@ -138,12 +161,18 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
 4. **Refine.** `preview {reference}` once; `scene {action: "refine", id}` corrects inks shifted by colour conversion,
    re-fits edges that miss and rebuilds; it undoes its own fixes when they make the scene worse and names inks whose
    regions disagree (shading: give them their own ink or a ramp). A tolerance you set (`tolerance rN 3`) wins.
+   Refine also corrects inks you only named; an ink set to an existing swatch (`c0 = swatch:Name`) is never changed.
 5. **Parts.** A part that needs more detail or a cleaner build (a globe, a mark inside a badge): analyze a `crop` of
    just that part and build it with `rect` (where it goes, session units) and its own `layer`.
 
 **When to leave the scene:** after one round of edits the build still shows camouflage-like boundaries inside bands
 (soft shading, texture), or a part keeps coming out lumpy → draw that part with § 5a–5c (profile tracks + fit) and
 keep the scene for the rest. Don't spend more than two builds on one part.
+
+**Keeping only part of a scene** (the substrate, the primitives): build, then remove the rest by name —
+`delete_items {refs: ["name:<layer> r12", …]}` (the summary's ids) — or build the parts you keep from a crop.
+**Lost transparency** (black or white corners around a logo): the scene can't leave them empty yet; build, then delete
+the corner shapes by name.
 
 ### 5a. Decompose into layers
 
@@ -158,7 +187,8 @@ keep the scene for the rest. Don't spend more than two builds on one part.
 - When steps alone don't tell, compare each region's colour with the bare substrate's: the multiply factor per channel
   (region ÷ substrate) is about the product of the shapes over it.
 - A weak step (tone < ~20) running parallel to a stronger edge a short way from it, fading away from that edge, is
-  that band's **shading ending**, not a thin shape (§ 7).
+  that band's **shading ending**, not a thin shape (§ 7). **Check in a full-size close-up first:** a soft step that fades is shading; a crisp step (a hard edge
+  at that tone, even a weak one) is a thin band of its own.
 - **An edge that changes owner** (one shape's edge runs along another's for part of its length, then leaves it): build
   the shape with the shared edge, then cut it with `path_ops {op: "minus_front"}` and a cutter whose edge is the
   separate stretch; the shared stretch stays identical and the result keeps its fill, opacity and blend.
@@ -222,6 +252,11 @@ points' units after `map` (with a px→mm map, 0.3–0.4 mm); without `map`, bef
 - **Shared stretches:** each list in `fit: [...]` is fitted on its own, so split an edge at the merge point and pass the
   *same* sub-list (same points, same tolerance) in every shape that uses it: identical curves, no slivers. End
   sub-lists where both run the same direction, or the joint shows a slight bend.
+- **Joining pieces from different tracks into one edge** (an edge read partly from one track, partly from another):
+  leave out the few points on each side of a steep join and let the fit bridge the gap; joining them point to point
+  leaves a notch.
+- **`create_path {d}`:** the path data is in its own units; `scale` multiplies it and `x`, `y` then **offset** it (they
+  are not the top-left of its box). Path data from image px: `scale` = mm per px, `x, y` = where px (0, 0) lands.
 - `extend: [start, end]` runs the ends on straight along their direction (past the bleed or under a clip); with
   several lists only the outer ends of an edge are extended. Don't extend a steep end that is really a fold (5b).
 - Not done by the tool: the curvature term (item 4). A curve that still shows a bend at an anchor: add points there
@@ -292,6 +327,9 @@ nothing just before `to`, inside a clip group masked by a copy of the shape, so 
   bug that darkens where the photo is dark *lowers* rmse. Use it as a trend between rounds with the same crop; decide
   tone questions by samples and profiles at fixed points. `content_box` gives a `note` instead of a shift when the
   two boxes differ in shape (a side face in the photo).
+- **A tapered face mapped onto a rectangle:** the reference crop is the face's bounding box, your art fills the
+  artboard, so the shapes can't line up and rmse stays high (`content_box` only notes that the shapes differ). Compare
+  by close-ups at fixed points, or against the reference warped the same way.
 - **Lost transparency** (a logo exported on black or white corners): those corners are not artwork and dominate rmse
   (a round emblem on black: ~0.46 from the corners alone). Judge by `content_box` and close-ups, or crop the
   comparison to a rectangle inside the artwork.

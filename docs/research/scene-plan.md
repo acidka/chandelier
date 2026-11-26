@@ -479,18 +479,18 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G4 | ✅ | 08 v1 | building one part from a crop of it (§ 5.0 step 5) |
 | G5 | ✅ | 08 v1 | lost transparency makes rmse meaningless (§ 8) |
 | G6 | ✅ | 04 v9 | opaque stacked bands without slivers (§ 5a); an edge ending on another (§ 5b) |
-| G7 | ⏳ | 08 v2, v3 | constant-width outlines → stroked centreline (mean of the two edges), miter joins; corner = centreline intersection (a miter overshoots by w / (2 sin(θ/2))); `path_ops outline_stroke` for a fill |
-| G8 | ⏳ | 08 v2 | force a primitive only when the whole outline is that primitive; otherwise keep it free and fix the round stretch |
-| G9 | ⏳ | 08 v2, v3 | text size without capitals: x-height ÷ the font's x-height ratio; top and bottom arcs may differ; match the span by the first and last letters' angles; ring text not always centred on the disc |
-| G10 | ⏳ | 08 v3 | flat logos: read the structure from `region` + `grid` zooms first; profile tracks jump between shapes' edges (use them for coordinates only, split where the colour pair changes) |
-| G11 | ⏳ | 08 v3 | interlocking bands that change colour along their length: layer order, the top band's corner makes the colour boundary |
-| G12 | ⏳ | 08 v3 | small illustrative detail inside a mark (continents): how much to keep, how to read it |
-| G13 | ⏳ | 08 v3 | `create_path d`: say that x, y offset the path data (not a box's top-left) |
-| G14 | ⏳ | 04 v10 | the "weak step = shading ending" rule: check in a close-up whether the step is crisp (a thin band) or soft |
-| G15 | ⏳ | 04 v10 | joining edge pieces from different tracks: drop points near a steep join and let the fit bridge it |
-| G16 | ⏳ | 04 v10 | comparing a tapered face mapped onto a rectangle: rmse stays high (compare with the warped reference) |
-| G17 | ⏳ | 04 v10 | keeping only the substrate from a scene and removing the rest cleanly |
-| G18 | ⏳ | 04 v9 | `refine` changes named inks (global swatches) silently — say so, or leave named inks alone |
+| G7 | ✅ | 08 v2, v3 | constant-width outlines → stroked centreline (mean of the two edges), miter joins; corner = centreline intersection (a miter overshoots by w / (2 sin(θ/2))); `path_ops outline_stroke` for a fill |
+| G8 | ✅ | 08 v2 | force a primitive only when the whole outline is that primitive; otherwise keep it free and fix the round stretch |
+| G9 | ✅ | 08 v2, v3 | text size without capitals: x-height ÷ the font's x-height ratio; top and bottom arcs may differ; match the span by the first and last letters' angles; ring text not always centred on the disc |
+| G10 | ✅ | 08 v3 | flat logos: read the structure from `region` + `grid` zooms first; profile tracks jump between shapes' edges (use them for coordinates only, split where the colour pair changes) |
+| G11 | ✅ | 08 v3 | interlocking bands that change colour along their length: layer order, the top band's corner makes the colour boundary |
+| G12 | ✅ | 08 v3 | small illustrative detail inside a mark (continents): how much to keep, how to read it |
+| G13 | ✅ | 08 v3 | `create_path d`: say that x, y offset the path data (not a box's top-left) |
+| G14 | ✅ | 04 v10 | the "weak step = shading ending" rule: check in a close-up whether the step is crisp (a thin band) or soft |
+| G15 | ✅ | 04 v10 | joining edge pieces from different tracks: drop points near a steep join and let the fit bridge it |
+| G16 | ✅ | 04 v10 | comparing a tapered face mapped onto a rectangle: rmse stays high (compare with the warped reference) |
+| G17 | ✅ | 04 v10 | keeping only the substrate from a scene and removing the rest cleanly |
+| G18 | ✅ | 04 v9 | `refine` changes named inks (global swatches) silently — say so, or leave named inks alone |
 
 ### Owner decisions pending
 
