@@ -580,3 +580,57 @@ turned a r = 12 px circle into a rounded square). Headroom built rmse before →
   facets cut the lip outline into edges of ≤ 5 points, drawn as straight lines.
 - *Re-test 09 with the scene* (v3): see benchmarks § 2i — the guide, not the build, limited it.
 - *Labels:* 08 and the ribbons document (04 runs) labelled.
+
+## 10. Future ideas: speed and quality (2026-11-27)
+
+Ideas only, nothing decided. Measured on this Mac (macOS 27.2, Node 22.23, `dist/` of commit e8e22a2; no Illustrator in
+the loop).
+
+### Speed
+
+Where a recreate run's time goes: runs take 5–11 min (benchmarks § 2i), `scene analyze` 0.9–2.3 s of it (06 1000×899:
+2.3 s; 08 1000×666: 2.1 s; 09 620×617: 0.9 s; decode 35–110 ms). The agent's turns and rounds dominate: **fewer rounds and
+calls (guide, tool ergonomics) beat faster pixels**.
+
+CPU profile of four analyses (≈ 8 s): `regionStats` 13 %, `rasterize` (own render) 9 %, `bilateral` 6 %, garbage
+collection 6 %, colour maths (`de76`, `gam`, `rgbToLab`, `labToRgb`, `mixT`) ~13 %, `modeFilter` 4 %, `chamfer` 3 %,
+`quantize` + `flatMask` 6 %, primitives scoring ~4 %.
+
+- **Fewer calls per run** (largest effect): one analyze per image (agents ran 2–4 and threw most away); a `position`
+  on `scene build` / `refine` so hand layers aren't re-ordered after every build (F30); `drop in x y w h` (F35);
+  readable overlays for small crops (F40); a clearer degenerate-region report (done: F33).
+- **Plain-JS speed-ups, if ever needed:** `regionStats` recomputed after each merge pass — update it incrementally;
+  fewer temporary arrays (GC); cache the smoothed Lab image and the quantization per (image, crop, `max_px`) so a
+  re-analyze with other edits or detail starts from them; colour conversions through a lookup table (sRGB → linear).
+  Estimate: analyze roughly halved — a few hours of work, not worth it before quality.
+- **GPU (gpu.js) — not now** (checked 2026-11-27): gpu.js 2.24.1 (24 Sep 2026) is maintained, but in Node it runs
+  through the native `gl` (headless-gl), which per its 2.24.0 notes fails to build on Node 23+ (installs on ≤ 22;
+  Apple Silicon not confirmed); kernels are float32 with fixed loop bounds; its own M1 Max benchmark has a 4 M-element
+  per-pixel map slower than plain JS (15.9 vs 6.9 ms: upload and readback), faster only for heavy maths (512² matmul
+  5.7×). Only `bilateral` and colour maths (~1.3 s of 8 s) fit its model; region graphs, flood fills and sorting
+  don't. A native module would complicate npm, the plugin and the `.mcpb` bundle. Revisit only for a heavy per-pixel
+  algorithm (below); consider WebAssembly SIMD first (no native install).
+
+### Quality
+
+The owner's eye decides; rmse rewards kept halos and photo shading (§ quality headroom), so every idea is checked on
+renders and close-ups, and a guide change is checked against the owner's best run of each case (09: G25/G38/G39 made
+v3 and v4 worse than v2).
+
+- **Region step still loses the most** (06 crown: colours 0.075 → regions 0.108; 08: 0.042 → 0.079): tell a JPEG
+  halo from real thin detail by the edge profile across it (a halo is a smooth mix between two sides; a stroke has
+  its own plateau) instead of width and ΔE alone; the mode filter (06 crown 0.107 → 0.098 without it) could spare
+  pixels whose ink is a large region's colour.
+- **Fitting:** the floor is well below today's fit (09 face 0.075 unsmoothed vs 0.091), but lighter smoothing brings
+  lumps back. Fit to sub-pixel edge positions (from the image gradient across each boundary) instead of pixel cracks,
+  so less smoothing is needed; fit a small feature's outline (lips) as one loop when junctions cut it into ≤ 5-point
+  edges (F32).
+- **Soft shading:** suggest `ramp` for a run of bands whose tones change steadily (v2's manual `ramp` on the hat brim
+  was what made 09 work, F29); radial ramps for round shading (petals, pearls); a switch for photo mode on a crop that
+  is artwork (F28).
+- **Parts and crops:** upsample a small crop so `detail: "high"` adds real resolution (F37); `split` a region at a
+  frame line so leaves touching it survive (F36); build a part under the main layer or clipped to its silhouette.
+- **Render-and-compare optimisation** (research): move anchors and gradient stops to minimise the difference between
+  the rendered build and the image, thousands of renders per shape — the one idea here that would need GPU or SIMD.
+- **Process:** run cases in pairs (with and without `scene`); record what the best run did (edits, inks, parts) and
+  keep it in the guide; label every artboard with the owner's verdict.

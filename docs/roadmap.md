@@ -462,6 +462,7 @@ Carried over from 0.5.2 when it was released.
   more real jobs from the owner as cases 05–09 (signage panel, foil-logo mockup, business card, round emblem, flat
   illustration), also the scene tool's evaluation pool
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
+- [ ] 🧊 Scene speed and quality ideas (2026-11-27: analyze ≤ 2.3 s of 5–11 min runs, so fewer calls first; GPU / gpu.js not now; region-step and fitting ideas, ramp hints, render-and-compare) — [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -476,6 +477,7 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 
 - ❌ **Forking the competitor** — its per-call design is the bottleneck; see [plan D8](plan.md#d8--fork-the-competitor-or-build-fresh--decided-build-fresh-borrow-knowledge)
 - ❌ **Native C++ plugin** for v1 — too heavy for the gain; ExtendScript covers almost everything
+- ❌ **GPU compute via gpu.js** (2026-11-27) — native `gl` dependency (fails on Node 23+), float32 kernels, slower than plain JS for simple per-pixel passes; the scene's analyze is ≤ 2.3 s of a 5–11 min run — [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)
 - ❌ **Temp files for params/results** — inline JSON in the Apple event is faster and leaves nothing behind
 
 ## Change log
@@ -667,3 +669,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-26 | Scene headroom notes closed ([scene-plan § 9](research/scene-plan.md)): small high-contrast patches in a large region's colour kept (06 crown holes; crown 0.140 → 0.130); 09 fitting loss measured as a smoothing trade-off (lighter smoothing brings 08's lumps back: unchanged); `cN = cM` edit implemented (F27). 09 scene re-test v3 (10.8 min / 90 calls / rmse 0.087, busier than v2); recreate.md G25–G31 (soft-shaded illustrations, `max_px` / `min_de`, part builds over the scene, layer order after builds, non-Latin fonts, cap-height check, document-wide `name:` refs); 08 and ribbons documents labelled; bug #21 |
 | 2026-11-26 | Scene reruns on the headroom 2 build ([benchmarks § 2i](research/benchmarks.md)): 06 v3 9.1 min / 83 calls / rmse **0.067** (v2 0.097, same crop; tree as good, wordmark closer); 09 v4 6.4 min / 49 / 0.089 (cleaner than v3, v2 still better on flower and hair). Fixed: build no longer fails on degenerate tiny regions (F33), counters inside text boxes no longer drawn white (F34). recreate.md G32–G41 (text-box pixels, scene layer below hand layers before checks, tracked-text centring by the returned box, style vs local tracking, stem weight after `horizontal_scale`, profile tracks for frame lines, soft-shaded illustration recipe, primitives for petals and jewellery, `max_px` never upsamples, wordmark order) |
 | 2026-11-27 | Owner verdicts: 06 v3 almost identical to the original; 09 v2 still the best, v3/v4 really bad. Cause: the guide (G25/G38/G39 sent agents to hand-draw soft-shaded shapes, gradient petals, lower `min_de`), not the build (v2-era and current builds compared on the same crop). recreate.md § 5.0 rewritten to v2's method: scene for the whole illustration, `ramp` camouflage bands, merged inks set by hand, flat outlined petals |
+| 2026-11-27 | Scene speed and quality ideas saved ([scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)): analyze profiled (0.9–2.3 s, `regionStats` 13 %), gpu.js checked and rejected for now, quality ideas from the headroom work |
