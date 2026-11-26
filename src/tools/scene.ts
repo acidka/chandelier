@@ -6,7 +6,8 @@ import { join, resolve } from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolDef, Ctx } from './types.js';
 import { fail, J } from './types.js';
-import { readImage, encodePng } from '../image.js';
+import { readImage, encodePng, decodePng, resize, type Img } from '../image.js';
+import { measure, refine, heatMap } from '../scene/refine.js';
 import { analyze } from '../scene/analyze.js';
 import { applyEdits } from '../scene/edits.js';
 import { summary } from '../scene/summary.js';
@@ -24,6 +25,7 @@ export const scene: ToolDef = {
 "analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high → id, a 1-page summary (regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
 "edit": id, edits ["merge r3 r4", "drop r12", "keep r12", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "ramp r3 r4 r5" (one region, linear gradient), "r3 flat", "layers r3 r5" (translucent: their overlap drawn by both, multiply), "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
 "build": id; rect (default the artboard), artboard, bleed, layer ("Scene") → one undo step: global swatches + one path (or live rect/ellipse for clean primitives) per region, bottom to top; a re-build replaces the layer.
+"refine": id; threshold (ΔE, 6) → measures the build (Illustrator render; own render before a build) per region and edge against the image, corrects shifted inks and re-fits edges that miss, rebuilds once → report + heat map | new render.
 dir: where scene.json is kept (default a temp folder; id may be its path).`,
   shape: {
     action: z.enum(['analyze', 'edit', 'build', 'refine']),
@@ -43,6 +45,7 @@ dir: where scene.json is kept (default a temp folder; id may be its path).`,
     artboard: z.number().int().min(0).optional(),
     bleed: z.number().min(0).optional(),
     layer: z.string().optional(),
+    threshold: z.number().positive().optional(),
     dir: z.string().optional(),
   },
   async run(a, ctx) {
@@ -52,7 +55,7 @@ dir: where scene.json is kept (default a temp folder; id may be its path).`,
       const s = await get(a.id, join(ctx.tmp, `scene-src${++tmpN}.png`));
       if (a.action === 'edit') return doEdit(s, a);
       if (a.action === 'build') return await doBuild(s, a, ctx);
-      return fail('refine is not available yet (scene S3); compare with preview {reference} and fix with edits.');
+      return await doRefine(s, a, ctx);
     } catch (e) { return fail((e as Error).message); }
   },
 };
@@ -105,11 +108,37 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
     let k = Object.keys(items).length;
     steps.forEach((st, i) => { if (st.tool === 'create_path' || st.tool === 'create_shape') for (const it of d.results[i]?.data?.items ?? []) items['r' + plan.regions[k++]] = it.uuid; });
   }
-  s.built = { layer, rect, units: ctx.settings.units, items };
+  s.built = { layer, rect, artboard: a.artboard, bleed: a.bleed, units: ctx.settings.units, items };
   save(s);
   const out = {
     id: s.id, layer, items: plan.items, swatches: plan.swatches, anchors: plan.anchors, bytes: plan.bytes, rect, units: ctx.settings.units,
     undo: plan.batches.length === 1 ? 'one step' : `${plan.batches.length} steps (scene too large for one call: detail low or merge)`, calls: plan.batches.length, ms: Math.round(performance.now() - t0),
   };
   return { content: [{ type: 'text', text: J(out) }, ...warnings.map((t) => ({ type: 'text' as const, text: t }))] };
+}
+
+async function doRefine(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
+  const { w, h } = s.work;
+  let render: Img = s.render, source = 'own render (not built yet)';
+  if (s.built) {
+    const pv = ctx.tools.get('preview')!;
+    const r = await pv.run!({ region: s.built.rect, width: w, ...(s.built.artboard !== undefined ? { artboard: s.built.artboard } : {}), background: 'white' }, ctx);
+    const im = r.content.find((c) => c.type === 'image') as { data: string } | undefined;
+    if (r.isError || !im) return fail('refine: could not render the build: ' + J(r.content));
+    render = decodePng(Buffer.from(im.data, 'base64'));
+    if (render.w !== w || render.h !== h) render = resize(render, w, h);
+    source = 'Illustrator';
+  }
+  const m = measure(s, render), rep = refine(s, m, a.threshold ?? 6);
+  let rebuilt: unknown = false;
+  if (s.built && rep.fixed.length) {
+    const b = await doBuild(s, { layer: s.built.layer, rect: s.built.rect, artboard: s.built.artboard, bleed: s.built.bleed }, ctx);
+    if (b.isError) return b;
+    rebuilt = JSON.parse((b.content[0] as { text: string }).text);
+  }
+  save(s);
+  const heat = heatMap(render, s.work), gap = 8, W = w * 2 + gap, rgb = new Uint8Array(W * h * 3).fill(255);
+  for (let y = 0; y < h; y++) { rgb.set(heat.rgb.subarray(y * w * 3, (y + 1) * w * 3), y * W * 3); rgb.set(s.render.rgb.subarray(y * w * 3, (y + 1) * w * 3), (y * W + w + gap) * 3); }
+  const out = { id: s.id, measured: source, ...rep, est_rmse_after: s.estRmse, rebuilt };
+  return { content: [{ type: 'image', data: encodePng({ w: W, h, rgb }).toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(out) }] };
 }

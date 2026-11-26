@@ -95,7 +95,7 @@ export function recompute(s: Scene): void {
   const { w, h } = s.work;
   s.seg.regions = regionStats(s.seg.map, w, h, s.seg.regions.length, s.lab, s.quant.labels);
   s.pm = planarMap(s.seg.map, w, h);
-  const tolOf = (e: { left: number; right: number }) => Math.min(...[e.left, e.right].map((r) => (r >= 0 ? s.meta[r].tol ?? s.tol : s.tol)));
+  const tolOf = (e: { left: number; right: number }) => s.edgeTol?.[e.left < e.right ? `${e.left},${e.right}` : `${e.right},${e.left}`] ?? Math.min(...[e.left, e.right].map((r) => (r >= 0 ? s.meta[r].tol ?? s.tol : s.tol)));
   s.fits = fitEdges(s.pm, { tolOf });
   s.z = applyZ(s, zOrder(s.pm, s.seg.regions));
   const exact = new Map(s.meta.map((m, i) => [i, m.multiply] as const).filter(([i, m]) => m && s.seg.regions[i].area) as [number, number[]][]);

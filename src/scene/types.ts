@@ -50,6 +50,8 @@ export interface Scene {
   tile: boolean;
   /** global tolerance (px) */
   tol: number;
+  /** tolerance per region pair "a,b" (refine tightens edges that miss) */
+  edgeTol?: Record<string, number>;
   edits: string[];
   // derived (recompute)
   pm: PlanarMap;
@@ -65,7 +67,7 @@ export interface Scene {
   iou: number[];
   estRmse: number;
   ms: number;
-  built?: { doc?: string; layer: string; rect: number[]; units?: string; items: Record<string, string> };
+  built?: { doc?: string; layer: string; rect: number[]; artboard?: number; bleed?: number; units?: string; items: Record<string, string> };
 }
 
 export const DETAIL: Record<Detail, { passes: number; area: number; tol: number }> = {

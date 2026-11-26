@@ -414,7 +414,7 @@ owner's verdict recorded as is. Plus `bench/scene-bench.mjs` on the four suite r
 | 13 ✅ | S2a primitives + shared arcs + `create_shape` emission — done 2026-11-26 | 1.5 d | 12 |
 | 14 ✅ | S2b ramps, gradient-span probe (+ `A.setFill`), shade along edge — done 2026-11-26 | 2–2.5 d | 12 |
 | 15 ✅ | S2c overlap → multiply; arm D partial — done 2026-11-26 | 1.5 d | 14 |
-| 16 | S3 `refine` + tests + live | 2.5 d | 12 |
+| 16 ✅ | S3 `refine` + tests + live — done 2026-11-26 | 2.5 d | 12 |
 | 17 | S4 hooks; guide, SKILL.md, prompt, plan.md, README; budget raised, flag removed; full suite run | 2 d + runs | 13–16 |
 
 Total ≈ 22–25 days of focused work plus owner reviews; S1 (1–12) ≈ 12 days.
