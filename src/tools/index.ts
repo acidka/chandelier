@@ -25,6 +25,4 @@ import { find_items, get_items, get_tree, selection } from './inspect.js';
 import { document_info } from './document_info.js';
 import { scene } from './scene.js';
 
-export const TOOLS: ToolDef[] = [status, configure, documents, document_info, find_items, get_items, get_tree, selection, create_shape, create_path, create_text, edit_text, modify_items, delete_items, transform_items, duplicate_items, arrange_items, align_items, path_ops, layers, artboards, swatches, fonts, styles, place, symbols, menu_command, history, run_script, batch, preview, export_tool, preflight, data_merge, effects,
-  // image → vector scene: behind a flag until it ships (owner 2026-11-26; schema budget)
-  ...(process.env.CHANDELIER_SCENE === '1' ? [scene] : [])];
+export const TOOLS: ToolDef[] = [status, configure, documents, document_info, find_items, get_items, get_tree, selection, create_shape, create_path, create_text, edit_text, modify_items, delete_items, transform_items, duplicate_items, arrange_items, align_items, path_ops, layers, artboards, swatches, fonts, styles, place, symbols, menu_command, history, run_script, batch, preview, export_tool, preflight, data_merge, effects, scene];

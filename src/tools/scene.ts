@@ -1,5 +1,5 @@
 // scene: image → editable vector scene (0.6, S1). The pixel work happens in Node; Illustrator only at build.
-// Behind CHANDELIER_SCENE=1 until it ships (owner, 2026-11-26). Plan: docs/research/scene-plan.md.
+// Shipped in 0.6 (was behind CHANDELIER_SCENE=1 while built). Plan: docs/research/scene-plan.md.
 import { z } from 'zod';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -42,7 +42,7 @@ dir: where scene.json is kept (default a temp folder; id may be its path).`,
     edits: z.array(z.string()).max(200).optional(),
     overlay: z.boolean().optional(),
     rect: z.array(z.number()).length(4).optional(),
-    artboard: z.number().int().min(0).optional(),
+    artboard: z.number().min(0).optional(),
     bleed: z.number().min(0).optional(),
     layer: z.string().optional(),
     position: z.string().optional(),

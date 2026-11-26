@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { connect, assert } from './live-lib.mjs';
 import { encodePng, resize } from '../dist/image.js';
 
-const { call, done } = await connect('live-scene', { env: { CHANDELIER_SCENE: '1' } });
+const { call, done } = await connect('live-scene');
 const tmp = mkdtempSync(join(tmpdir(), 'chandelier-scene-'));
 
 // a poster at 4× then averaged down: paper, two wave bands, a box, a ring (hole), a dot

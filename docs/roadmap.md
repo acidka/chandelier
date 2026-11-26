@@ -421,12 +421,13 @@ Carried over from 0.5.2 when it was released.
   text, to a primitive, drop), `build` (layers, global swatches, one undo step), `refine` (per-region error, re-fit
   only bad regions). Pure TS, no installs. [Implementation plan](research/scene-plan.md) (owner decisions
   2026-11-26: behind `CHANDELIER_SCENE=1` until release, stacked shapes, S1 exit = speed win, photo lighting flattened). Target (estimate): free-form jobs ~3–5 min, 10–15 calls, < 100 k tokens
-  - [ ] S1: rectify, quantize, regions, shared edges, fit, build; suite case 04 vs v7/v8 and Image Trace
+  - [x] ✅ S1 (2026-11-26): rectify, quantize, regions, shared edges, fit, build; evaluated on suite cases 04, 08 (benchmarks § 2i)
     - [x] ✅ Task 1 (2026-11-26): `fitCurve {t0, t1}` fixed end tangents (shared junctions, loop seams); `fitcurve.ts`
       exports `P`, `Seg`, `bez`, `segsToD`; `imageview.ts` exports `put`, `label` (label colour); unit tests
-  - [ ] S2: primitive recognition, tone ramps (gradients / `shade`)
-  - [ ] S3: `refine` loop
-  - [ ] S4: text-box and constructed-logo hooks; recreate.md starts from `scene`; docs/plan.md tool table
+  - [x] ✅ S2 (2026-11-26): primitive recognition, tone ramps, translucent overlaps (multiply)
+  - [x] ✅ S3 (2026-11-26): `refine` loop (render-based ink fix, re-fit missing edges, undo when worse)
+  - [x] ✅ S4 (2026-11-26/27): text boxes, logo groups, placeholders; recreate.md § 5.0 with the purpose (organic, irregular artwork; owner-delegated 2026-11-27); plan.md tool table; flag lifted, budget 59.5 KB (2026-11-27)
+  - [ ] Suite pairs on the release build: 09 v5, 05 and 07 (manual + scene), 01 and 02 (scene listed) — 2026-11-27
 - [ ] **Faster free-form recreation.** The subagent test (2026-11-25) took ~24 min (99 tool calls, ~235 k tokens,
   ~15 s per call — model time, not Illustrator) against ~3 min for layout jobs such as the calendar. Where it went:
   writing and debugging 7 scripts for the method (profiles, anchor fit, shared curves, shading, batch generator);
@@ -671,3 +672,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-27 | Owner verdicts: 06 v3 almost identical to the original; 09 v2 still the best, v3/v4 really bad. Cause: the guide (G25/G38/G39 sent agents to hand-draw soft-shaded shapes, gradient petals, lower `min_de`), not the build (v2-era and current builds compared on the same crop). recreate.md § 5.0 rewritten to v2's method: scene for the whole illustration, `ramp` camouflage bands, merged inks set by hand, flat outlined petals |
 | 2026-11-27 | Scene speed and quality ideas saved ([scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)): analyze profiled (0.9–2.3 s, `regionStats` 13 %), gpu.js checked and rejected for now, quality ideas from the headroom work |
 | 2026-11-27 | Scene fixes before release: `position` for the build layer, rebuilds keep their layer's place and hand-added items and keep deleted regions dropped (F24, F30), no warning on a new layer (F21), `drop … fill none` (F15), `drop in x y w h` (F35), edit overlay shows the drawn state (F16), small-crop overlays enlarged (F40), foil ink-count hint (F26); live-scene test extended (Illustrator 29.1, macOS 27.2, Node 22.23: all checks pass); recreate.md § 5.0 updated |
+| 2026-11-27 | `scene` out from behind `CHANDELIER_SCENE=1`: always in the tool list (36 tools, full list 58.9 KB, budget 59.5 KB); roadmap S1–S4 ticked; AGENTS.md: live-scene, scene-bench, scene-headroom commands |

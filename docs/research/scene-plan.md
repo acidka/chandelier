@@ -8,7 +8,7 @@ Grounded in the repo at `59fc511`. Measured 2026-11-26 (macOS 27.2, Node 22): `n
 
 | # | Decision | Choice |
 |---|---|---|
-| D-A / D-J | Schema budget and rollout | `scene` hidden behind `CHANDELIER_SCENE=1` while S1 is built (no budget cost); raise the budget to ~58.5 KB when it ships |
+| D-A / D-J | Schema budget and rollout | `scene` hidden behind `CHANDELIER_SCENE=1` while S1 was built (no budget cost); flag lifted 2026-11-27, budget 59.5 KB (58.9 KB with `scene`) |
 | D-B | Build geometry | **Stacked shapes**: lower regions run on under higher ones (no seams, print overlap); exact tiling only as an edit |
 | D-G | S1 exit on case 04 | Speed win is enough: ≤ 5 min, ≤ 15 calls, < 100 k tokens, rmse no worse than v8 ± 0.01, no seams. Shading comes in S2 |
 | D-H | Photo lighting | Flattened into flat colours by default; an edit turns a ramp back on for a region |

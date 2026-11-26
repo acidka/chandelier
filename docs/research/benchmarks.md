@@ -635,7 +635,7 @@ Gaps that one case hit:
 ## 2i. `scene` tool vs the manual method — suite runs, 2026-11-26
 
 Fresh subagents, one case at a time, Chandelier tools only (audited), recreate.md as the method; with `scene` listed
-(server with `CHANDELIER_SCENE=1`, branch `feature/scene`) they start from § 5.0, the baseline is told not to use it.
+(server with `CHANDELIER_SCENE=1` until 2026-11-27, then in the tool list; branch `feature/scene`) they start from § 5.0, the baseline is told not to use it.
 Illustrator 29.1, macOS 27.2, Node 22.23. Tokens and tool uses from the task notifications; times from the agents'
 start/end. RMSE comparable only within a case (same crop).
 

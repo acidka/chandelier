@@ -1,6 +1,6 @@
 # `scene`: image → editable vector scene (proposal)
 
-Status: built behind `CHANDELIER_SCENE=1` (S1–S4 code, 2026-11-26), live check and suite evaluation pending; [implementation plan](scene-plan.md) with owner decisions; the main item of milestone 0.6 "faster free-form recreation" ([roadmap](../roadmap.md)).
+Status: S1–S4 built (2026-11-26), live test green, evaluated on the real-job suite (benchmarks § 2i), flag lifted 2026-11-27 — in the tool list for 0.6; purpose: plan.md D15; [implementation plan](scene-plan.md) with owner decisions; the main item of milestone 0.6 "faster free-form recreation" ([roadmap](../roadmap.md)).
 
 ## Problem
 
