@@ -1,6 +1,7 @@
 // scene: the 1-page summary an agent reads instead of the pixels (one JSON line, a region table, inks, hints).
 import { de76, labHex } from './color.js';
 import { nearPairs } from './quantize.js';
+import { findOverlaps } from './overlap.js';
 import type { Scene } from './types.js';
 
 export interface SummaryOpts { show?: number[]; showColour?: number; limit?: number; file?: string }
@@ -13,7 +14,8 @@ export const alive = (s: Scene) => s.seg.regions.filter((r) => r.area > 0);
 export function kindOf(s: Scene, id: number): string {
   const m = s.meta[id];
   const p = s.prims[id], shape = p ? (p.kind === 'polygon' ? `poly${p.n}` : p.kind) : '';
-  return m.drop ? 'drop' : m.text ? 'text' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
+  const k = m.drop ? 'drop' : m.text ? 'text' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
+  return m.multiply ? k + '×' : k;
 }
 
 export function conf(s: Scene, id: number): number {
@@ -55,6 +57,7 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
     else if (live.length > 1) hints.push(`ramp ${live.slice(0, 6).map((i) => 'r' + i).join(' ')} (ΔL ${g.dL}: one gradient? or merge = flat)`);
   }
   hints.splice(4);
+  findOverlaps(s).filter((o) => !s.meta[o.a].multiply && !s.meta[o.x].drop).slice(0, 3).forEach((o) => hints.push(`r${o.x} ≈ r${o.a} × r${o.b} over r${o.s} (ΔE ${o.de}: layers r${o.a} r${o.b})`));
   const pairs: [number, number, number][] = [];
   for (const r of regs) for (const n of r.nbrs.keys()) {
     const q = s.seg.regions[n];
@@ -64,6 +67,6 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   nearPairs(s.quant, minDe * 1.5).filter((p) => usedColours.includes(p.a) && usedColours.includes(p.b)).slice(0, 3).forEach((p) => hints.push(`c${p.b} = c${p.a}? (ΔE ${p.de.toFixed(1)})`));
   regs.filter((r) => r.area > 20 && (2 * r.area) / r.perim < 2.5).slice(0, 3).forEach((r) => hints.push(`r${r.id} sliver ${((2 * r.area) / r.perim).toFixed(1)} px`));
   regs.filter((r) => !['drop', 'text'].includes(kindOf(s, r.id)) && r.area > total * 0.002 && conf(s, r.id) < 0.8).slice(0, 3).forEach((r) => hints.push(`r${r.id} conf ${conf(s, r.id).toFixed(2)} (merge? tolerance r${r.id} ${(s.tol / 2).toFixed(1)}?)`));
-  if (hints.length) lines.push('hints: ' + hints.join(' · '));
+  if (hints.length) lines.push('hints: ' + hints.slice(0, 10).join(' · ') + (hints.length > 10 ? ` (+${hints.length - 10})` : ''));
   return lines.join('\n');
 }

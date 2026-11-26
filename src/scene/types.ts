@@ -27,7 +27,7 @@ export interface Params {
 export interface Colour { L: number; a: number; b: number; swatch?: string; name?: string }
 
 /** what edits changed about a region (by id; ids never change after analyze) */
-export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number; /** force a primitive, or 'free' = never */ prim?: PrimKind | 'free'; /** linear gradient from the region's colour plane */ ramp?: boolean }
+export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number; /** force a primitive, or 'free' = never */ prim?: PrimKind | 'free'; /** linear gradient from the region's colour plane */ ramp?: boolean; /** a translucent layer: drawn over these overlap regions too, multiply */ multiply?: number[] }
 
 export interface Scene {
   id: string;

@@ -55,9 +55,9 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
       let x0 = pr.cx - pr.a, x1 = pr.cx + pr.a, y0 = pr.cy - pr.b, y1 = pr.cy + pr.b;
       if (pr.kind === 'rect') { if (x0 < 0.75) x0 = -bx; if (y0 < 0.75) y0 = -by; if (x1 > w - 0.75) x1 = w + bx; if (y1 > h - 0.75) y1 = h + by; }
       const shape = pr.kind === 'rounded' ? 'rounded_rect' : pr.kind === 'circle' ? 'ellipse' : pr.kind;
-      return { tool: 'create_shape', item: { shape, x: r2(rx + x0 * sx), y: r2(ry + y0 * sy), w: r2((x1 - x0) * sx), h: r2((y1 - y0) * sy), ...(pr.kind === 'rounded' ? { r: r2(pr.r! * Math.min(sx, sy)) } : {}), ...common } };
+      return { tool: 'create_shape', item: { ...(sh.blend ? { blend: sh.blend } : {}), shape, x: r2(rx + x0 * sx), y: r2(ry + y0 * sy), w: r2((x1 - x0) * sx), h: r2((y1 - y0) * sy), ...(pr.kind === 'rounded' ? { r: r2(pr.r! * Math.min(sx, sy)) } : {}), ...common } };
     }
-    return { tool: 'create_path', item: { d: segsToD(sh.loops.map(bleedSegs), true), ...(sh.holes ? { fill_rule: 'evenodd' } : {}), ...common } };
+    return { tool: 'create_path', item: { d: segsToD(sh.loops.map(bleedSegs), true), ...(sh.holes ? { fill_rule: 'evenodd' } : {}), ...(sh.blend ? { blend: sh.blend } : {}), ...common } };
   });
   const base: Record<string, Record<string, unknown>> = { create_path: { layer, x: rx, y: ry, scale: [sx, sy], stroke: 'none' }, create_shape: { layer, stroke: 'none' } };
   const batches: BatchStep[][] = [head];

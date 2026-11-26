@@ -98,14 +98,15 @@ export function recompute(s: Scene): void {
   const tolOf = (e: { left: number; right: number }) => Math.min(...[e.left, e.right].map((r) => (r >= 0 ? s.meta[r].tol ?? s.tol : s.tol)));
   s.fits = fitEdges(s.pm, { tolOf });
   s.z = applyZ(s, zOrder(s.pm, s.seg.regions));
-  const shapes = stacked(s.pm, s.seg.regions, s.z, s.fits, { tile: s.tile, skip: skipped(s) });
+  const exact = new Map(s.meta.map((m, i) => [i, m.multiply] as const).filter(([i, m]) => m && s.seg.regions[i].area) as [number, number[]][]);
+  const shapes = stacked(s.pm, s.seg.regions, s.z, s.fits, { tile: s.tile, skip: skipped(s), exact });
   s.prims = primitives(s, shapes);
   for (const sh of shapes) { const p = s.prims[sh.region]; if (p) { sh.loops = [primSegs(p)]; sh.holes = false; } }
   s.shapes = shapes;
   s.ramps = s.seg.regions.map((r, id) => (r.area && s.meta[id].ramp ? rampOf(s.seg.map, w, h, s.lab, id) : null));
   const out = rasterize(shapes.map((sh) => {
     const rp = s.ramps[sh.region];
-    return { loops: sh.loops, rgb: colourRgb(s, sh.region), evenodd: sh.holes, id: sh.region, grad: rp ? { ...rp, c0: labToRgb(rp.c0[0], rp.c0[1], rp.c0[2]), c1: labToRgb(rp.c1[0], rp.c1[1], rp.c1[2]) } : undefined };
+    return { loops: sh.loops, rgb: colourRgb(s, sh.region), evenodd: sh.holes, id: sh.region, blend: sh.blend, grad: rp ? { ...rp, c0: labToRgb(rp.c0[0], rp.c0[1], rp.c0[2]), c1: labToRgb(rp.c1[0], rp.c1[1], rp.c1[2]) } : undefined };
   }), w, h, { ids: true, bg: [255, 255, 255] });
   s.render = out.img;
   s.estRmse = Math.round(rmse(s.work, out.img) * 1000) / 1000;

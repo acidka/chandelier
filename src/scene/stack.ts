@@ -36,12 +36,15 @@ export interface Shape {
   raw: Loop[];
   /** any hole loop → even-odd fill */
   holes: boolean;
+  blend?: 'multiply';
 }
 
 export interface StackOpts {
   tile?: boolean;
   /** regions drawn as their own outline (a primitive) instead of the stacked set */
   own?: Map<number, Seg[]>;
+  /** regions drawn as exactly this set of regions (translucent layers: the region plus its overlaps), multiply */
+  exact?: Map<number, number[]>;
   /** regions not drawn (they stay in the stack) */
   skip?: Set<number>;
 }
@@ -62,7 +65,9 @@ export function stacked(pm: PlanarMap, regions: Region[], z: number[], fits: Seg
     const own = o.own?.get(id);
     if (own) { out.push({ region: id, loops: [own], raw: [], holes: false }); continue; }
     let set: Set<number>;
-    if (o.tile) set = new Set([id]);
+    const exact = o.exact?.get(id);
+    if (exact) set = new Set([id, ...exact]);
+    else if (o.tile) set = new Set([id]);
     else {
       // the connected group of regions at or above this one, reached from it
       set = new Set([id]);
@@ -70,7 +75,7 @@ export function stacked(pm: PlanarMap, regions: Region[], z: number[], fits: Seg
       while (q.length) for (const n of regions[q.pop()!].nbrs.keys()) if (!set.has(n) && z[n] >= z[id]) { set.add(n); q.push(n); }
     }
     const loops = loopsOf(pm, set);
-    out.push({ region: id, loops: loops.map((l) => loopSegs(pm, fits, l)), raw: loops, holes: loops.some((l) => !l.outer) });
+    out.push({ region: id, loops: loops.map((l) => loopSegs(pm, fits, l)), raw: loops, holes: loops.some((l) => !l.outer), ...(exact ? { blend: 'multiply' as const } : {}) });
   }
   return out;
 }

@@ -2,6 +2,7 @@
 // change; a merged or emptied region just disappears from the summary.
 import { rgbLab } from './color.js';
 import { recompute } from './analyze.js';
+import { findOverlaps, multiplyFill } from './overlap.js';
 import type { Scene, Colour } from './types.js';
 
 export interface EditResult { changed: boolean; show?: number[]; showColour?: number }
@@ -52,6 +53,22 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       }
       s.meta[to].ramp = true;
       res.changed = true;
+    } else if (head === 'layers') {
+      // layers rA rB: two translucent layers; their overlap regions are drawn by both in multiply
+      if (t.length !== 3) fail('layers rA rB (two regions whose overlap is a third)');
+      const a = region(t[1]), b = region(t[2]);
+      const xs = findOverlaps(s, 2.5 * s.params.minDe).filter((o) => (o.a === a && o.b === b) || (o.a === b && o.b === a));
+      if (!xs.length) fail(`no region between r${a} and r${b} looks like their overlap (multiply over the paper)`);
+      const sub = R[xs[0].s], over = [...new Set(xs.map((o) => o.x))];
+      for (const id of [a, b]) {
+        const f = multiplyFill([R[id].L, R[id].a, R[id].b], [sub.L, sub.a, sub.b]);
+        s.colours.push({ L: f[0], a: f[1], b: f[2], name: s.colours[s.meta[id].colour].name });
+        s.meta[id].colour = s.colours.length - 1;
+        s.meta[id].multiply = over;
+        if (s.z[id] < Math.max(...over.map((x) => s.z[x]))) s.zMoves.push({ id, how: 'over', ref: over.reduce((p, x) => (s.z[x] > s.z[p] ? x : p)) });
+      }
+      for (const x of over) s.meta[x].drop = true;
+      res.changed = true;
     } else if (reg.test(t[0]) && t[1] === 'flat') {
       s.meta[region(t[0])].ramp = false; res.changed = true;
     } else if (head === 'drop' || head === 'keep') {
@@ -101,7 +118,7 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       res.changed = true;
     } else if (reg.test(t[0]) && t[1] === 'text') {
       s.meta[region(t[0])].text = true; res.changed = true;
-    } else fail('unknown edit (merge, ramp, rN flat, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
+    } else fail('unknown edit (merge, ramp, rN flat, layers rA rB, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
   });
   s.edits.push(...edits);
   if (res.changed) recompute(s);
