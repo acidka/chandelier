@@ -613,6 +613,9 @@ CPU profile of four analyses (≈ 8 s): `regionStats` 13 %, `rasterize` (own ren
 collection 6 %, colour maths (`de76`, `gam`, `rgbToLab`, `labToRgb`, `mixT`) ~13 %, `modeFilter` 4 %, `chamfer` 3 %,
 `quantize` + `flatMask` 6 %, primitives scoring ~4 %.
 
+- **Token use** (benchmarks § 2j, 2026-11-27): a scene run cost more than the manual one on 4 of 5 cases — trim
+  replies (summary top 15 + counts, overlay only on analyze / when asked), one analyze per job; the guide split and
+  the other items are in the roadmap ("Token use").
 - **Fewer calls per run** (largest effect): one analyze per image (agents ran 2–4 and threw most away); a `position`
   on `scene build` / `refine` so hand layers aren't re-ordered after every build (F30); `drop in x y w h` (F35);
   readable overlays for small crops (F40); a clearer degenerate-region report (done: F33).

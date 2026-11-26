@@ -463,6 +463,13 @@ Carried over from 0.5.2 when it was released.
   more real jobs from the owner as cases 05–09 (signage panel, foil-logo mockup, business card, round emblem, flat
   illustration), also the scene tool's evaluation pool
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
+- [ ] **Token use** (2026-11-27 comparison: [benchmarks § 2j](research/benchmarks.md#2j-token-use-across-versions-same-tasks--2026-11-27)) — fewer turns and a smaller fixed context:
+  - [ ] Measure M2 and the calendar on the 0.6 build (exact input tokens; cost of the bigger guide and tool list on simple jobs)
+  - [ ] Split `recreate.md` (46 KB with SKILL.md ≈ 13 k tokens, read by every job): a short core + one file per kind of job (layouts and type, logos and marks, free-form / scene, photos); SKILL.md's table says which to read
+  - [ ] Smaller `scene` replies by default: summary top 15 regions + counts (`show` for more), overlay only on `analyze` and when asked; one analyze per job in the guide
+  - [ ] Fewer turns per recreate job: a font-test step in one batch (G46), `content_box` format in every reply that has it, schema hints for commonly guessed args (`transform_items` dx/dy, `arrange_items` actions), `configure` units echoed in each result
+  - [ ] Watch the tool-list budget: `scene` +3.1 KB (17.4 k tokens per request); keep descriptions short, suggest `CHANDELIER_TOOLS=lean` (4.9 k) for clients that load every schema
+  - [ ] Track tokens per run in every suite record (task notification) and flag a run over 1.3× its case's best
 - [ ] 🧊 Scene speed and quality ideas (2026-11-27: analyze ≤ 2.3 s of 5–11 min runs, so fewer calls first; GPU / gpu.js not now; region-step and fitting ideas, ramp hints, render-and-compare) — [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -675,3 +682,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-27 | `scene` out from behind `CHANDELIER_SCENE=1`: always in the tool list (36 tools, full list 58.9 KB, budget 59.5 KB); roadmap S1–S4 ticked; AGENTS.md: live-scene, scene-bench, scene-headroom commands |
 | 2026-11-27 | Suite 09 v5 (release build, guide = v2's method): 8.7 min / 65 calls / 202 k tokens / rmse 0.119; hat ramped into one gradient shape, clean hand-drawn lips; flower still regular ellipses, hair flat. Fixed: a rebuild left items past the first 100 per step (F41: steps ≤ 100 items, leftovers cleared by name; live test with 170 items), overlays up to 1600 px (F43). recreate.md G42–G45 |
 | 2026-11-27 | Suite case 05 sign panel, first pair: manual v1 6.1 min / 53 calls / rmse 0.079, scene v2 (mark only) 8.5 min / 74 / 0.084 — alike at full view. Series stopped after 05 (owner); 07, 01, 02 not run. recreate.md G46–G51 (font tests, constructed wordmarks, teardrop specks, JPEG weight, content_box) |
+| 2026-11-27 | Token use across versions compared ([benchmarks § 2j](research/benchmarks.md)): turns dominate; tool list 16.2 → 17.4 k, guide 4 → 13 k tokens per request; scene runs dearer than manual on suite jobs. Improvements added to 0.6 (split the guide, smaller scene replies, fewer turns, measure M2 / calendar on 0.6) |

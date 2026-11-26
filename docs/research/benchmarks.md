@@ -686,6 +686,37 @@ relax, tolerance 1.5 px), photo detection on flat areas at ≤ 600 px, `drop < %
 rewritten (render-based ink fix, disagreeing inks reported, drawn edges only, undo when worse), build layer on top;
 recreate.md § 5.0 rewritten. Offline effect on case 08's crop: 572 → 288 regions, 5,539 → 2,716 segments.
 
+## 2j. Token use across versions, same tasks — 2026-11-27
+
+Two measures, never mixed: the M2 and calendar macros count API input tokens (§ 2); the recreate suite reports the
+subagent tokens of the task notification (§ 2g–2i). Sizes: tool list from `node scripts/schema-size.mjs`, guide =
+`recreate.md` + `SKILL.md` (tokens ≈ characters / 3.5); Node 22.23, macOS 27.2.
+
+| Task | Runs, earliest → latest | Tokens | Calls |
+|---|---|---|---|
+| M2 (input tokens, arm C2) | MVP-0 → phase 3 → phase 4 → MVP → 0.1 → 0.2 → 0.4 lean | 0.38 → 0.85 → 0.70 → 0.42 → 0.44 → 0.35 → 0.36 M | 9 → 12 → 14 → 9 → 9 → 10 → 7 |
+| Calendar (input tokens, arm C2) | phase 4 → shorter build loop | 1.05 → 0.78 M | 16 → 14 |
+| 04 ribbons photo | v2 → v5 → v8 → v9 scene → v10 scene | 235 → 202 → 156 → 197 → 159 k | 99 → 67 → 46 → 59 → 47 |
+| 09 flat illustration | v1 manual → v2 scene → v3 → v4 → v5 | 125 → 155 → 248 → 178 → 202 k | 28 → 49 → 90 → 49 → 65 |
+| 06 foil logo | v1 manual → v2 scene → v3 scene | 153 → 164 → 218 k | 42 → 52 → 83 |
+| 08 emblem | v1 scene → v2 scene → v3 manual | 208 → 195 → 172 k | 61 → 64 → 33 |
+| 05 sign panel | v1 manual vs v2 scene | 175 vs 193 k | 53 vs 74 |
+
+Fixed context per request: tool list 16.2 k tokens (0.4) → 17.4 k (0.6, `scene` 3.1 KB; lean profile 4.9 k); guide
+15.5 KB ≈ 4 k tokens (2026-11-25) → 46 KB ≈ 13 k (2026-11-27). No M2 / calendar run on the 0.6 build yet.
+
+**Why:** tokens ≈ turns × context, every turn re-reads everything. (1) Turns dominate: the cheapest runs have the
+fewest calls (09 v1, 04 v8), the dearest the most (09 v3: 90 calls). (2) Doing more per call saved the most (M2 back to
+0.35–0.44 M with one builder / batch, ~8 Illustrator calls). (3) The tool list raises every turn (phase 3's 0.85 M came
+with ~17.6 k tokens of schemas; +1.2 k per turn with `scene`, ~80 k over a 65-call run). (4) The guide grew 6×: read
+once, then in every later turn (~0.4–0.6 M cached input over 50–60 calls) — it cut rounds (04: 9 rounds / 99 calls →
+4 / 46), but every job reads all of it. (5) On these jobs a `scene` run cost more than the manual one (09, 06, 05, 08;
+04 even): a 40-row table + overlay per analyze/edit, 2–4 analyses per job, hand work (text, geometry, small parts)
+still needed, and tool bugs that cost rounds (now fixed: degenerate regions, stale items, layer jumping on top, a
+build without `drop in`). (6) A wrong guide costs most: 09 v3 (248 k) followed the later-revised "hand-draw shaded
+shapes". (7) Small slips add a round each (`content_box` read as corners, a session in pt, font trial and error,
+guessed argument names). Improvements: [roadmap 0.6, token use](../roadmap.md).
+
 ## 3. Targets
 
 | Metric | Target | Status |
