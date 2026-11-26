@@ -44,7 +44,7 @@ needs. Organic, irregular art (illustrations, detailed silhouettes such as trees
 listed: start from recreate.md § 5.0 (analyze → edits → build → refine); geometry and text are still constructed. Short version:
 
 1. Look at the image with `preview {image: "<path>", grid: true}`: pixel size, ppi, and `content_box` (the page's
-   pixel box). **Don't use Python/PIL, OpenCV, Swift or sips for images:** they may be missing and installing them
+   pixel box, **[x, y, w, h]** — scale S = artwork width ÷ w). **Don't use Python/PIL, OpenCV, Swift or sips for images:** they may be missing and installing them
    costs the user time; `preview {image}` needs nothing.
 2. Separate artwork from photo or mockup (perspective, folds, light, bindings: left out). Find the artwork's flat shape
    and its size (a given size or dieline is the truth; map the photographed face onto it). List parts and roles; copy

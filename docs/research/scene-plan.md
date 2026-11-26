@@ -485,6 +485,8 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F42 | ⏳ | 09 v5 | refine "corrected" a skin-shadow ink (ΔE 26.8) into a dark brown patch |
 | F43 | ✅ | 09 v5 | the overlay of a 620 px image was shrunk to ~500 px per half: overlays up to 1600 px |
 | F44 | ⏳ | 09 v5 | `text_boxes` cap height (25.3 mm for the title) doesn't match the real caps |
+| F45 | ⏳ | 05 v2 | refine on a one-ink part reports darkest = lightest (meaningless) |
+| F46 | ⏳ | 05 v1, v2 | `get_items {points}` on a compound path fails with MRAP (twice in both runs) |
 | F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
@@ -538,6 +540,12 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G43 | ✅ | 09 v5 | lips belong with flower and jewellery on the "draw by hand" list (the scene's lips are a lumpy blob) |
 | G44 | ✅ | 09 v5 | measure caps from the image, not from `text_boxes` |
 | G45 | ✅ | 09 v5 | dropping a part that wraps another (a bracelet on a wrist) fills it with what lies under: draw the covered piece (skin) or `fill` the right region |
+| G46 | ✅ | 05 v1, v2 | test fonts in one batch (same line in 4–6 candidates, compare box widths with the measured width, one render); the x-height : cap-height ratio points to the family |
+| G47 | ✅ | 05 v1, v2 | `content_box` is [x, y, w, h]; on a panel with a white area the whole-page box can be wrong — judge with region compares |
+| G48 | ✅ | 05 v1, v2 | a geometric lowercase wordmark: construct it (circles/ellipses + stems, unite, minus_front the counters) instead of chasing fonts |
+| G49 | ✅ | 05 v1, v2 | splashes / teardrops: a circle plus two tangents to the tip, sizes and angles as measured (uneven if the reference is); drop the scene's lopsided specks |
+| G50 | ✅ | 05 v1, v2 | a JPEG screenshot makes type look heavier: don't pick the weight from the blur |
+| G51 | ✅ | 05 v1 | reading a zoomed image: px = region.x + display ÷ zoom |
 | G31 | ✅ | 09 v3 | `name:` refs match the whole document: they hit another version's item of the same name |
 
 ### Owner decisions pending

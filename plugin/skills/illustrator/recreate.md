@@ -89,6 +89,11 @@ Skip what already exists (a document, a reference artboard): reuse it.
   against the cap height; width from a known word's length.
 - Fonts match fuzzily (`fonts {query}` when unsure). A missing font: the closest installed one, then match widths with
   `horizontal_scale` so lines break where the reference breaks. Body copy goes in area text.
+- **Choosing the font:** set the same line in 4–6 candidate fonts in one batch, compare the returned box widths with the
+  measured width and look at one render. The x-height : cap-height ratio narrows the family (0.75 → Tahoma/Verdana).
+  A JPEG screenshot makes type look heavier than it is: don't pick the weight from the blur.
+- A geometric lowercase **wordmark** (circles or ellipses and stems) is faster to construct than to match with fonts:
+  measure counters and stems in one zoom, unite the positive shapes, `minus_front` the counters and an arch's cutter.
 - **Non-Latin text** (Cyrillic, Greek…): the fuzzy font match doesn't check the script — look at the text in a
   preview close-up; missing glyphs show as boxes or a fallback face. Pick a font that has the script.
 - **Wordmark, in this order:** cap height with the size, then one wide letter's width with `horizontal_scale`, then the
@@ -227,6 +232,9 @@ it with what lies under it (often the dark sleeve): `fill` the right region, or 
 **Keeping only part of a scene** (the substrate, the primitives): drop the rest in the scene — `drop in x y w h`
 (every region inside a box, image px), ranges, `drop < %` — or delete built items by name (`name:<layer> r12`; a
 region you named is drawn under that name alone: `name:<Name>`); a later rebuild keeps deleted regions dropped.
+**Small specks around a mark** (splashes, teardrops, dots under ~1 %, low conf): the scene draws them lopsided — drop
+them and construct each: a circle plus two tangent lines to the tip, at the measured size and angle (uneven if the
+reference is).
 **Lost transparency** (black or white corners around a logo): `drop r1 r2 fill none` leaves them empty.
 
 ### 5a. Decompose into layers
