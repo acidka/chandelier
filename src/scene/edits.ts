@@ -83,9 +83,13 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       if (ref === id) fail('a region can\'t move relative to itself');
       s.zMoves.push({ id, how, ref });
       res.changed = true;
+    } else if (reg.test(t[0]) && ['ellipse', 'circle', 'rect', 'rounded', 'polygon', 'free', 'auto'].includes(t[1])) {
+      const id = region(t[0]);
+      s.meta[id].prim = t[1] === 'auto' ? undefined : (t[1] as 'ellipse');
+      res.changed = true;
     } else if (reg.test(t[0]) && t[1] === 'text') {
       s.meta[region(t[0])].text = true; res.changed = true;
-    } else fail('unknown edit (merge, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, tolerance, show, stack on|off, rN text)');
+    } else fail('unknown edit (merge, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
   });
   s.edits.push(...edits);
   if (res.changed) recompute(s);

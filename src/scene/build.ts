@@ -3,8 +3,7 @@
 // px; create_path's scale and x, y place them on the target rect.
 import { segsToD, type Seg } from '../fitcurve.js';
 import { labSpec } from './color.js';
-import { stacked } from './stack.js';
-import { skipped } from './analyze.js';
+import { live } from './primitives.js';
 import type { Scene } from './types.js';
 
 export interface BuildOpts {
@@ -26,7 +25,7 @@ export const swatchName = (s: Scene, ci: number, layer: string) => s.colours[ci]
 export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; items: number; swatches: number; anchors: number; bytes: number; regions: number[] } {
   const layer = o.layer ?? 'Scene', { w, h } = s.work, [rx, ry, rw, rh] = o.rect;
   const sx = rw / w, sy = rh / h, bx = (o.bleed ?? 0) / sx, by = (o.bleed ?? 0) / sy;
-  const shapes = stacked(s.pm, s.seg.regions, s.z, s.fits, { tile: s.tile, skip: skipped(s) });
+  const shapes = s.shapes;
   const used = [...new Set(shapes.map((sh) => s.meta[sh.region].colour))].sort((a, b) => a - b);
   const head: BatchStep[] = [
     { tool: 'delete_items', args: { refs: `layer:${layer}` } },
@@ -36,22 +35,29 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
   // points on the image border run out into the bleed
   const push = (p: number[]) => [p[0] <= 1e-6 ? -bx : p[0] >= w - 1e-6 ? w + bx : p[0], p[1] <= 1e-6 ? -by : p[1] >= h - 1e-6 ? h + by : p[1]];
   const bleedSegs = (loop: Seg[]): Seg[] => (bx || by ? loop.map((c) => c.map(push) as Seg) : loop);
-  const items = shapes.map((sh) => ({
-    d: segsToD(sh.loops.map(bleedSegs), true),
-    fill: `swatch:${swatchName(s, s.meta[sh.region].colour, layer)}`,
-    ...(sh.holes ? { fill_rule: 'evenodd' } : {}),
-    name: s.meta[sh.region].name ?? `${layer} r${sh.region}`,
-    note: `scene ${s.id} r${sh.region}`,
-  }));
-  const base = { layer, x: rx, y: ry, scale: [sx, sy], stroke: 'none' };
+  const r2 = (v: number) => Math.round(v * 1000) / 1000;
+  const items = shapes.map((sh) => {
+    const common = { fill: `swatch:${swatchName(s, s.meta[sh.region].colour, layer)}`, name: s.meta[sh.region].name ?? `${layer} r${sh.region}`, note: `scene ${s.id} r${sh.region}` };
+    const pr = s.prims[sh.region];
+    if (pr && live(pr)) {
+      // a live shape in session units; a side on the image border runs into the bleed
+      let x0 = pr.cx - pr.a, x1 = pr.cx + pr.a, y0 = pr.cy - pr.b, y1 = pr.cy + pr.b;
+      if (pr.kind === 'rect') { if (x0 < 0.75) x0 = -bx; if (y0 < 0.75) y0 = -by; if (x1 > w - 0.75) x1 = w + bx; if (y1 > h - 0.75) y1 = h + by; }
+      const shape = pr.kind === 'rounded' ? 'rounded_rect' : pr.kind === 'circle' ? 'ellipse' : pr.kind;
+      return { tool: 'create_shape', item: { shape, x: r2(rx + x0 * sx), y: r2(ry + y0 * sy), w: r2((x1 - x0) * sx), h: r2((y1 - y0) * sy), ...(pr.kind === 'rounded' ? { r: r2(pr.r! * Math.min(sx, sy)) } : {}), ...common } };
+    }
+    return { tool: 'create_path', item: { d: segsToD(sh.loops.map(bleedSegs), true), ...(sh.holes ? { fill_rule: 'evenodd' } : {}), ...common } };
+  });
+  const base: Record<string, Record<string, unknown>> = { create_path: { layer, x: rx, y: ry, scale: [sx, sy], stroke: 'none' }, create_shape: { layer, stroke: 'none' } };
   const batches: BatchStep[][] = [head];
   let cur = batches[0], n = 0, bytes = JSON.stringify(head).length, size = bytes;
-  for (const it of items) {
+  for (const { tool, item: it } of items) {
     const b = JSON.stringify(it).length;
     if (size + b > MAX_BYTES && cur.length > (cur === batches[0] ? head.length : 0)) { cur = []; batches.push(cur); size = 0; n = 0; }
     let step = cur[cur.length - 1];
-    if (!step || step.tool !== 'create_path' || (step.args.items as unknown[]).length >= MAX_ITEMS) {
-      step = { tool: 'create_path', args: { ...base, items: [] }, ...(o.artboard !== undefined ? { artboard: o.artboard } : {}) };
+    // consecutive items of one kind share a step (z order is kept: steps run in order, new items go in front)
+    if (!step || step.tool !== tool || (step.args.items as unknown[]).length >= MAX_ITEMS) {
+      step = { tool, args: { ...base[tool], items: [] }, ...(o.artboard !== undefined ? { artboard: o.artboard } : {}) };
       cur.push(step);
     }
     (step.args.items as unknown[]).push(it);

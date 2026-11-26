@@ -22,8 +22,8 @@ export const scene: ToolDef = {
   name: 'scene',
   description: `Image → editable vector scene; the pixel work happens here, Illustrator only at build. Image px until build.
 "analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high → id, a 1-page summary (regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
-"edit": id, edits ["merge r3 r4", "drop r12", "keep r12", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
-"build": id; rect (default the artboard), artboard, bleed, layer ("Scene") → one undo step: global swatches + one path per region, bottom to top; a re-build replaces the layer.
+"edit": id, edits ["merge r3 r4", "drop r12", "keep r12", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
+"build": id; rect (default the artboard), artboard, bleed, layer ("Scene") → one undo step: global swatches + one path (or live rect/ellipse for clean primitives) per region, bottom to top; a re-build replaces the layer.
 dir: where scene.json is kept (default a temp folder; id may be its path).`,
   shape: {
     action: z.enum(['analyze', 'edit', 'build', 'refine']),
@@ -103,7 +103,7 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
     for (const c of res.content.slice(1)) warnings.push((c as { text: string }).text);
     const d = JSON.parse(body) as { results: { ok: boolean; data?: { items?: { uuid: string }[] } }[] };
     let k = Object.keys(items).length;
-    steps.forEach((st, i) => { if (st.tool === 'create_path') for (const it of d.results[i]?.data?.items ?? []) items['r' + plan.regions[k++]] = it.uuid; });
+    steps.forEach((st, i) => { if (st.tool === 'create_path' || st.tool === 'create_shape') for (const it of d.results[i]?.data?.items ?? []) items['r' + plan.regions[k++]] = it.uuid; });
   }
   s.built = { layer, rect, units: ctx.settings.units, items };
   save(s);

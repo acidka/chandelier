@@ -9,7 +9,9 @@ import { quantize, type Quant } from './quantize.js';
 import { segment, regionStats } from './regions.js';
 import { planarMap } from './planar.js';
 import { fitEdges } from './fitedges.js';
-import { zOrder, stacked } from './stack.js';
+import { zOrder, stacked, type Shape } from './stack.js';
+import { partPts } from './planar.js';
+import { detectPrimitive, primSegs, type Prim } from './primitives.js';
 import { rasterize, rmse } from './raster.js';
 import { DETAIL, type Params, type Scene } from './types.js';
 
@@ -48,7 +50,7 @@ export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path
     work, toSource: r.toSource, lab, quant, seg, colours,
     meta: seg.regions.map((g) => ({ colour: Math.max(0, g.group) })),
     zMoves: [], tile: false, tol: d.tol, edits: [],
-    pm: null as never, fits: [], z: [], render: work, iou: [], estRmse: 0, ms: 0,
+    pm: null as never, fits: [], z: [], prims: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
   };
   recompute(s);
   s.ms = Math.round(performance.now() - t0);
@@ -85,6 +87,9 @@ export function recompute(s: Scene): void {
   s.fits = fitEdges(s.pm, { tolOf });
   s.z = applyZ(s, zOrder(s.pm, s.seg.regions));
   const shapes = stacked(s.pm, s.seg.regions, s.z, s.fits, { tile: s.tile, skip: skipped(s) });
+  s.prims = primitives(s, shapes);
+  for (const sh of shapes) { const p = s.prims[sh.region]; if (p) { sh.loops = [primSegs(p)]; sh.holes = false; } }
+  s.shapes = shapes;
   const out = rasterize(shapes.map((sh) => ({ loops: sh.loops, rgb: colourRgb(s, sh.region), evenodd: sh.holes, id: sh.region })), w, h, { ids: true, bg: [255, 255, 255] });
   s.render = out.img;
   s.estRmse = Math.round(rmse(s.work, out.img) * 1000) / 1000;
@@ -97,4 +102,19 @@ export function recompute(s: Scene): void {
     if (a >= 0 && a === b) inter[a]++;
   }
   s.iou = s.seg.regions.map((_, i) => (uni[i] ? Math.round((inter[i] / uni[i]) * 100) / 100 : 0));
+}
+
+/** S2a: primitive per drawn shape — in stacked mode the region plus what it runs under (the background is the whole
+ * image: a rectangle) — when it is one boundary loop without holes and 60 px or more */
+export function primitives(s: Scene, shapes: Shape[]): (Prim | null)[] {
+  const out: (Prim | null)[] = s.seg.regions.map(() => null);
+  if (s.tile) return out;
+  for (const sh of shapes) {
+    const m = s.meta[sh.region], r = s.seg.regions[sh.region];
+    if (m.prim === 'free' || sh.raw.length !== 1 || !sh.raw[0].outer || (r.area < 60 && !m.prim)) continue;
+    const pts: number[][] = [];
+    for (const p of sh.raw[0].parts) { const q = partPts(s.pm, p); pts.push(...(pts.length ? q.slice(1) : q)); }
+    out[sh.region] = detectPrimitive(pts, m.prim);
+  }
+  return out;
 }

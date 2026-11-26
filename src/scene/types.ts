@@ -5,6 +5,8 @@ import type { Quant } from './quantize.js';
 import type { Segmentation } from './regions.js';
 import type { PlanarMap } from './planar.js';
 import type { Seg } from '../fitcurve.js';
+import type { Prim, PrimKind } from './primitives.js';
+import type { Shape } from './stack.js';
 
 export type Detail = 'low' | 'normal' | 'high';
 
@@ -24,7 +26,7 @@ export interface Params {
 export interface Colour { L: number; a: number; b: number; swatch?: string; name?: string }
 
 /** what edits changed about a region (by id; ids never change after analyze) */
-export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number }
+export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number; /** force a primitive, or 'free' = never */ prim?: PrimKind | 'free' }
 
 export interface Scene {
   id: string;
@@ -48,6 +50,10 @@ export interface Scene {
   pm: PlanarMap;
   fits: Seg[][];
   z: number[];
+  /** primitive per region (null: drawn from its fitted outline) */
+  prims: (Prim | null)[];
+  /** drawn shapes, bottom to top */
+  shapes: Shape[];
   render: Img;
   /** per region: rendered vs labelled IoU */
   iou: number[];

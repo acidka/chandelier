@@ -45,7 +45,7 @@ export async function load(file: string, tmpPng: string): Promise<Scene> {
   const s: Scene = {
     id: j.id, dir: dirname(dirname(file)), params: j.params, source: j.source, work, toSource, lab, quant, seg,
     colours: j.colours, meta: j.meta, zMoves: j.zMoves, tile: j.tile, tol: j.tol, edits: j.edits, built: j.built,
-    pm: null as never, fits: [], z: [], render: work, iou: [], estRmse: 0, ms: 0,
+    pm: null as never, fits: [], z: [], prims: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
   };
   recompute(s);
   put(s);
