@@ -35,7 +35,7 @@ tools aren't enough. The [README](../README.md) is the short tour; this folder i
 | [research/illustrator-quirks.md](research/illustrator-quirks.md) | Known Illustrator 29.x failures and how Chandelier handles each one |
 | [research/feature-gaps.md](research/feature-gaps.md) | Missing tools, user needs, all known competitors with pros and cons, proposed order for 0.1.x–0.4 (2026-11-23) |
 | [research/competitors.md](research/competitors.md) | `ie3jp/illustrator-mcp-server` and Adobe's official MCP (beta): what they do, tool parity map |
-| [research/plan-then-run.md](research/plan-then-run.md) | Proposal (not on the roadmap): an opt-in mode where the designer approves a whole job once, then it runs at full speed |
+| [research/plan-then-run.md](research/plan-then-run.md) | Proposal (phase 8 candidate): an opt-in mode where the designer approves a whole job once, then it runs at full speed |
 | [../bench/README.md](../bench/README.md) | How to run the benchmarks (scripts and saved results) |
 
 ## Status legend (used in every doc)

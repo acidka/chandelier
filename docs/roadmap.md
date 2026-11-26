@@ -307,6 +307,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 - [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
 - [x] ✅ Visual diff: compare a preview with a reference image and report misaligned regions — done in 0.4 (`preview` `differences`)
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
+- [ ] 🧊 Plan-then-run approval mode: the agent sends a whole job as one plan (`batch {plan: true}`), the designer approves it once (panel, MCP elicitation or chat), it runs as one undo step; server-enforced while `configure {approve: "plan"}`; drift check, expiry, one run per plan — [proposal](research/plan-then-run.md)
 
 ## Milestone 🎯 0.2.1 — quick wins ✅ (released 2026-11-24)
 
@@ -627,3 +628,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Bugs #13–#15 from recreate suite run 1 fixed: creating with a locked active layer (quirk C32, all create tools), gradient on live text refused with a hint instead of rendering black (quirk C33), `preview {image}` samples read the whole image, also outside `region`; live-release and unit checks |
 | 2026-11-25 | Owner on suite run 1: 01, 02, 04 (v8) perfect; 03 on hold until a better reference photo replaces the current one (benchmarks § 2h) |
 | 2026-11-25 | **0.5.3 released**: recreate tools (`preview {image, profile}`, `create_path {fit, shade, map, extend, clip_to}`), the general recreate guide, bugs #13–#15 |
+| 2026-11-26 | Plan-then-run approval mode added to phase 8 as a candidate (🧊): [research/plan-then-run.md](research/plan-then-run.md) |

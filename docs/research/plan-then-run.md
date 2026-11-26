@@ -1,6 +1,6 @@
 # Plan-then-run approval mode (proposal)
 
-Status: proposal, 2026-11-26. **Not on the roadmap.** Shared version with a flow diagram:
+Status: proposal, 2026-11-26; on the roadmap as a phase 8 candidate (🧊, [roadmap](../roadmap.md#phase-8--future-)). Shared version with a flow diagram:
 <https://claude.ai/artifact/PyzfAnrJU8yqgXNnvw3zVM>.
 
 ## What it is
