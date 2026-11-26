@@ -514,7 +514,7 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G22 | ✅ | 06 v2 | a part crop must reach past every free end of the part (or end where the part ends) |
 | G23 | ✅ | 06 v2 | centred point text with tracking sits half a tracking step left: shift it by tracking / 2 |
 | G24 | ✅ | 06 v2 | wordmark width: one letter's width with `horizontal_scale` first, then the overall width with tracking |
-| G25 | ✅ | 09 v3 | when the whole subject is soft-shaded: hand-build the shaded parts with gradients, scene only for flat parts |
+| G25 | ✅ (revised) | 09 v3 | soft-shaded subject: first written as "hand-build the shaded parts" — made v3/v4 worse; now: keep the scene, `ramp` the camouflage bands (what v2 did) |
 | G26 | ✅ | 09 v3 | `max_px` (small art in a large image) and `min_de` (inks that merge: hair vs black, lips vs brown) |
 | G27 | ✅ | 09 v3 | a part build over the main scene: seams at the crop edge, regions running under it — build it under or clip it |
 | G28 | ✅ | 09 v3 | re-order hand-built layers after every build or refine (the scene layer goes on top) |
@@ -526,8 +526,8 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G35 | ✅ | 06 v3 | a style update doesn't clear local tracking: re-apply the paragraph style |
 | G36 | ✅ | 06 v3 | check stem weight after `horizontal_scale` (Bold 120 % too heavy, Bold 112 % + tracking right) |
 | G37 | ✅ | 06 v3 | straight frame lines with feet or a taper: filled polygons from profile tracks, not grid reading (0.7 mm off) |
-| G38 | ✅ | 09 v4 | soft-shaded illustration recipe: scene for everything, hand layers above it hiding its shaded parts, no refine after hand work |
-| G39 | ✅ | 09 v4 | soft-shaded small parts (petals) and jewellery: primitives with radial gradients, not a part crop |
+| G38 | ✅ (revised) | 09 v4 | soft-shaded illustration recipe: scene for everything (one full-image analyze, `ramp` per shaded shape, merged inks set by hand), no refine after hand work |
+| G39 | ✅ (revised) | 09 v4 | petals: flat fills in 2–3 greens + darker outline, back first (radial gradients looked bubbly); jewellery by hand |
 | G40 | ✅ | 09 v4 | `max_px` never upsamples: a small crop stays small |
 | G41 | ✅ | 09 v4 | wordmark: cap height with size first, then width with `horizontal_scale`, then tracking |
 | G31 | ✅ | 09 v3 | `name:` refs match the whole document: they hit another version's item of the same name |
@@ -548,6 +548,12 @@ fringe pixels, rims must run between two shapes, small enclosed near-colour patc
 points → 09 face built 0.119 → 0.096, 06 crown unchanged (0.142 vs floor 0.071), 08 figures 0.090. Open: one extra
 anchor on a square with a half-covered row (test relaxed, TODO), 06 crown (min-area merge eats holes), fitting stage
 loss on 09 (0.074 → 0.090). Next: rerun 06 scene, re-test 09 scene with this build, label docs 08 / ribbons.
+
+**Owner verdicts (2026-11-27):** 06 v3 "almost identical — people can't tell it from the original"; 09 v2 "still
+unbeatable but far from perfect", every 09 run after it "really bad". Cause found: not the build (the v2-era build and
+today's both band the hat; today's keeps more detail — lips red, bracelet) but the guide: G25/G38/G39 sent v3 and v4 to
+hand-draw the hat and gradient petals and to lower `min_de` (facets). v2 kept the scene for everything, `ramp`ed the hat
+brim's bands, set hair and lips inks by hand, drew flat outlined petals. Guide rewritten to that; next 09 run checks it.
 
 **06 scene rerun (v2, 2026-11-26):** 6.5 min / 52 calls / rmse 0.097 (manual v1 0.103); owner: the tree is almost
 identical to the reference. What made it: a crop of just the tree, `colors: 2` (one flat ink rendered as foil),

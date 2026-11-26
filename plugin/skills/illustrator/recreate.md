@@ -164,15 +164,18 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
    material's shading into a dozen inks and hundreds of specks.
    **Detail settings:** small art in a large image → raise `max_px` (up to 3000; it never upsamples: a small crop stays
    at its own size); two inks that merge (hair into black,
-   lips into brown) → lower `min_de` (e.g. 3) or set the ink by hand (`rN = #hex`) — lowering `min_de` also splits
-   soft shading into facets, so prefer fixing the few inks.
+   lips into brown) → set those regions' inks by hand (`r9 = #231612`, `r33 = #9a1b19`, sampled with
+   `preview {image, sample}`). Don't lower `min_de` or raise `colors` for it: that splits soft shading into facets
+   all over the image (case 09: faceted skin and hand).
 2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
    `drop < 0.05` drops every tiny region at once, e.g. small text and texture), `text x y w h` over each text block (in the analyzed crop's pixels),
    `r10 logo` on marks, `rN circle` / `rect` to force a primitive — only when the **whole** outline is that primitive
    (a disc with a lobe is not a circle: keep it free and fix the round stretch afterwards) —, `c0 = swatch:…` for
    brand inks, `name` the parts.
-   Hints are suggestions: take `ramp …` only for a gradient that is artwork, `layers rA rB` only when the overlap
+   Hints are suggestions: take `ramp …` only for a gradient that is artwork — and give `ramp rA rB rC` yourself
+   when a soft-shaded shape comes out as camouflage-like bands (a hat brim): its bands become one shape with a linear
+   gradient; `layers rA rB` only when the overlap
    really is two translucent inks (the new inks must look right in the summary), `cN = cM` when two inks are one.
    Edits add up; `undo`, `undo 3` or `reset` go back. Check the new summary.
 3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer (on top — every build
@@ -198,12 +201,14 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
 **When to leave the scene:** after one round of edits the build still shows camouflage-like boundaries inside bands
 (soft shading, texture), or a part keeps coming out lumpy → draw that part with § 5a–5c (profile tracks + fit) and
 keep the scene for the rest. Don't spend more than two builds on one part.
-**A soft-shaded illustration** (gradients on the main shapes — a hat, petals, skin): no ramp hint comes for soft
-shading, so draw the shaded shapes by hand (§ 5a–5c, gradients § 7) and use the scene only for the flat parts. Recipe:
-build the scene once for everything, put the hand-drawn layers above it (they hide its shaded parts, nothing to
-delete), and don't refine after hand work (refine rebuilds the scene on top). Small soft-shaded parts (petals) and
-jewellery (pearls, stones): primitives with radial gradients — a part crop of them comes out as patches, and
-`drop < %` removes jewellery-scale detail.
+**A soft-shaded illustration** (gradients on the main shapes — a hat, skin; case 09, the owner's best run): keep the
+scene for the **whole** illustration from one analyze of the full image (`detail: "high"`, default `colors`), and in
+one edit call: `ramp` the bands of each big soft-shaded shape into one gradient shape, set the few inks that merged
+(hair, lips) by hand, `merge` split parts, `name` the inks. Don't hand-draw the big shapes instead (the runs that
+did looked worse), and don't refine after hand work (refine rebuilds the scene on top). Draw by hand only what the
+scene can't hold: a layered flower — petals as rotated ellipses or fitted shapes with **flat** fills in 2–3 greens and
+a darker outline stroke, back petals first (radial gradients on every petal looked "bubbly"); jewellery (pearls,
+stones) — `drop < %` removes detail that small.
 
 **Keeping only part of a scene** (the substrate, the primitives): build, then remove the rest by name —
 `delete_items {refs: ["name:<layer> r12", …]}` (the summary's ids; a region you named is drawn under that name alone:
