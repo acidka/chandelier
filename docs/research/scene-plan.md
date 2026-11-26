@@ -534,8 +534,9 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 
 ### Owner decisions pending
 
-- What `scene` is for after these runs: whole designs, or analysis + substrate + primitives + single parts from a
-  crop (structure, inks, edge points for the agent's own build).
+- ✅ What `scene` is for (2026-11-27, owner left it to the agent, to be rewritten after more tests): organic, irregular
+  artwork — whole (09 v2) or a part from a crop (06 v3 tree, 08 globe); geometry, text and layouts constructed;
+  photos at most the substrate (04). See plan.md D15, recreate.md § 5.0.
 - Remaining cases 05, 07, 09, 06, 01, 02: run in pairs (with and without `scene`) so every case has a baseline.
 
 ### Quality headroom (2026-11-26, in progress)

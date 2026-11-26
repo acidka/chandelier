@@ -150,9 +150,19 @@ Where agents usually fail: lumpy "camouflage" or "mountain" outlines instead of 
 
 ### 5.0 With the `scene` tool (when it is listed)
 
-`scene` does the pixel work: inks, regions, shared edges fitted once, primitives, ramps, overlaps. You decide. It
-is strongest on flat art (logos, emblems, flat illustrations, signage); on photos with soft shading use it for the
-flat parts and draw shaded bands with § 5a–5c and § 7.
+`scene` does the pixel work: inks, regions, shared edges fitted once, primitives, ramps, overlaps. You decide.
+
+**What it is for** (from the real-job suite, owner verdicts 2026-11-26/27; may change with more tests): **organic,
+irregular artwork that would take hundreds of hand-placed points** — a flat or softly shaded illustration (a figure,
+a face, hair, a hat), a detailed silhouette (a tree, roots, continents, figures in an emblem), many flat-colour shapes.
+Build those from the scene; **construct everything else** on layers of its own: geometry (circles, rays, frames,
+constant-width outlines, symmetric marks — § 4), text (live, § 3), layouts and grids. Results that set this: a foil
+logo whose tree came from a crop of the scene and whose sun, rays, frame and text were constructed — "almost
+identical, people can't tell it from the original"; a flat illustration built whole from the scene with its hat's
+bands ramped — the best run, while runs that hand-drew its shaded shapes were "really bad"; an emblem where the
+constructed version had cleaner circles with half the calls (the scene's best part was the globe). Photos of real
+objects: the scene for the flat substrate at most; curved shaded bands by § 5a–5c and § 7 (the best photo run used
+no scene). Layout jobs (calendars, cards, panels) don't need it.
 
 1. **Analyze.** `scene {action: "analyze", image, map: [TL, TR, BR, BL]}` for a photographed face (corners from
    `preview {image, grid}`; `bilinear: true` for a tapered face; on a box with rounded or wrapped edges put each side

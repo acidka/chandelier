@@ -231,6 +231,11 @@ stored once) → one fit per edge → stacked shapes → batch build. Plan and s
 | **State in memory + scene.json / labels.png** (chosen) | Survives a reconnect with `dir`; pixels re-derived (deterministic) | Reload re-runs ~1 s of analysis and needs the source image unchanged (sha1) |
 | **Behind `CHANDELIER_SCENE=1`** until it ships | Users pay no schema bytes (2.1 KB) while S1–S3 are proven | Raise the full-list budget to ~58.5 KB at release |
 
+**Purpose (decided 2026-11-27, owner delegated; revisit after more cases):** `scene` builds organic, irregular artwork
+(illustrations, detailed silhouettes, many flat-colour shapes), whole or from a crop of one part; geometry, text and
+layouts stay constructed by the agent, photos use it for the flat substrate at most. Evidence: suite cases 04, 06, 08,
+09 ([benchmarks § 2i](research/benchmarks.md)); guide: recreate.md § 5.0.
+
 ## 6. Tool catalogue
 
 Every mutating tool can also be a `batch` step: `{"tool": "create_shape", "args": {...}}`.
