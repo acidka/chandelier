@@ -4,7 +4,8 @@
 import { bez, type Seg } from '../fitcurve.js';
 import type { Img } from '../image.js';
 
-export interface RShape { loops: Seg[][]; rgb: number[]; evenodd?: boolean; id?: number }
+/** grad: linear gradient — colour c0 at projection t0, c1 at t1 along unit (ux, uy) from (cx, cy) */
+export interface RShape { loops: Seg[][]; rgb: number[]; evenodd?: boolean; id?: number; grad?: { cx: number; cy: number; ux: number; uy: number; t0: number; t1: number; c0: number[]; c1: number[] } }
 
 /** Bézier loops → closed polylines (about 0.5 px per step) */
 export function flatten(loops: Seg[][]): number[][][] {
@@ -65,7 +66,12 @@ export function rasterize(shapes: RShape[], w: number, h: number, o: { bg?: numb
         const c = Math.min(1, cov[x] / SUB);
         if (c <= 0) continue;
         const i = (y * w + x) * 3;
-        acc[i] += (s.rgb[0] - acc[i]) * c; acc[i + 1] += (s.rgb[1] - acc[i + 1]) * c; acc[i + 2] += (s.rgb[2] - acc[i + 2]) * c;
+        let col = s.rgb;
+        if (s.grad) {
+          const g = s.grad, t = (x + 0.5 - g.cx) * g.ux + (y + 0.5 - g.cy) * g.uy, f = Math.max(0, Math.min(1, (t - g.t0) / ((g.t1 - g.t0) || 1)));
+          col = [0, 1, 2].map((k) => g.c0[k] + (g.c1[k] - g.c0[k]) * f);
+        }
+        acc[i] += (col[0] - acc[i]) * c; acc[i + 1] += (col[1] - acc[i + 1]) * c; acc[i + 2] += (col[2] - acc[i + 2]) * c;
         if (ids && c > 0.5) ids[y * w + x] = s.id ?? 0;
       }
     }

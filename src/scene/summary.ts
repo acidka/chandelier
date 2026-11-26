@@ -12,7 +12,8 @@ export const alive = (s: Scene) => s.seg.regions.filter((r) => r.area > 0);
 
 export function kindOf(s: Scene, id: number): string {
   const m = s.meta[id];
-  return m.drop ? 'drop' : m.text ? 'text' : s.prims[id] ? (s.prims[id]!.kind === 'polygon' ? `poly${s.prims[id]!.n}` : s.prims[id]!.kind) : 'flat';
+  const p = s.prims[id], shape = p ? (p.kind === 'polygon' ? `poly${p.n}` : p.kind) : '';
+  return m.drop ? 'drop' : m.text ? 'text' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
 }
 
 export function conf(s: Scene, id: number): number {
@@ -23,7 +24,7 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   const { w, h } = s.work, total = w * h, regs = alive(s).sort((a, b) => b.area - a.area);
   const usedColours = [...new Set(regs.map((r) => s.meta[r.id].colour))].sort((a, b) => a - b);
   const anchors = s.fits.reduce((a, f) => a + f.length, 0);
-  const head = { id: s.id, file: o.file, px: [w, h], regions: regs.length, colours: usedColours.length, edges: s.pm.edges.length, anchors, est_rmse: s.estRmse, ms: s.ms };
+  const head = { id: s.id, file: o.file, px: [w, h], ...(s.photo ? { photo: true } : {}), regions: regs.length, colours: usedColours.length, edges: s.pm.edges.length, anchors, est_rmse: s.estRmse, ms: s.ms };
   const lines = [JSON.stringify(head)];
   const limit = o.limit ?? 40;
   let rows = regs.slice(0, limit);
@@ -48,6 +49,12 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   }).join(' · '));
   // hints
   const hints: string[] = [], minDe = s.params.minDe;
+  for (const g of s.rampGroups) {
+    const live = g.ids.filter((i) => s.seg.regions[i].area > 0);
+    if (g.merged) { if (live.length && !s.meta[live[0]].ramp) hints.push(`r${live[0]}: lighting flattened (ΔL ${g.dL}; "ramp r${live[0]}" keeps it as a gradient)`); }
+    else if (live.length > 1) hints.push(`ramp ${live.slice(0, 6).map((i) => 'r' + i).join(' ')} (ΔL ${g.dL}: one gradient? or merge = flat)`);
+  }
+  hints.splice(4);
   const pairs: [number, number, number][] = [];
   for (const r of regs) for (const n of r.nbrs.keys()) {
     const q = s.seg.regions[n];

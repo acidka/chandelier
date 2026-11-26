@@ -42,6 +42,18 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       for (const f of from) { R[f].area = 0; s.meta[f] = { colour: s.meta[f].colour }; }
       s.zMoves = s.zMoves.filter((m) => !from.has(m.id) && !(m.ref !== undefined && from.has(m.ref)));
       res.changed = true;
+    } else if (head === 'ramp') {
+      // ramp rA [rB …]: one region (merged) with a linear gradient from its pixels
+      if (t.length < 2) fail('needs a region');
+      const ids = t.slice(1).map(region), to = ids[0], from = new Set(ids.slice(1));
+      if (from.size) {
+        for (let p = 0; p < s.seg.map.length; p++) if (from.has(s.seg.map[p])) s.seg.map[p] = to;
+        for (const f of from) { R[f].area = 0; s.meta[f] = { colour: s.meta[f].colour }; }
+      }
+      s.meta[to].ramp = true;
+      res.changed = true;
+    } else if (reg.test(t[0]) && t[1] === 'flat') {
+      s.meta[region(t[0])].ramp = false; res.changed = true;
     } else if (head === 'drop' || head === 'keep') {
       if (t.length < 2) fail('needs a region');
       for (const id of t.slice(1).map(region)) { s.meta[id].drop = head === 'drop'; if (head === 'keep') s.meta[id].text = false; }
@@ -89,7 +101,7 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       res.changed = true;
     } else if (reg.test(t[0]) && t[1] === 'text') {
       s.meta[region(t[0])].text = true; res.changed = true;
-    } else fail('unknown edit (merge, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
+    } else fail('unknown edit (merge, ramp, rN flat, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
   });
   s.edits.push(...edits);
   if (res.changed) recompute(s);

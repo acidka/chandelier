@@ -2,7 +2,8 @@
 // z order, own render and error. recompute() redoes the geometry after edits.
 import { createHash } from 'node:crypto';
 import type { Img } from '../image.js';
-import { rgbToLab, labToRgb } from './color.js';
+import { rgbToLab, labToRgb, type Lab } from './color.js';
+import { planeStats, findRamps, rampOf } from './ramps.js';
 import { rectify } from './rectify.js';
 import { bilateral } from './smooth.js';
 import { quantize, type Quant } from './quantize.js';
@@ -31,26 +32,37 @@ function sortInks(q: Quant): Quant {
 export function prepare(src: Img, p: Params) {
   const d = DETAIL[p.detail];
   const r = rectify(src, { crop: p.crop, map: p.map, bilinear: p.bilinear, size: p.size, maxPx: p.maxPx });
-  const work = r.img, lab = bilateral(rgbToLab(work), { passes: d.passes });
+  const work = r.img, raw = rgbToLab(work), lab = bilateral(raw, { passes: d.passes });
   const skip = work.a ? work.a.map((v) => (v < 128 ? 1 : 0)) : undefined;
   const quant = sortInks(quantize(lab, { colors: p.colors, minDe: p.minDe, skip }));
-  return { work, toSource: r.toSource, lab, quant };
+  return { work, toSource: r.toSource, lab, quant, photo: isPhoto(raw, d.passes ? lab : bilateral(raw)) };
 }
 
 export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path: string; bytes?: Buffer }): Scene {
   const t0 = performance.now(), d = DETAIL[p.detail];
-  const { work, toSource, lab, quant } = prepare(src, p);
+  const { work, toSource, lab, quant, photo } = prepare(src, p);
   const r = { toSource };
   const minArea = Math.max(4, Math.round(Math.max(12, work.w * work.h * 5e-5) * d.area));
   const seg = segment(lab, quant.labels, { minDe: p.minDe, minArea, centres: quant.centres });
+  // ramps: bands of one gradient. A photo's are lighting: merged into one flat region; artwork's: a hint
+  const st = planeStats(seg.map, work.w, work.h, lab, seg.regions.length);
+  const rampGroups = findRamps(seg.regions, st, p.minDe, Math.max(minArea, work.w * work.h * 5e-4)).map((ids) => {
+    const L = ids.map((i) => seg.regions[i].L);
+    return { ids, dL: Math.round(Math.max(...L) - Math.min(...L)), merged: photo };
+  });
+  if (photo) {
+    const to = new Int32Array(seg.regions.length).map((_, i) => i);
+    for (const g of rampGroups) for (const i of g.ids.slice(1)) to[i] = g.ids[0];
+    for (let i = 0; i < seg.map.length; i++) if (seg.map[i] >= 0) seg.map[i] = to[seg.map[i]];
+  }
   const colours = Array.from({ length: quant.k }, (_, i) => ({ L: quant.centres[i * 3], a: quant.centres[i * 3 + 1], b: quant.centres[i * 3 + 2] }));
   const s: Scene = {
     id: o.id ?? nextId(), dir: o.dir, params: p,
     source: { path: o.path, sha1: o.bytes ? createHash('sha1').update(o.bytes).digest('hex') : '', w: src.w, h: src.h },
-    work, toSource: r.toSource, lab, quant, seg, colours,
+    work, toSource: r.toSource, lab, photo, rampGroups, quant, seg, colours,
     meta: seg.regions.map((g) => ({ colour: Math.max(0, g.group) })),
     zMoves: [], tile: false, tol: d.tol, edits: [],
-    pm: null as never, fits: [], z: [], prims: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
+    pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
   };
   recompute(s);
   s.ms = Math.round(performance.now() - t0);
@@ -90,7 +102,11 @@ export function recompute(s: Scene): void {
   s.prims = primitives(s, shapes);
   for (const sh of shapes) { const p = s.prims[sh.region]; if (p) { sh.loops = [primSegs(p)]; sh.holes = false; } }
   s.shapes = shapes;
-  const out = rasterize(shapes.map((sh) => ({ loops: sh.loops, rgb: colourRgb(s, sh.region), evenodd: sh.holes, id: sh.region })), w, h, { ids: true, bg: [255, 255, 255] });
+  s.ramps = s.seg.regions.map((r, id) => (r.area && s.meta[id].ramp ? rampOf(s.seg.map, w, h, s.lab, id) : null));
+  const out = rasterize(shapes.map((sh) => {
+    const rp = s.ramps[sh.region];
+    return { loops: sh.loops, rgb: colourRgb(s, sh.region), evenodd: sh.holes, id: sh.region, grad: rp ? { ...rp, c0: labToRgb(rp.c0[0], rp.c0[1], rp.c0[2]), c1: labToRgb(rp.c1[0], rp.c1[1], rp.c1[2]) } : undefined };
+  }), w, h, { ids: true, bg: [255, 255, 255] });
   s.render = out.img;
   s.estRmse = Math.round(rmse(s.work, out.img) * 1000) / 1000;
   // IoU of each region's visible pixels in the render vs its labels
@@ -117,4 +133,12 @@ export function primitives(s: Scene, shapes: Shape[]): (Prim | null)[] {
     out[sh.region] = detectPrimitive(pts, m.prim);
   }
   return out;
+}
+
+/** a photo or rendered mockup: the median pixel differs from its smoothed self (noise, grain); flat artwork is exact */
+export function isPhoto(raw: Lab, smooth: Lab): boolean {
+  const d: number[] = [];
+  for (let i = 0; i < raw.L.length; i += 7) d.push(Math.hypot(raw.L[i] - smooth.L[i], raw.A[i] - smooth.A[i], raw.B[i] - smooth.B[i]));
+  d.sort((a, b) => a - b);
+  return d.length > 0 && d[d.length >> 1] > 0.25;
 }
