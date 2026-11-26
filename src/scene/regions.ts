@@ -35,6 +35,9 @@ export interface SegOpts {
   modePasses?: number;
   /** ink colours (quantizer centres, k × Lab): a thin region whose mean is its own ink is a real stroke, never a rim */
   centres?: Float32Array;
+  /** measurement switches (headroom analysis): skip the rim / halo dissolve, the similar-colour merge */
+  noDissolve?: boolean;
+  noSimilar?: boolean;
 }
 
 export const SKIP = -2;
@@ -153,13 +156,19 @@ export function dissolveThin(seg: Segmentation, lab: Lab, tol: number, centres?:
   for (const r of regions) {
     if (!r.area) continue;
     const width = widthOf(r), nb = [...r.nbrs.entries()].sort((x, y) => y[1] - x[1]).map(([id]) => regions[id]).filter(solid).slice(0, 6);
-    // a thin ring or ribbon close to a solid neighbour's colour (JPEG ringing, a halo): part of that neighbour
-    if (width < 3 && nb.some((q) => de76(r.L, r.a, r.b, q.L, q.a, q.b) < 3 * minDe)) { dissolve[r.id] = 1; n++; continue; }
+    // how much of its outline touches q: a rim or halo runs BETWEEN two shapes and touches both along its length; a
+    // real thin stroke (an eye line, the gap between fingers) lies inside one shape and touches the other only at its ends
+    const share = (q: Region) => (r.nbrs.get(q.id) ?? 0) / Math.max(1, r.perim);
+    const between2 = (q: Region) => share(q) >= 0.2 && nb.some((o) => o !== q && share(o) >= 0.2);
+    // a thin ring or ribbon close to a solid neighbour's colour (JPEG ringing, a halo): part of that neighbour — between
+    // two shapes up to 3 × minDe, inside one shape (a tonal speck) only up to 2 × minDe
+    if (width < 3 && nb.some((q) => { const d = de76(r.L, r.a, r.b, q.L, q.a, q.b); return d < 2 * minDe || (d < 3 * minDe && between2(q)); })) { dissolve[r.id] = 1; n++; continue; }
     // a JPEG fringe at full resolution is 2–3 px wide: a mixture that thin is a rim, not a stroke
     if (nb.length < 2 || width >= 3.5) continue;
     if (centres && r.group >= 0 && de76(r.L, r.a, r.b, centres[r.group * 3], centres[r.group * 3 + 1], centres[r.group * 3 + 2]) < minDe / 2) continue;
     let between = false;
     for (let i = 0; i < nb.length && !between; i++) for (let j = i + 1; j < nb.length; j++) {
+      if (share(nb[i]) < 0.2 || share(nb[j]) < 0.2) continue; // not running between these two
       // under 3 px a JPEG fringe's colour drifts off the straight mix (chroma blur): a looser test
       const t = mixT([r.L, r.a, r.b], [nb[i].L, nb[i].a, nb[i].b], [nb[j].L, nb[j].a, nb[j].b], width < 3 ? Math.max(tol, 40) : tol);
       if (t >= -0.1 && t <= 1.1) { between = true; break; } // a mix, or (nearly) one side: either way not an ink of its own
@@ -228,6 +237,17 @@ export function mergeRegions(regions: Region[], minArea: number, lim: number): I
     }
     if (!changed) break;
   }
+  // a patch inside one region in a near colour (JPEG block noise, a second ink for one colour) joins it, any width;
+  // a real interior detail (an eye, a hole) differs strongly
+  if (lim > 0) {
+    const total = R.reduce((a, r) => a + r.area, 0);
+    for (let i = 0; i < R.length; i++) {
+      if (!R[i].area || R[i].nbrs.size !== 1) continue;
+      const [n] = [...R[i].nbrs.keys()], d = dist(i, n);
+      // near colour: any size; a small patch (< 0.05 %) up to ΔE 8 × lim (JPEG blocks of a saturated ink reach ΔE ~25)
+      if (R[n].area > R[i].area && (d < lim * 4 || (R[i].area < total * 5e-4 && d < lim * 8))) join(i, n);
+    }
+  }
   // similar neighbours, closest pair first; the smaller joins the larger
   for (let round = 0; round < 6; round++) {
     const pairs: [number, number, number][] = [];
@@ -252,13 +272,13 @@ export function segment(lab: Lab, labels: Uint8Array, o: SegOpts = {}): Segmenta
   const voted = modeFilter(labels, w, h, o.modePasses ?? 2);
   const cc = components(voted, w, h);
   const seg: Segmentation = { w, h, map: cc.map, regions: regionStats(cc.map, w, h, cc.count, lab, voted) };
-  dissolveThin(seg, lab, Math.max(6, minDe * 2), o.centres, minDe);
+  if (!o.noDissolve) dissolveThin(seg, lab, Math.max(6, minDe * 2), o.centres, minDe);
   seg.regions = regionStats(seg.map, w, h, cc.count, lab, voted);
-  const root = mergeRegions(seg.regions, minArea, minDe / 2);
+  const root = mergeRegions(seg.regions, minArea, o.noSimilar ? 0 : minDe / 2);
   for (let i = 0; i < w * h; i++) if (seg.map[i] >= 0) seg.map[i] = root[seg.map[i]];
   const merged = compact(seg, lab, voted);
   // a rim fragment's neighbours were fragments too before the merges: check once more against the merged regions
-  return dissolveThin(merged, lab, Math.max(6, minDe * 2), o.centres, minDe) ? compact(merged, lab, voted) : merged;
+  return !o.noDissolve && dissolveThin(merged, lab, Math.max(6, minDe * 2), o.centres, minDe) ? compact(merged, lab, voted) : merged;
 }
 
 /** renumber ids 0..n-1 by area (largest first) and recompute stats */

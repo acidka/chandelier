@@ -61,7 +61,7 @@ export function corners(p: number[][], closed: boolean, k = 4, minDeg = 45): num
     if (!best) continue;
     const a2 = at(i, -2 * k), b2 = at(i, 2 * k);
     if (a2 < 0 || b2 < 0) continue;
-    if (deviation(q, a2, i) > 0.75 || deviation(q, i, b2) > 0.75) continue;
+    if (deviation(q, a2, i) > 1 || deviation(q, i, b2) > 1) continue; // a half-covered pixel row zigzags by 1 px
     if (!closed && (s[i] < k || s[n - 1] - s[i] < k)) continue;
     if (!out.length || Math.abs(t - out[out.length - 1]) > 2) out.push(t);
   }
@@ -145,7 +145,9 @@ function sharpen(p: number[][], i: number, closed: boolean, k = 6): number[] {
 function fitEdge(e: Edge, tol: number, minDeg: number, T0?: number[], T1?: number[]): Seg[] {
   let p = e.pts;
   if (!e.closed && p.length <= 5) return fitCurve([p[0], p[p.length - 1]], {});
-  const c = corners(p, e.closed, 4, minDeg);
+  // corners found on lightly smoothed points: a 1-px jagged edge (anti-aliasing decided pixel by pixel) has no straight
+  // arms otherwise; a real corner turns as much after smoothing
+  const c = corners(relax(p, 2, e.closed, new Set()), e.closed, 4, minDeg);
   const fixed = new Set(c);
   // two passes of ±4: crack staircases and a JPEG fringe's ±1 px wobble become a smooth line; corners stay fixed
   p = relax(relax(p, 4, e.closed, fixed), 4, e.closed, fixed);

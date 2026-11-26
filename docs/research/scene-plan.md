@@ -497,3 +497,14 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 - What `scene` is for after these runs: whole designs, or analysis + substrate + primitives + single parts from a
   crop (structure, inks, edge points for the agent's own build).
 - Remaining cases 05, 07, 09, 06, 01, 02: run in pairs (with and without `scene`) so every case has a baseline.
+
+### Quality headroom (2026-11-26, in progress)
+
+Owner: quality first, not fewer calls. Case pairs: 09 manual 5.4 min / 28 calls / rmse 0.138 vs scene 5.0 / 49 / **0.095**
+(scene closer); 06 manual 8.0 min / 42 / 0.103 (crown simplified), 06 scene run stopped (tokens). `bench/scene-headroom.mjs`
+splits the error by stage (colour reduction → regions → fit → shared inks): most detail was lost in the region step's
+rim/halo dissolve (09 face 0.102 vs 0.052 floor). Changes (uncommitted runs not yet re-tested live): per-pixel unmixing of
+fringe pixels, rims must run between two shapes, small enclosed near-colour patches merge, corners on lightly smoothed
+points → 09 face built 0.119 → 0.096, 06 crown unchanged (0.142 vs floor 0.071), 08 figures 0.090. Open: one extra
+anchor on a square with a half-covered row (test relaxed, TODO), 06 crown (min-area merge eats holes), fitting stage
+loss on 09 (0.074 → 0.090). Next: rerun 06 scene, re-test 09 scene with this build, label docs 08 / ribbons.

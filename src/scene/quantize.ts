@@ -7,7 +7,7 @@ export function mulberry32(seed: number): () => number {
   return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-export interface QuantOpts { colors?: number; minDe?: number; seed?: number; /** pixels to leave out (alpha) */ skip?: Uint8Array }
+export interface QuantOpts { colors?: number; minDe?: number; seed?: number; /** pixels to leave out (alpha) */ skip?: Uint8Array; /** give anti-aliased / fringe pixels the label of the side they are nearer (default true) */ unmix?: boolean }
 export interface Quant {
   k: number;
   /** k × [L, a, b] */
@@ -27,7 +27,8 @@ export function quantize(lab: Lab, o: QuantOpts = {}): Quant {
   const n = lab.w * lab.h, kMax = Math.max(1, Math.min(64, o.colors ?? 16)), minDe = o.minDe ?? 6;
   // centres come from flat pixels only: anti-aliased rims and soft edges are mixtures of two inks and would get
   // clusters of their own (they are assigned to the nearest ink afterwards); all pixels if too few are flat
-  const flat = flatMask(lab, Math.max(3, minDe), o.skip);
+  const side = new Int32Array(n).fill(-1);
+  const flat = flatMask(lab, Math.max(3, minDe), o.skip, side);
   // histogram
   const idx = new Map<number, number>(), bins: number[][] = []; // [n flat, ΣL, Σa, Σb, n all]
   const pixBin = new Int32Array(n);
@@ -116,6 +117,13 @@ export function quantize(lab: Lab, o: QuantOpts = {}): Quant {
   keep.forEach((c, i) => { const t = sums[c]; centres[i * 3] = t[1] / t[0]; centres[i * 3 + 1] = t[2] / t[0]; centres[i * 3 + 2] = t[3] / t[0]; });
   const labels = new Uint8Array(n);
   for (let i = 0; i < n; i++) labels[i] = pixBin[i] < 0 ? 255 : remap[assign[pixBin[i]]];
+  // unmix: a pixel between two inks (anti-aliasing, a JPEG fringe) takes the ink of the side it is nearer — fringes
+  // vanish before regions exist, and a real thin stroke (not between two sides) keeps its own ink
+  if (o.unmix !== false) for (let pass = 0; pass < 3; pass++) {
+    let moved = 0;
+    for (let i = 0; i < n; i++) { const j = side[i]; if (j >= 0 && labels[j] !== 255 && labels[i] !== labels[j]) { labels[i] = labels[j]; moved++; } }
+    if (!moved) break;
+  }
   return { k, centres, counts, labels };
 }
 
@@ -133,7 +141,7 @@ export function nearPairs(q: Quant, limit: number): { a: number; b: number; de: 
  * neighbours (left/right or up/down; diagonals too) and clearly differs from one of them is an anti-aliased or soft
  * edge. A thin line's pixels are not between their neighbours (they are darker than both), so lines keep their ink.
  * null when under 10 % of the pixels qualify. */
-function flatMask(lab: Lab, lim: number, skip?: Uint8Array): Uint8Array | null {
+function flatMask(lab: Lab, lim: number, skip?: Uint8Array, side?: Int32Array): Uint8Array | null {
   const { w, h, L, A, B } = lab, out = new Uint8Array(w * h), l2 = lim * lim;
   let n = 0, total = 0;
   const pairs = [[-1, 0, 1, 0], [0, -1, 0, 1], [-1, -1, 1, 1], [1, -1, -1, 1]];
@@ -148,8 +156,11 @@ function flatMask(lab: Lab, lim: number, skip?: Uint8Array): Uint8Array | null {
       const p = y1 * w + x1, q = y2 * w + x2;
       const v0 = L[q] - L[p], v1 = A[q] - A[p], v2 = B[q] - B[p], vv = v0 * v0 + v1 * v1 + v2 * v2;
       if (vv < l2) continue; // no edge across this pair
+      // strict test, or a loose one (sRGB 40) near the middle of the mix: JPEG chroma blur moves a fringe pixel off the
+      // straight mix of its two sides; textured surfaces stay inks
       const t = mixT([L[i], A[i], B[i]], [L[p], A[p], B[p]], [L[q], A[q], B[q]], lim * 1.5);
-      if (t > 0.1 && t < 0.9) { ok = 0; break; } // between the two sides: a mixture, not an ink
+      const tl = t > 0.1 && t < 0.9 ? t : mixT([L[i], A[i], B[i]], [L[p], A[p], B[p]], [L[q], A[q], B[q]], 40);
+      if ((t > 0.1 && t < 0.9) || (tl > 0.25 && tl < 0.75)) { ok = 0; if (side) side[i] = (t > 0.1 && t < 0.9 ? t : tl) < 0.5 ? p : q; break; } // between the two sides: a mixture, not an ink
     }
     out[i] = ok; n += ok;
   }
