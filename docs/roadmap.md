@@ -415,6 +415,15 @@ a file, and the skill said "measure in pixels" without a way to.
 
 Carried over from 0.5.2 when it was released.
 
+- [ ] **`scene` tool: image → editable vector scene** (owner, 2026-11-26; main item) — [proposal](research/scene-tool.md).
+  Chandelier does the pixel work, the agent only decides: `analyze` (rectify, Lab colour quantize, regions, shared
+  edges fitted once, primitives, tone ramps → a 1-page summary + overlay), `edit` (merge, recolour to swatches, to
+  text, to a primitive, drop), `build` (layers, global swatches, one undo step), `refine` (per-region error, re-fit
+  only bad regions). Pure TS, no installs. Target (estimate): free-form jobs ~3–5 min, 10–15 calls, < 100 k tokens
+  - [ ] S1: rectify, quantize, regions, shared edges, fit, build; suite case 04 vs v7/v8 and Image Trace
+  - [ ] S2: primitive recognition, tone ramps (gradients / `shade`)
+  - [ ] S3: `refine` loop
+  - [ ] S4: text-box and constructed-logo hooks; recreate.md starts from `scene`; docs/plan.md tool table
 - [ ] **Faster free-form recreation.** The subagent test (2026-11-25) took ~24 min (99 tool calls, ~235 k tokens,
   ~15 s per call — model time, not Illustrator) against ~3 min for layout jobs such as the calendar. Where it went:
   writing and debugging 7 scripts for the method (profiles, anchor fit, shared curves, shading, batch generator);
@@ -629,3 +638,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Owner on suite run 1: 01, 02, 04 (v8) perfect; 03 on hold until a better reference photo replaces the current one (benchmarks § 2h) |
 | 2026-11-25 | **0.5.3 released**: recreate tools (`preview {image, profile}`, `create_path {fit, shade, map, extend, clip_to}`), the general recreate guide, bugs #13–#15 |
 | 2026-11-26 | Plan-then-run approval mode added to phase 8 as a candidate (🧊): [research/plan-then-run.md](research/plan-then-run.md) |
+| 2026-11-26 | Milestone 0.6: `scene` tool (image → editable vector scene) added as the main item: [research/scene-tool.md](research/scene-tool.md) |
