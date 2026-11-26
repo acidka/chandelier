@@ -422,6 +422,8 @@ Carried over from 0.5.2 when it was released.
   only bad regions). Pure TS, no installs. [Implementation plan](research/scene-plan.md) (owner decisions
   2026-11-26: behind `CHANDELIER_SCENE=1` until release, stacked shapes, S1 exit = speed win, photo lighting flattened). Target (estimate): free-form jobs ~3–5 min, 10–15 calls, < 100 k tokens
   - [ ] S1: rectify, quantize, regions, shared edges, fit, build; suite case 04 vs v7/v8 and Image Trace
+    - [x] ✅ Task 1 (2026-11-26): `fitCurve {t0, t1}` fixed end tangents (shared junctions, loop seams); `fitcurve.ts`
+      exports `P`, `Seg`, `bez`, `segsToD`; `imageview.ts` exports `put`, `label` (label colour); unit tests
   - [ ] S2: primitive recognition, tone ramps (gradients / `shade`)
   - [ ] S3: `refine` loop
   - [ ] S4: text-box and constructed-logo hooks; recreate.md starts from `scene`; docs/plan.md tool table
@@ -641,3 +643,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-26 | Plan-then-run approval mode added to phase 8 as a candidate (🧊): [research/plan-then-run.md](research/plan-then-run.md) |
 | 2026-11-26 | Milestone 0.6: `scene` tool (image → editable vector scene) added as the main item: [research/scene-tool.md](research/scene-tool.md) |
 | 2026-11-26 | `scene` tool: implementation plan (S1–S4, 17 tasks) in research/scene-plan.md; owner decisions on rollout flag, stacked shapes, S1 exit, photo lighting |
+| 2026-11-26 | Scene task 1: fixed end tangents in `fitCurve` (`t0`, `t1`), `segsToD` and drawing helpers exported for the scene pipeline |

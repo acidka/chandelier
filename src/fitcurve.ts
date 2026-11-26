@@ -4,8 +4,9 @@
 // Fitting Digitized Curves", Graphics Gems 1990) and split further only where it misses a point by more than the
 // tolerance. Every joint keeps one tangent, so the curve has no kinks. Trained on the 2026-11-25 recreate job, where
 // hand-written code for this took most of the time (roadmap "Faster free-form recreation").
-type P = [number, number];
-type Seg = [P, P, P, P];
+export type P = [number, number];
+/** one cubic: start, handle out, handle in, end */
+export type Seg = [P, P, P, P];
 
 const sub = (a: P, b: P): P => [a[0] - b[0], a[1] - b[1]];
 const add = (a: P, b: P): P => [a[0] + b[0], a[1] + b[1]];
@@ -13,7 +14,7 @@ const mul = (a: P, s: number): P => [a[0] * s, a[1] * s];
 const dot = (a: P, b: P) => a[0] * b[0] + a[1] * b[1];
 const len = (a: P) => Math.hypot(a[0], a[1]);
 const norm = (a: P): P => mul(a, 1 / (len(a) || 1));
-const bez = (c: Seg, t: number): P => {
+export const bez = (c: Seg, t: number): P => {
   const u = 1 - t;
   return add(add(mul(c[0], u * u * u), mul(c[1], 3 * u * u * t)), add(mul(c[2], 3 * u * t * t), mul(c[3], t * t * t)));
 };
@@ -118,6 +119,10 @@ export interface FitOpts {
   tolerance?: number;
   /** continue the curve past its first / last point along its end direction (a number = both ends) */
   extend?: number | number[];
+  /** fixed direction of travel at the first / last point (unit length not needed), instead of the one measured from
+   * the points: a junction shared with another edge, the seam of a closed loop (scene tool) */
+  t0?: number[];
+  t1?: number[];
 }
 
 /** Points (in order, ≥ 2) → Bézier segments. Anchors at extremes with horizontal / vertical handles, then split where
@@ -128,7 +133,11 @@ export function fitCurve(pts: number[][], o: FitOpts = {}): Seg[] {
   const p: P[] = [];
   for (const q of pts) if (!p.length || len(sub(q as P, p[p.length - 1])) > 1e-9) p.push([q[0], q[1]]);
   if (p.length < 2) throw new Error('fit needs at least 2 different points.');
-  if (p.length === 2) { const d = sub(p[1], p[0]); return [[p[0], add(p[0], mul(d, 1 / 3)), add(p[0], mul(d, 2 / 3)), p[1]]]; }
+  const T0 = o.t0 ? norm([o.t0[0], o.t0[1]]) : null, T1 = o.t1 ? norm([o.t1[0], o.t1[1]]) : null;
+  if (p.length === 2) {
+    const d = sub(p[1], p[0]), k = len(d) / 3;
+    return extendSegs([[p[0], T0 ? add(p[0], mul(T0, k)) : add(p[0], mul(d, 1 / 3)), T1 ? sub(p[1], mul(T1, k)) : add(p[0], mul(d, 2 / 3)), p[1]]], o.extend);
+  }
   const s = smooth(p, 2), prom = 3 * tol;
   // anchors: extremes with an axis-aligned tangent (direction of travel through them)
   const cuts = new Map<number, P>();
@@ -148,12 +157,12 @@ export function fitCurve(pts: number[][], o: FitOpts = {}): Seg[] {
   // two extremes a couple of points apart (a corner-ish turn) → keep the first
   const idx = [...cuts.keys()].sort((a, b) => a - b).filter((i, n, a) => n === 0 || i - a[n - 1] >= 3);
   const out: Seg[] = [];
-  let from = 0, t1 = endTangent(p, tol);
+  let from = 0, t1 = T0 ?? endTangent(p, tol);
   for (const i of [...idx, p.length - 1]) {
     const last = i === p.length - 1;
     const T = last ? null : cuts.get(i)!;
     const piece = p.slice(from, i + 1);
-    const t2 = last ? endTangent([...piece].reverse(), tol) : mul(T!, -1);
+    const t2 = last ? (T1 ? mul(T1, -1) : endTangent([...piece].reverse(), tol)) : mul(T!, -1);
     fitPiece(piece, t1, t2, tol, out);
     if (!last) t1 = T!;
     from = i;
@@ -198,6 +207,11 @@ export function projective(from: number[][], to: number[][]): (p: number[]) => n
 
 const f = (v: number) => String(Math.round(v * 100) / 100);
 const curve = (segs: Seg[]) => segs.map((c) => ` C${c.slice(1).map((q) => f(q[0]) + ' ' + f(q[1])).join(' ')}`).join('');
+
+/** Loops (each a run of joined segments) → SVG path data, one subpath per loop; closed adds Z to each. */
+export function segsToD(loops: Seg[][], closed = true): string {
+  return loops.filter((g) => g.length).map((g) => 'M' + f(g[0][0][0]) + ' ' + f(g[0][0][1]) + curve(g) + (closed ? ' Z' : '')).join(' ');
+}
 
 /** create_path {fit}: one point list (an open or closed curve) or several (fitted one by one, joined by straight
  * lines: a band = top edge left → right, then the bottom edge right → left, closed) → SVG path data. */

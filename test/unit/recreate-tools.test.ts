@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { encodePng, type Img } from '../../src/image.js';
 import { edgeTracks } from '../../src/edges.js';
-import { fitCurve, fitToD, shadeToD, projective } from '../../src/fitcurve.js';
+import { fitCurve, fitToD, shadeToD, projective, segsToD, bez as bezAt, type Seg } from '../../src/fitcurve.js';
+import { put, label } from '../../src/imageview.js';
 import { create_path } from '../../src/tools/create_path.js';
 import { preview } from '../../src/tools/preview.js';
 
@@ -50,6 +51,52 @@ describe('fitCurve', () => {
     const { d, anchors } = fitToD([top, bottom], true);
     expect(d).toMatch(/^M0 100 C.* L400 .* Z$/);
     expect(anchors).toBeGreaterThanOrEqual(6);
+  });
+});
+
+describe('fit: fixed end tangents, segsToD (scene tool groundwork)', () => {
+  // quarter circle r 100 around the origin, travelling from (100, 0) to (0, 100): true tangents (0, 1) and (-1, 0)
+  const arc = Array.from({ length: 31 }, (_, i) => { const a = (i / 30) * Math.PI / 2; return [100 * Math.cos(a), 100 * Math.sin(a)]; });
+  const cross = (a: number[], b: number[]) => a[0] * b[1] - a[1] * b[0];
+  const dir = (a: number[], b: number[]) => [b[0] - a[0], b[1] - a[1]];
+  it('t0 / t1 set the first and last handle directions; the ends stay exact', () => {
+    const segs = fitCurve(arc, { tolerance: 0.5, t0: [0, 2], t1: [-3, 0] });
+    const first = segs[0], last = segs[segs.length - 1];
+    expect(first[0]).toEqual(arc[0]);
+    expect(last[3][0]).toBeCloseTo(arc[30][0], 9); expect(last[3][1]).toBeCloseTo(arc[30][1], 9);
+    const h0 = dir(first[0], first[1]), h1 = dir(last[2], last[3]);
+    expect(Math.abs(cross(h0, [0, 1]))).toBeLessThan(1e-9); expect(h0[1]).toBeGreaterThan(0);
+    expect(Math.abs(cross(h1, [-1, 0]))).toBeLessThan(1e-9); expect(h1[0]).toBeLessThan(0);
+    // still on the arc
+    for (const c of segs) for (let i = 0; i <= 20; i++) expect(Math.abs(Math.hypot(...bezAt(c, i / 20)) - 100)).toBeLessThan(1.5);
+  });
+  it('a tangent that disagrees with the points is still obeyed (a shared junction wins)', () => {
+    const segs = fitCurve(arc, { tolerance: 0.5, t0: [1, 1] });
+    const h0 = dir(segs[0][0], segs[0][1]);
+    expect(Math.abs(cross(h0, [1, 1]))).toBeLessThan(1e-9); expect(h0[0]).toBeGreaterThan(0);
+  });
+  it('without t0 / t1 nothing changes', () => {
+    expect(fitCurve(pts(), { tolerance: 1 })).toEqual(fitCurve(pts(), { tolerance: 1, t0: undefined, t1: undefined }));
+  });
+  it('two points honour the tangents and extend', () => {
+    const [c] = fitCurve([[0, 0], [30, 0]], { t0: [0, 1], t1: [0, -1] });
+    expect(c[1]).toEqual([0, 10]); expect(c[2]).toEqual([30, 10]);
+    expect(fitCurve([[0, 0], [30, 0]], { extend: 5 })).toHaveLength(3);
+  });
+  it('segsToD: one subpath per loop', () => {
+    const sq = (x: number): Seg[] => [[[x, 0], [x + 3, 0], [x + 7, 0], [x + 10, 0]], [[x + 10, 0], [x + 10, 3], [x + 10, 7], [x + 10, 10]]];
+    expect(segsToD([sq(0), sq(20)])).toBe('M0 0 C3 0 7 0 10 0 C10 3 10 7 10 10 Z M20 0 C23 0 27 0 30 0 C30 3 30 7 30 10 Z');
+    expect(segsToD([sq(0)], false)).not.toContain('Z');
+    expect(segsToD([[], sq(0)])).toMatch(/^M0 0/);
+  });
+  it('put and label draw into an image, label in a given colour', () => {
+    const img: Img = { w: 40, h: 20, rgb: new Uint8Array(40 * 20 * 3) };
+    put(img, 1, 1, [10, 20, 30]); put(img, -1, 99, [1, 1, 1]);
+    expect([...img.rgb.slice((1 * 40 + 1) * 3, (1 * 40 + 1) * 3 + 3)]).toEqual([10, 20, 30]);
+    label(img, '12', 0, 0, 2, [0, 0, 255]);
+    let blue = 0;
+    for (let i = 0; i < img.rgb.length; i += 3) if (img.rgb[i] === 0 && img.rgb[i + 1] === 0 && img.rgb[i + 2] === 255) blue++;
+    expect(blue).toBeGreaterThan(10);
   });
 });
 

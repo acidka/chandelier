@@ -399,7 +399,7 @@ owner's verdict recorded as is. Plus `bench/scene-bench.mjs` on the four suite r
 
 | # | Task | Effort | Depends |
 |---|---|---|---|
-| 1 | `fitcurve.ts` t0/t1 + exports; `imageview.ts` exports; tests | 0.5 d | — |
+| 1 ✅ | `fitcurve.ts` t0/t1 + exports; `imageview.ts` exports; tests — done 2026-11-26 | 0.5 d | — |
 | 2 | `color.ts`, `rectify.ts` + tests | 0.75 d | 1 |
 | 3 | `smooth.ts`, `quantize.ts` + tests | 1 d | 2 |
 | 4 | `regions.ts` + tests | 1.5 d | 3 |

@@ -79,20 +79,21 @@ const GLYPH: Record<string, string[]> = {
   9: ['111', '101', '111', '001', '111'], '-': ['000', '000', '111', '000', '000'], '.': ['000', '000', '000', '000', '010'],
 };
 
-function put(img: Img, x: number, y: number, c: number[], alpha = 1): void {
+/** Blend colour c into one pixel (outside the image: ignored). */
+export function put(img: Img, x: number, y: number, c: number[], alpha = 1): void {
   x = Math.round(x); y = Math.round(y);
   if (x < 0 || y < 0 || x >= img.w || y >= img.h) return;
   const i = (y * img.w + x) * 3;
   for (let k = 0; k < 3; k++) img.rgb[i + k] = Math.round(img.rgb[i + k] * (1 - alpha) + c[k] * alpha);
 }
 
-/** Text in the bitmap font (scale s) on a white box, top-left at (x, y). */
-function label(img: Img, s: string, x: number, y: number, sc = 2): void {
+/** Text in the bitmap font (digits, '-', '.'; scale sc) on a white box, top-left at (x, y). */
+export function label(img: Img, s: string, x: number, y: number, sc = 2, c: number[] = [200, 0, 0]): void {
   const w = s.length * 4 * sc + sc, h = 7 * sc;
   for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) put(img, x + xx, y + yy, [255, 255, 255], 0.85);
   [...s].forEach((ch, n) => (GLYPH[ch] ?? []).forEach((row, ry) => [...row].forEach((on, rx) => {
     if (on !== '1') return;
-    for (let a = 0; a < sc; a++) for (let b = 0; b < sc; b++) put(img, x + sc + (n * 4 + rx) * sc + a, y + sc + ry * sc + b, [200, 0, 0]);
+    for (let a = 0; a < sc; a++) for (let b = 0; b < sc; b++) put(img, x + sc + (n * 4 + rx) * sc + a, y + sc + ry * sc + b, c);
   })));
 }
 
