@@ -2,7 +2,7 @@
 // then one path per drawn region, bottom to top (new items go in front, so order is z). Coordinates stay in working
 // px; create_path's scale and x, y place them on the target rect.
 import { segsToD, type Seg } from '../fitcurve.js';
-import { labSpec } from './color.js';
+import { labSpec, labHex } from './color.js';
 import { live } from './primitives.js';
 import type { Scene } from './types.js';
 
@@ -22,7 +22,9 @@ const MAX_ITEMS = 1500, MAX_BYTES = 1_500_000;
 export const swatchName = (s: Scene, ci: number, layer: string) => s.colours[ci].swatch ?? s.colours[ci].name ?? `${layer} c${ci}`;
 
 /** steps in one or more batches (more only when a batch would be too large for one call) */
-export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; items: number; swatches: number; anchors: number; bytes: number; regions: number[] } {
+export interface TextBox { rect: number[]; colour: string; cap: number; regions: string }
+
+export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; items: number; swatches: number; anchors: number; bytes: number; regions: number[]; textBoxes: TextBox[] } {
   const layer = o.layer ?? 'Scene', { w, h } = s.work, [rx, ry, rw, rh] = o.rect;
   const sx = rw / w, sy = rh / h, bx = (o.bleed ?? 0) / sx, by = (o.bleed ?? 0) / sy;
   const shapes = s.shapes;
@@ -74,7 +76,26 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
     (step.args.items as unknown[]).push(it);
     size += b; bytes += b; n++;
   }
-  return { batches, items: items.length, swatches: head.length - 2 - ramps.length, anchors: shapes.reduce((a, sh) => a + sh.loops.reduce((x, l) => x + l.length, 0), 0), bytes, regions: shapes.map((sh) => sh.region) };
+  // logos: the mark and what is drawn on it, grouped; placeholders: a named empty box on top
+  const last = batches[batches.length - 1], nameOf = (id: number) => s.meta[id].name ?? `${layer} r${id}`;
+  const drawn = new Set(shapes.map((sh) => sh.region));
+  s.meta.forEach((m, id) => {
+    if (!m.logo || !drawn.has(id)) return;
+    const bb = s.seg.regions[id].bbox;
+    const members = shapes.map((sh) => sh.region).filter((r) => s.z[r] >= s.z[id] && inBox(s.seg.regions[r].bbox, bb));
+    last.push({ tool: 'arrange_items', args: { action: 'group', refs: members.map((r) => `name:${nameOf(r)}`), name: `Logo r${id}` } });
+  });
+  s.meta.forEach((m, id) => {
+    if (!m.placeholder || !s.seg.regions[id].area) return;
+    const b = s.seg.regions[id].bbox;
+    last.push({ tool: 'create_shape', args: { layer, shape: 'rect', x: r2(rx + b[0] * sx), y: r2(ry + b[1] * sy), w: r2((b[2] - b[0] + 1) * sx), h: r2((b[3] - b[1] + 1) * sy), fill: 'none', stroke: '#999999', stroke_width: 0.5, dash: [2, 2], name: m.name ?? `Placeholder r${id}` } });
+  });
+  // text boxes for the agent's create_text: session units, the ink of the largest region, cap height ≈ box height
+  const textBoxes = s.textBoxes.filter((tb) => tb.ids.some((i) => s.meta[i].text)).map((tb) => {
+    const big = tb.ids.reduce((p, i) => (s.seg.regions[i].area > s.seg.regions[p].area ? i : p), tb.ids[0]), c = s.colours[s.meta[big].colour];
+    return { rect: [r2(rx + tb.rect[0] * sx), r2(ry + tb.rect[1] * sy), r2(tb.rect[2] * sx), r2(tb.rect[3] * sy)], colour: c.swatch ? `swatch:${c.swatch}` : labHex(c.L, c.a, c.b), cap: r2(tb.rect[3] * sy), regions: tb.ids.map((i) => 'r' + i).join(' ') };
+  });
+  return { textBoxes, batches, items: items.length, swatches: head.length - 2 - ramps.length, anchors: shapes.reduce((a, sh) => a + sh.loops.reduce((x, l) => x + l.length, 0), 0), bytes, regions: shapes.map((sh) => sh.region) };
 }
 
 /** bounding box of loops (working px): width (the gradient's default span) and centre */
@@ -83,3 +104,5 @@ function bbox(loops: Seg[][]): number[] {
   for (const l of loops) for (const c of l) for (const p of c) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
   return [x0, y0, x1, y1];
 }
+
+const inBox = (a: number[], b: number[]) => a[0] >= b[0] && a[1] >= b[1] && a[2] <= b[2] && a[3] <= b[3];

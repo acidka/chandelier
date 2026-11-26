@@ -40,7 +40,8 @@ Name layers and groups. Keep scripts re-runnable.
 
 **Read [recreate.md](recreate.md) first** — the full method for any kind of design (layouts and type, logos and
 marks, free-form shapes, colour, gradients and shading, photos and mockups), with a table of which sections a job
-needs. Short version:
+needs. Free-form art (waves, organic shapes, flat illustrations, marks) with the `scene` tool listed: start from
+recreate.md § 5.0 (analyze → edits → build → refine). Short version:
 
 1. Look at the image with `preview {image: "<path>", grid: true}`: pixel size, ppi, and `content_box` (the page's
    pixel box). **Don't use Python/PIL, OpenCV, Swift or sips for images:** they may be missing and installing them

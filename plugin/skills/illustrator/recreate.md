@@ -16,7 +16,7 @@ contains (most contain several):
 |---|---|---|
 | Text, grids, tables, rules, boxes | calendars, flyers, menus, forms, posters, back panels | § 3 |
 | Logos, icons, geometric marks, wordmarks | brand marks, pictograms, badges | § 4 |
-| Free-form shapes: waves, blobs, swooshes, organic bands, overlapping translucent layers | packaging backgrounds, decorative bands, abstract art | § 5 |
+| Free-form shapes: waves, blobs, swooshes, organic bands, overlapping translucent layers | packaging backgrounds, decorative bands, abstract art, flat illustrations | § 5 (start with § 5.0 when the `scene` tool is listed) |
 | Colour that must match (inks, overlaps, a printed or photographed surface) | anything photographed or printed | § 6 |
 | Gradients, shading, shadows, glows | illustrations, layered paper looks | § 7 |
 | A photo of a real object or a mockup (perspective, folds, light) | product photos, box and bag mockups, desk/wall mockups | § 1 (flat shape and box) |
@@ -107,6 +107,26 @@ Skip what already exists (a document, a reference artboard): reuse it.
 ## 5. Free-form shapes — measure, decompose, fit
 
 Where agents usually fail: lumpy "camouflage" or "mountain" outlines instead of smooth curves, and guessed shapes.
+
+### 5.0 With the `scene` tool (when it is listed)
+
+`scene` does the pixel work: inks, regions, shared edges fitted once, primitives, ramps, overlaps. You decide.
+
+1. `scene {action: "analyze", image, map: [TL, TR, BR, BL]}` for a photographed face (corners from
+   `preview {image, grid}`; `bilinear: true` for a tapered face), or `crop` for a flat file; `size` = the artboard's
+   aspect. Read the summary table and the overlay (ids on the image | flat render). `photo: true` means lighting was
+   flattened (§ 1: light is not artwork).
+2. One `edit` call with all decisions: `merge` what is one part, `drop` noise and photo-only things (folds, shadows,
+   side faces), `text x y w h` over every text block (live text comes later), `r10 logo` on marks, `c0 = swatch:…` for
+   brand inks, `name` the parts. Follow the hints that fit the artwork: `ramp …` (a real gradient), `layers rA rB`
+   (translucent overlap, § 5a), `cN = cM` (one ink split in two). Check the new summary.
+3. `scene {action: "build", id}` → one undo step on layer "Scene"; then `create_text` into the returned `text_boxes`
+   (fonts and sizes as § 3).
+4. `preview {reference}` once; `scene {action: "refine", id}` corrects shifted inks and loose edges and rebuilds.
+   What is still wrong: an edit and a re-build (it replaces the layer), or the manual method below for that part.
+
+The manual method (§ 5a–5c) stays for what the scene gets wrong: curve-following shading (§ 7), a part that must be
+constructed (§ 4), a shape the image shows only partly.
 
 ### 5a. Decompose into layers
 

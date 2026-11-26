@@ -14,7 +14,7 @@ export const alive = (s: Scene) => s.seg.regions.filter((r) => r.area > 0);
 export function kindOf(s: Scene, id: number): string {
   const m = s.meta[id];
   const p = s.prims[id], shape = p ? (p.kind === 'polygon' ? `poly${p.n}` : p.kind) : '';
-  const k = m.drop ? 'drop' : m.text ? 'text' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
+  const k = m.drop ? 'drop' : m.text ? 'text' : m.placeholder ? 'box' : m.logo ? 'logo' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
   return m.multiply ? k + '×' : k;
 }
 
@@ -66,7 +66,7 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   pairs.sort((a, b) => a[0] - b[0]).slice(0, 4).forEach(([d, a, b]) => hints.push(`merge r${a} r${b} (ΔE ${d.toFixed(1)})`));
   nearPairs(s.quant, minDe * 1.5).filter((p) => usedColours.includes(p.a) && usedColours.includes(p.b)).slice(0, 3).forEach((p) => hints.push(`c${p.b} = c${p.a}? (ΔE ${p.de.toFixed(1)})`));
   regs.filter((r) => r.area > 20 && (2 * r.area) / r.perim < 2.5).slice(0, 3).forEach((r) => hints.push(`r${r.id} sliver ${((2 * r.area) / r.perim).toFixed(1)} px`));
-  regs.filter((r) => !['drop', 'text'].includes(kindOf(s, r.id)) && r.area > total * 0.002 && conf(s, r.id) < 0.8).slice(0, 3).forEach((r) => hints.push(`r${r.id} conf ${conf(s, r.id).toFixed(2)} (merge? tolerance r${r.id} ${(s.tol / 2).toFixed(1)}?)`));
+  regs.filter((r) => !['drop', 'text', 'box'].includes(kindOf(s, r.id)) && r.area > total * 0.002 && conf(s, r.id) < 0.8).slice(0, 3).forEach((r) => hints.push(`r${r.id} conf ${conf(s, r.id).toFixed(2)} (merge? tolerance r${r.id} ${(s.tol / 2).toFixed(1)}?)`));
   if (hints.length) lines.push('hints: ' + hints.slice(0, 10).join(' · ') + (hints.length > 10 ? ` (+${hints.length - 10})` : ''));
   return lines.join('\n');
 }

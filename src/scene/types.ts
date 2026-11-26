@@ -27,7 +27,7 @@ export interface Params {
 export interface Colour { L: number; a: number; b: number; swatch?: string; name?: string }
 
 /** what edits changed about a region (by id; ids never change after analyze) */
-export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number; /** force a primitive, or 'free' = never */ prim?: PrimKind | 'free'; /** linear gradient from the region's colour plane */ ramp?: boolean; /** a translucent layer: drawn over these overlap regions too, multiply */ multiply?: number[] }
+export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number; /** force a primitive, or 'free' = never */ prim?: PrimKind | 'free'; /** linear gradient from the region's colour plane */ ramp?: boolean; /** a translucent layer: drawn over these overlap regions too, multiply */ multiply?: number[]; /** grouped as a logo with what lies on it */ logo?: boolean; /** not drawn: a named empty box instead */ placeholder?: boolean }
 
 export interface Scene {
   id: string;
@@ -53,6 +53,8 @@ export interface Scene {
   /** tolerance per region pair "a,b" (refine tightens edges that miss) */
   edgeTol?: Record<string, number>;
   edits: string[];
+  /** boxes left for live text (working px) and the regions in them */
+  textBoxes: { rect: number[]; ids: number[] }[];
   // derived (recompute)
   pm: PlanarMap;
   fits: Seg[][];

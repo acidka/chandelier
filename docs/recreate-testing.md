@@ -114,6 +114,8 @@ In the open document <file>, recreate the design in <reference image> onto the e
 2. Every guide gap the agent reported (and what made the preferred version better) → recreate.md, in the section
    where an agent would need it; mention it in the guide's header line.
 3. Tool problems → [bugs.md](bugs.md) (mark ones not yet reproduced).
+   Runs with the `scene` tool (server started with `CHANDELIER_SCENE=1`, build and reconnect first): also record the
+   analyze summary's first line, the edits used, refine rounds and what was still built by hand.
 4. A change-log row in the [roadmap](roadmap.md); commit.
 
 ## Worked example (2026-11-25)

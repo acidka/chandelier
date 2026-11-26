@@ -23,7 +23,7 @@ export const scene: ToolDef = {
   name: 'scene',
   description: `Image → editable vector scene; the pixel work happens here, Illustrator only at build. Image px until build.
 "analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high → id, a 1-page summary (regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
-"edit": id, edits ["merge r3 r4", "drop r12", "keep r12", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "ramp r3 r4 r5" (one region, linear gradient), "r3 flat", "layers r3 r5" (translucent: their overlap drawn by both, multiply), "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
+"edit": id, edits ["merge r3 r4", "drop r12", "keep r12", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "ramp r3 r4 r5" (one region, linear gradient), "r3 flat", "layers r3 r5" (translucent: their overlap drawn by both, multiply), "r10 logo" (grouped, finer), "r4 placeholder", "text x y w h" (regions in the box left for live text; build returns text_boxes), "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
 "build": id; rect (default the artboard), artboard, bleed, layer ("Scene") → one undo step: global swatches + one path (or live rect/ellipse for clean primitives) per region, bottom to top; a re-build replaces the layer.
 "refine": id; threshold (ΔE, 6) → measures the build (Illustrator render; own render before a build) per region and edge against the image, corrects shifted inks and re-fits edges that miss, rebuilds once → report + heat map | new render.
 dir: where scene.json is kept (default a temp folder; id may be its path).`,
@@ -112,6 +112,7 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
   save(s);
   const out = {
     id: s.id, layer, items: plan.items, swatches: plan.swatches, anchors: plan.anchors, bytes: plan.bytes, rect, units: ctx.settings.units,
+    ...(plan.textBoxes.length ? { text_boxes: plan.textBoxes } : {}),
     undo: plan.batches.length === 1 ? 'one step' : `${plan.batches.length} steps (scene too large for one call: detail low or merge)`, calls: plan.batches.length, ms: Math.round(performance.now() - t0),
   };
   return { content: [{ type: 'text', text: J(out) }, ...warnings.map((t) => ({ type: 'text' as const, text: t }))] };

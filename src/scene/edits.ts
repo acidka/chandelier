@@ -117,10 +117,33 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       s.meta[id].prim = t[1] === 'auto' ? undefined : (t[1] as 'ellipse');
       res.changed = true;
     } else if (reg.test(t[0]) && t[1] === 'text') {
-      s.meta[region(t[0])].text = true; res.changed = true;
-    } else fail('unknown edit (merge, ramp, rN flat, layers rA rB, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
+      const id = region(t[0]), b = R[id].bbox;
+      s.meta[id].text = true;
+      s.textBoxes.push({ rect: [b[0], b[1], b[2] - b[0] + 1, b[3] - b[1] + 1], ids: [id] });
+      res.changed = true;
+    } else if (head === 'text') {
+      // text x y w h (working px): every region inside the box is left for live text
+      const v = t.slice(1).map(Number);
+      if (v.length !== 4 || v.some((x) => !isFinite(x)) || v[2] <= 0 || v[3] <= 0) fail('text x y w h (image px of the analyzed image)');
+      const ids = R.filter((r) => r.area && r.bbox[0] >= v[0] && r.bbox[1] >= v[1] && r.bbox[2] < v[0] + v[2] && r.bbox[3] < v[1] + v[3] && s.z[r.id] > 0).map((r) => r.id);
+      if (!ids.length) fail('no region lies inside that box');
+      for (const id of ids) s.meta[id].text = true;
+      s.textBoxes.push({ rect: v, ids });
+      res.changed = true;
+    } else if (reg.test(t[0]) && (t[1] === 'logo' || t[1] === 'placeholder')) {
+      const id = region(t[0]);
+      if (t[1] === 'placeholder') s.meta[id].placeholder = true;
+      else {
+        // the mark and everything drawn on it, fitted finer
+        s.meta[id].logo = true;
+        for (const r of R) if (r.area && s.z[r.id] >= s.z[id] && inside(r.bbox, R[id].bbox)) s.meta[r.id].tol = s.meta[r.id].tol ?? Math.max(0.3, s.tol / 2);
+      }
+      res.changed = true;
+    } else fail('unknown edit (merge, ramp, rN flat, layers rA rB, rN logo, rN placeholder, text x y w h, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
   });
   s.edits.push(...edits);
   if (res.changed) recompute(s);
   return res;
 }
+
+const inside = (a: number[], b: number[]) => a[0] >= b[0] && a[1] >= b[1] && a[2] <= b[2] && a[3] <= b[3];

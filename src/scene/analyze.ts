@@ -61,7 +61,7 @@ export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path
     source: { path: o.path, sha1: o.bytes ? createHash('sha1').update(o.bytes).digest('hex') : '', w: src.w, h: src.h },
     work, toSource: r.toSource, lab, photo, rampGroups, quant, seg, colours,
     meta: seg.regions.map((g) => ({ colour: Math.max(0, g.group) })),
-    zMoves: [], tile: false, tol: d.tol, edits: [],
+    zMoves: [], tile: false, tol: d.tol, edits: [], textBoxes: [],
     pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
   };
   recompute(s);
@@ -88,7 +88,7 @@ export function applyZ(s: Scene, auto: number[]): number[] {
 }
 
 /** regions not drawn (dropped, left for text) */
-export const skipped = (s: Scene) => new Set(s.meta.map((m, i) => (m.drop || m.text ? i : -1)).filter((i) => i >= 0));
+export const skipped = (s: Scene) => new Set(s.meta.map((m, i) => (m.drop || m.text || m.placeholder ? i : -1)).filter((i) => i >= 0));
 
 /** geometry and checks from the current labels and meta */
 export function recompute(s: Scene): void {
