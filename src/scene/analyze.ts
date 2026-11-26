@@ -25,12 +25,20 @@ function sortInks(q: Quant): Quant {
   return { k: q.k, centres, counts: order.map((c) => q.counts[c]), labels: q.labels.map((v) => to[v]) };
 }
 
-export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path: string; bytes?: Buffer }): Scene {
-  const t0 = performance.now(), d = DETAIL[p.detail];
+/** the deterministic part before regions: working image, Lab, inks (a saved scene reloads through this) */
+export function prepare(src: Img, p: Params) {
+  const d = DETAIL[p.detail];
   const r = rectify(src, { crop: p.crop, map: p.map, bilinear: p.bilinear, size: p.size, maxPx: p.maxPx });
   const work = r.img, lab = bilateral(rgbToLab(work), { passes: d.passes });
   const skip = work.a ? work.a.map((v) => (v < 128 ? 1 : 0)) : undefined;
   const quant = sortInks(quantize(lab, { colors: p.colors, minDe: p.minDe, skip }));
+  return { work, toSource: r.toSource, lab, quant };
+}
+
+export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path: string; bytes?: Buffer }): Scene {
+  const t0 = performance.now(), d = DETAIL[p.detail];
+  const { work, toSource, lab, quant } = prepare(src, p);
+  const r = { toSource };
   const minArea = Math.max(4, Math.round(Math.max(12, work.w * work.h * 5e-5) * d.area));
   const seg = segment(lab, quant.labels, { minDe: p.minDe, minArea, centres: quant.centres });
   const colours = Array.from({ length: quant.k }, (_, i) => ({ L: quant.centres[i * 3], a: quant.centres[i * 3 + 1], b: quant.centres[i * 3 + 2] }));
