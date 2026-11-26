@@ -41,22 +41,23 @@ await call('scene', { action: 'analyze', image: png }, { check: (v, r) => {
 let built;
 await call('scene', { action: 'build', id }, { check: (v) => { built = v; assert(v.items === 7 && v.undo === 'one step', JSON.stringify(v)); } });
 console.log(`build: ${built.ms} ms, ${built.bytes} bytes, ${built.anchors} segments`);
+// one undo step removes the whole build; redo brings it back
+await call('history', { action: 'undo' });
+await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(!v.total, 'undo removed the build: ' + JSON.stringify(v).slice(0, 120)) });
+await call('history', { action: 'redo' });
+await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(v.total === 7, 'redo: ' + v.total) });
 await call('layers', { action: 'list' }, { check: (v) => assert(JSON.stringify(v).includes('"Scene"'), 'layer Scene') });
 await call('swatches', { action: 'list', kind: 'global' }, { check: (v) => assert(JSON.stringify(v).includes('Scene c0'), 'global swatches') });
 await call('preview', { reference: png, width: 400 }, { check: (v) => assert(v.rmse < 0.05, 'rmse vs the image ' + v.rmse) });
 // seams: a close-up of the band edges at full size must show no light pixel between the bands
 await call('preview', { region: [150, 160, 100, 100], width: 400 }, { check: (v, r) => assert(r.content[0].type === 'image', 'close-up') });
-// one undo step removes the whole build; redo brings it back
-await call('history', { action: 'undo' });
-await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(!v.count, 'undo removed the build: ' + JSON.stringify(v).slice(0, 120)) });
-await call('history', { action: 'redo' });
 // re-build: the layer is replaced, no duplicates
 await call('scene', { action: 'build', id }, { check: (v) => assert(v.items === 7, 'rebuild items ' + v.items) });
-await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(v.count === 7, 'items on the layer after rebuild: ' + v.count) });
+await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(v.total === 7, 'items on the layer after rebuild: ' + v.total) });
 // edit: drop the dot, the band below fills its place
 await call('scene', { action: 'edit', id, edits: ['drop r6', 'name c0 Paper'] });
 await call('scene', { action: 'build', id }, { check: (v) => assert(v.items === 6, 'after drop ' + v.items) });
 await call('swatches', { action: 'list', kind: 'global' }, { check: (v) => assert(JSON.stringify(v).includes('Paper'), 'named swatch') });
 
-await call('documents', { action: 'close', save: false });
+await call('documents', { action: 'close', discard: true });
 process.exit(await done() ? 1 : 0);

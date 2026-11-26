@@ -26,7 +26,7 @@ describe('buildSteps', () => {
     expect(st[1]).toEqual({ tool: 'layers', args: { action: 'add', name: 'Art' } });
     const sw = st.filter((x) => x.tool === 'swatches');
     expect(sw).toHaveLength(3); // paper, orange, dark (the hole is paper again)
-    expect(sw[0].args).toMatchObject({ kind: 'global', name: 'Art c0', color: expect.stringMatching(/^lab\(/) });
+    expect(sw[0].args).toMatchObject({ kind: 'global', name: 'Art c0', color: expect.stringMatching(/^#[0-9a-f]{6}$/) });
     // all four regions are primitives: background rect, square, ring disc, hole disc
     const shapes = st.filter((x) => x.tool === 'create_shape').flatMap((x) => x.args.items as any[]);
     expect(shapes.map((x) => x.shape)).toEqual(['rect', 'rect', 'ellipse', 'ellipse']);

@@ -2,7 +2,7 @@
 // then one path per drawn region, bottom to top (new items go in front, so order is z). Coordinates stay in working
 // px; create_path's scale and x, y place them on the target rect.
 import { segsToD, type Seg } from '../fitcurve.js';
-import { labSpec, labHex } from './color.js';
+import { labHex } from './color.js';
 import { live } from './primitives.js';
 import type { Scene } from './types.js';
 
@@ -33,7 +33,8 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
   const head: BatchStep[] = [
     { tool: 'delete_items', args: { refs: `layer:${layer}` } },
     { tool: 'layers', args: { action: 'add', name: layer } },
-    ...used.filter((ci) => !s.colours[ci].swatch).map((ci) => ({ tool: 'swatches', args: { action: 'add', kind: 'global', name: swatchName(s, ci, layer), color: labSpec(s.colours[ci].L, s.colours[ci].a, s.colours[ci].b) } })),
+    // hex, not lab(): Illustrator refuses a Lab colour in a global swatch (MRAP, quirk C34); it converts hex through the document profile
+    ...used.filter((ci) => !s.colours[ci].swatch).map((ci) => ({ tool: 'swatches', args: { action: 'add', kind: 'global', name: swatchName(s, ci, layer), color: labHex(s.colours[ci].L, s.colours[ci].a, s.colours[ci].b) } })),
     // a ramp: its own gradient swatch; stops placed where Illustrator's default span (the item's width, centred,
     // turned to the angle) meets our projection range
     ...ramps.map((sh) => {
@@ -41,7 +42,7 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
       // projection t is from the ramp's centroid; Illustrator's span is centred on the item's box
       const off = (rp.cx - (b[0] + b[2]) / 2) * rp.ux + (rp.cy - (b[1] + b[3]) / 2) * rp.uy;
       const at = (t: number) => Math.max(0, Math.min(100, Math.round((50 + (100 * (t + off)) / span) * 10) / 10));
-      return { tool: 'swatches', args: { action: 'add', kind: 'gradient', name: `${layer} r${sh.region} ramp`, type: 'linear', stops: [{ color: labSpec(rp.c0[0], rp.c0[1], rp.c0[2]), at: at(rp.t0) }, { color: labSpec(rp.c1[0], rp.c1[1], rp.c1[2]), at: at(rp.t1) }] } };
+      return { tool: 'swatches', args: { action: 'add', kind: 'gradient', name: `${layer} r${sh.region} ramp`, type: 'linear', stops: [{ color: labHex(rp.c0[0], rp.c0[1], rp.c0[2]), at: at(rp.t0) }, { color: labHex(rp.c1[0], rp.c1[1], rp.c1[2]), at: at(rp.t1) }] } };
     }),
   ];
   // points on the image border run out into the bleed
@@ -61,6 +62,7 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
     }
     return { tool: 'create_path', item: { d: segsToD(sh.loops.map(bleedSegs), true), ...(sh.holes ? { fill_rule: 'evenodd' } : {}), ...(sh.blend ? { blend: sh.blend } : {}), ...common } };
   });
+  const swatchSteps = head.filter((x) => x.tool === 'swatches' && x.args.kind === 'global').length;
   const base: Record<string, Record<string, unknown>> = { create_path: { layer, x: rx, y: ry, scale: [sx, sy], stroke: 'none' }, create_shape: { layer, stroke: 'none' } };
   const batches: BatchStep[][] = [head];
   let cur = batches[0], n = 0, bytes = JSON.stringify(head).length, size = bytes;
@@ -95,7 +97,7 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
     const big = tb.ids.reduce((p, i) => (s.seg.regions[i].area > s.seg.regions[p].area ? i : p), tb.ids[0]), c = s.colours[s.meta[big].colour];
     return { rect: [r2(rx + tb.rect[0] * sx), r2(ry + tb.rect[1] * sy), r2(tb.rect[2] * sx), r2(tb.rect[3] * sy)], colour: c.swatch ? `swatch:${c.swatch}` : labHex(c.L, c.a, c.b), cap: r2(tb.rect[3] * sy), regions: tb.ids.map((i) => 'r' + i).join(' ') };
   });
-  return { textBoxes, batches, items: items.length, swatches: head.length - 2 - ramps.length, anchors: shapes.reduce((a, sh) => a + sh.loops.reduce((x, l) => x + l.length, 0), 0), bytes, regions: shapes.map((sh) => sh.region) };
+  return { textBoxes, batches, items: items.length, swatches: swatchSteps, anchors: shapes.reduce((a, sh) => a + sh.loops.reduce((x, l) => x + l.length, 0), 0), bytes, regions: shapes.map((sh) => sh.region) };
 }
 
 /** bounding box of loops (working px): width (the gradient's default span) and centre */
