@@ -48,11 +48,16 @@ only adds an artboard and layers.
 1. **Reset the shared session first** — agents in one Claude Code session share one Chandelier server, so a
    `configure` by an earlier agent changes everyone's frame ([bugs.md #9](bugs.md)):
    `configure {artboard: 0, units: "mm"}`.
-2. **Add the artboard** to the right of the last one: `artboards {add, rect: [x, 0, w, h], name: "Front panel vN"}`
+2. **Label every artboard (required, owner 2026-11-26)** — the reference, the baseline and each run: a point text
+   just above the artboard on the locked, non-printing layer "Version labels" (create it once): run name · method ·
+   time · tool uses · rmse, e.g. "v10 · scene · 8.1 min · 47 calls · rmse 0.138"; add the owner's verdict when given
+   ("· perfect"). Put a provisional label ("v3 · manual · running") when the artboard is added and complete it when the
+   run reports. The same applies to benchmark documents (one label per arm).
+3. **Add the artboard** to the right of the last one: `artboards {add, rect: [x, 0, w, h], name: "Front panel vN"}`
    with `x = previous x + w + 20 mm` (the same size as the baseline).
-3. **Give the agent a clean folder** (`scratchpad/agent-vN/`) and note the start time.
-4. **Start a fresh subagent** (background) with the prompt template below.
-5. When it reports: look at its artboard next to the reference and the others (preview each artboard at the same
+4. **Give the agent a clean folder** (`scratchpad/agent-vN/`) and note the start time.
+5. **Start a fresh subagent** (background) with the prompt template below.
+6. When it reports: **complete its label**, look at its artboard next to the reference and the others (preview each artboard at the same
    size), check its numbers (§ Evaluate), and record the run.
 
 ### Prompt template
