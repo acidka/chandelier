@@ -458,8 +458,9 @@ Carried over from 0.5.2 when it was released.
     scripts for JSON only ([benchmarks § 2g](research/benchmarks.md)); another image still to do
 - [ ] Recreate suite (owner, 2026-11-25: improve recreation in general, not for one image): 4 cases set up in
   `tmp/recreate-suite/` (wall calendar, desk-calendar mockup, packaging front, ribbons photo); ✅ baseline run 1
-  (01, 02, 04 perfect; 03 waits for a better reference, [benchmarks § 2h](research/benchmarks.md)); owner adds logo,
-  illustration, poster, label
+  (01, 02, 04 perfect; 03 waits for a better reference, [benchmarks § 2h](research/benchmarks.md)); 2026-11-26: five
+  more real jobs from the owner as cases 05–09 (signage panel, foil-logo mockup, business card, round emblem, flat
+  illustration), also the scene tool's evaluation pool
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
 
 ## Candidates from the 2026-11-23 gap review 🧊
@@ -646,3 +647,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-26 | Scene task 1: fixed end tangents in `fitCurve` (`t0`, `t1`), `segsToD` and drawing helpers exported for the scene pipeline |
 | 2026-11-26 | Scene task 2: `src/scene/color.ts` (sRGB ↔ Lab D65, ΔE76, hex / `lab()` strings) and `rectify.ts` (crop, projective or row-wise 4-point map, convexity check, supersampled); synthetic test fixtures |
 | 2026-11-26 | Scene task 3: `smooth.ts` (bilateral filter on Lab) and `quantize.ts` (weighted k-means on a Lab histogram fitted on flat pixels only, so anti-aliased rims get no ink of their own; merge under `min_de`; near-pair hints) |
+| 2026-11-26 | Scene task 4: `regions.ts` (3×3 vote that keeps 1-px lines, 4-connected components, rim dissolve for thin regions whose colour is an sRGB mix of two neighbours, small and similar merges, stats with poles); quantizer drops mixture clusters. On six suite images (≤ 1000 px): 54–165 regions, segmentation 0.2–0.6 s. Recreate suite: cases 05–09 added |

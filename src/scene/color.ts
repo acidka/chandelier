@@ -54,3 +54,15 @@ export const rgbHex = (c: number[]) => '#' + c.map((v) => v.toString(16).padStar
 export const labHex = (L: number, a: number, b: number) => rgbHex(labToRgb(L, a, b));
 /** colour string for the runtime (A.color accepts lab(L,a,b)) */
 export const labSpec = (L: number, a: number, b: number) => `lab(${[L, a, b].map((v) => Math.round(v * 10) / 10).join(',')})`;
+
+/** Where colour m lies between colours p and q, all Lab: t in 0..1 along p → q, measured in sRGB (anti-aliasing and
+ * soft edges mix there, and a mix of two inks is a curve, not a line, in Lab); -1 when m is farther than tol (sRGB
+ * units, 0–255 per channel) from that segment. */
+export function mixT(m: ArrayLike<number>, p: ArrayLike<number>, q: ArrayLike<number>, tol: number): number {
+  const M = labToRgb(m[0], m[1], m[2]), P = labToRgb(p[0], p[1], p[2]), Q = labToRgb(q[0], q[1], q[2]);
+  const v = [Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]], u = [M[0] - P[0], M[1] - P[1], M[2] - P[2]];
+  const vv = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  if (!vv) return -1;
+  const t = (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / vv;
+  return Math.hypot(u[0] - t * v[0], u[1] - t * v[1], u[2] - t * v[2]) < tol ? t : -1;
+}

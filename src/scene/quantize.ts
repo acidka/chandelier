@@ -1,6 +1,6 @@
 // scene analyze, step 3: the inks. Weighted k-means on a Lab histogram (fast: ~10⁴ bins instead of 10⁶ pixels),
 // then the closest colours merge while they are within minDe — so k is a cap and the ΔE floor picks the real count.
-import { de76 } from './color.js';
+import { de76, mixT } from './color.js';
 import type { Lab } from './color.js';
 
 export function mulberry32(seed: number): () => number {
@@ -96,6 +96,15 @@ export function quantize(lab: Lab, o: QuantOpts = {}): Quant {
     C[bi] = [0, 1, 2].map((c) => (C[bi][c] * W[bi] + C[bj][c] * W[bj]) / t); W[bi] = t; W[bj] = 0;
   }
   for (const i of alive()) if (W[i] < used * 1e-4 && alive().length > 1) W[i] = 0;
+  // a small cluster whose colour is a mix of two bigger inks (where three inks meet, soft corners) is not an ink
+  const big = alive().filter((i) => W[i] >= used * 0.01);
+  for (const i of alive()) {
+    if (W[i] >= used * 0.01) continue;
+    mix: for (let x = 0; x < big.length; x++) for (let y = x + 1; y < big.length; y++) {
+      const t = mixT(C[i], C[big[x]], C[big[y]], minDe * 1.5);
+      if (t > 0.1 && t < 0.9) { W[i] = 0; break mix; }
+    }
+  }
   C = alive().map((i) => C[i]);
   // final assignment, then centres as the exact mean of their pixels
   const sums = C.map(() => [0, 0, 0, 0]);
@@ -120,20 +129,30 @@ export function nearPairs(q: Quant, limit: number): { a: number; b: number; de: 
   return out.sort((x, y) => x.de - y.de);
 }
 
-/** 1 where a pixel differs from each 4-neighbour by less than lim (ΔE); null when under 10 % of the pixels qualify */
+/** 1 for pixels that are an ink of their own, 0 for mixtures: a pixel whose colour lies between its two opposite
+ * neighbours (left/right or up/down; diagonals too) and clearly differs from one of them is an anti-aliased or soft
+ * edge. A thin line's pixels are not between their neighbours (they are darker than both), so lines keep their ink.
+ * null when under 10 % of the pixels qualify. */
 function flatMask(lab: Lab, lim: number, skip?: Uint8Array): Uint8Array | null {
   const { w, h, L, A, B } = lab, out = new Uint8Array(w * h), l2 = lim * lim;
   let n = 0, total = 0;
+  const pairs = [[-1, 0, 1, 0], [0, -1, 0, 1], [-1, -1, 1, 1], [1, -1, -1, 1]];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x;
     if (skip?.[i]) continue;
     total++;
     let ok = 1;
-    for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
-      if (j < 0) continue;
-      if ((L[i] - L[j]) ** 2 + (A[i] - A[j]) ** 2 + (B[i] - B[j]) ** 2 >= l2) { ok = 0; break; }
+    for (const [ax, ay, bx, by] of pairs) {
+      const x1 = x + ax, y1 = y + ay, x2 = x + bx, y2 = y + by;
+      if (x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0 || x1 >= w || x2 >= w || y1 >= h || y2 >= h) continue;
+      const p = y1 * w + x1, q = y2 * w + x2;
+      const v0 = L[q] - L[p], v1 = A[q] - A[p], v2 = B[q] - B[p], vv = v0 * v0 + v1 * v1 + v2 * v2;
+      if (vv < l2) continue; // no edge across this pair
+      const t = mixT([L[i], A[i], B[i]], [L[p], A[p], B[p]], [L[q], A[q], B[q]], lim * 1.5);
+      if (t > 0.1 && t < 0.9) { ok = 0; break; } // between the two sides: a mixture, not an ink
     }
     out[i] = ok; n += ok;
   }
   return n >= total * 0.1 ? out : null;
 }
+
