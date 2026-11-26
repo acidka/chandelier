@@ -68,6 +68,22 @@ export function fillers(regions: Region[], z: number[], skip: Set<number>, given
     const f = best >= 0 ? best : any;
     if (f >= 0) out.set(x, f);
   }
+  // a skipped region surrounded only by skipped ones (a letter's counter inside a text box, a speck on a dropped
+  // patch) takes the filler of the one it sits on — otherwise it would be a hole in what lies under it
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const x of skip) {
+      if (!regions[x]?.area || out.has(x)) continue;
+      let best = -1, bl = -1, any = -1, al = -1;
+      for (const [n, len] of regions[x].nbrs) {
+        if (!out.has(n)) continue;
+        if (len > al) { al = len; any = n; }
+        if (z[n] < z[x] && len > bl) { bl = len; best = n; }
+      }
+      const via = best >= 0 ? best : any;
+      if (via >= 0) { out.set(x, out.get(via)!); changed = true; }
+    }
+  }
   return out;
 }
 

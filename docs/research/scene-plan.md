@@ -473,6 +473,14 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F29 | ⏳ | 09 v3 | no ramp hints on hat, skin or petals (soft gradients): all gradients built by hand |
 | F30 | ⏳ | 09 v3 | every build / refine puts the scene layer back on top of the hand-built layers |
 | F31 | ⏳ | 09 v3 | refine on a 426-region scene reverted everything while listing 8 disagreeing inks |
+| F33 | ✅ | 06 v3 | build failed on a degenerate tiny region ("item 106: The path has no drawable segments") and rolled back: one-segment loops are now left out, a region with nothing drawable is skipped |
+| F34 | ✅ | 06 v3 | dark counters inside a `text` box (D, A, R, O) were drawn white (no filler: their only neighbour, the letter, was skipped too): a skipped region takes the filler of the skipped one it sits on |
+| F35 | ⏳ | 06 v3 | no edit to drop every region inside a box (keeping only the background took ~110 ids from a script) |
+| F36 | ⏳ | 06 v3 | crown leaves touching a dropped frame line belong to the line's region and go with it (no split edit) |
+| F37 | ⏳ | 06 v3 | `max_px` doesn't upscale a small crop: `detail: high` can't add resolution |
+| F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` |
+| F39 | ⏳ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) |
+| F40 | ⏳ | 09 v4 | analyze overlays of small crops (234 px) are too small to read |
 | F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
@@ -512,6 +520,16 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G28 | ✅ | 09 v3 | re-order hand-built layers after every build or refine (the scene layer goes on top) |
 | G29 | ✅ | 09 v3 | non-Latin text: check the font has the script in a preview (Avenir Next showed missing glyphs) |
 | G30 | ✅ | 09 v3 | cap height ÷ 0.7 overshot 11 % with Futura: confirm the size in a close-up |
+| G32 | ✅ | 06 v3 | `text x y w h` is in the analyzed crop's pixels |
+| G33 | ✅ | 06 v3 | after each build / refine move the scene layer below the hand layers before checking (refine measures with it on top) |
+| G34 | ✅ | 06 v3 | centring tracked text: G23's shift was wrong — the returned box stays centred; measure by the box or `content_box` |
+| G35 | ✅ | 06 v3 | a style update doesn't clear local tracking: re-apply the paragraph style |
+| G36 | ✅ | 06 v3 | check stem weight after `horizontal_scale` (Bold 120 % too heavy, Bold 112 % + tracking right) |
+| G37 | ✅ | 06 v3 | straight frame lines with feet or a taper: filled polygons from profile tracks, not grid reading (0.7 mm off) |
+| G38 | ✅ | 09 v4 | soft-shaded illustration recipe: scene for everything, hand layers above it hiding its shaded parts, no refine after hand work |
+| G39 | ✅ | 09 v4 | soft-shaded small parts (petals) and jewellery: primitives with radial gradients, not a part crop |
+| G40 | ✅ | 09 v4 | `max_px` never upsamples: a small crop stays small |
+| G41 | ✅ | 09 v4 | wordmark: cap height with size first, then width with `horizontal_scale`, then tracking |
 | G31 | ✅ | 09 v3 | `name:` refs match the whole document: they hit another version's item of the same name |
 
 ### Owner decisions pending

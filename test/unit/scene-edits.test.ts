@@ -128,3 +128,14 @@ describe('scene edits after the first suite runs', () => {
     expect(p.kind).toBe('circle'); expect(p.a).toBeCloseTo(80, -0.5); expect(p.cx).toBeCloseTo(120, -0.3);
   });
 });
+
+describe('text boxes', () => {
+  it('a counter inside a letter in a text box is filled like the letter, not left as a hole', () => {
+    const NAVY: RGB = [10, 12, 25], GOLD: RGB = [180, 140, 70];
+    const im = paint(200, 100, [rect(120, 20, 60, 60, GOLD), ellipse(60, 50, 25, 25, GOLD), ellipse(60, 50, 12, 12, NAVY)], { bg: NAVY, noise: 1 });
+    const s = analyze(im, { image: 'x.png', colors: 4, minDe: 6, detail: 'normal', maxPx: 1000 }, { dir: '/tmp/x', path: 'x.png' });
+    applyEdits(s, ['text 30 20 62 62']);
+    const at = (x: number, y: number) => Array.from(s.render.rgb.slice((y * s.work.w + x) * 3, (y * s.work.w + x) * 3 + 3));
+    expect(at(60, 50)).toEqual(at(5, 5)); // the counter shows the background, not white
+  });
+});

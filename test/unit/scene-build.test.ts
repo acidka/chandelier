@@ -83,3 +83,14 @@ describe('scene tool', () => {
     expect((await scene.run!({ action: 'analyze', image: join(dir, 'nope.png') }, ctx)).content[0]).toMatchObject({ text: expect.stringMatching(/not found/) });
   });
 });
+
+describe('buildSteps degenerate loops', () => {
+  it('a one-segment loop is left out; a region with nothing drawable is not drawn', () => {
+    const s = analyze(wave(), P, { dir: '/tmp/x', path: 'x.png' });
+    const sh = s.shapes.find((x) => !s.prims[x.region])!;
+    const seg = sh.loops[0][0];
+    sh.loops = [[[seg[0], seg[1], seg[2], seg[0]]]]; // one closed segment: a single point to Illustrator
+    const b = buildSteps(s, { rect: [0, 0, 200, 100] });
+    expect(b.regions).not.toContain(sh.region);
+  });
+});

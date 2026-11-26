@@ -91,10 +91,13 @@ Skip what already exists (a document, a reference artboard): reuse it.
   `horizontal_scale` so lines break where the reference breaks. Body copy goes in area text.
 - **Non-Latin text** (Cyrillic, Greek…): the fuzzy font match doesn't check the script — look at the text in a
   preview close-up; missing glyphs show as boxes or a fallback face. Pick a font that has the script.
-- **Wordmark width, in this order:** match one wide letter's width with `horizontal_scale`, then the whole word's width
-  with tracking. Both at once take several rounds.
-- **Centred point text with tracking** sits left of x by half a tracking step (the last letter's tracking counts):
-  move it right by size × tracking / 2000 pt.
+- **Wordmark, in this order:** cap height with the size, then one wide letter's width with `horizontal_scale`, then the
+  whole word's width with tracking. All at once take several rounds.
+- **Centred point text with tracking:** check its position by the box `create_text` / `edit_text` return, or by
+  `content_box` in a region preview — not by a formula.
+- A paragraph style update doesn't clear tracking set locally by `edit_text`: re-apply the `paragraph_style`.
+- `horizontal_scale` thickens or thins stems along with the width: check the stem weight against the reference after
+  scaling, and change the weight if it is off.
 - Give every text its paragraph style and every colour its swatch, so the file can be restyled.
 - Tables and calendars: `create_text {grid}` with column props; check the content (dates, weekdays, totals) — a
   correct-looking grid with a wrong first weekday is the classic miss.
@@ -159,12 +162,13 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
    **Flat inks rendered with a material** (gold foil, emboss, print on textured paper, a mockup's lighting): give
    `colors` = the number of flat inks in the artwork (`colors: 2` for one foil ink on paper). The default splits the
    material's shading into a dozen inks and hundreds of specks.
-   **Detail settings:** small art in a large image → raise `max_px` (up to 3000); two inks that merge (hair into black,
+   **Detail settings:** small art in a large image → raise `max_px` (up to 3000; it never upsamples: a small crop stays
+   at its own size); two inks that merge (hair into black,
    lips into brown) → lower `min_de` (e.g. 3) or set the ink by hand (`rN = #hex`) — lowering `min_de` also splits
    soft shading into facets, so prefer fixing the few inks.
 2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
-   `drop < 0.05` drops every tiny region at once, e.g. small text and texture), `text x y w h` over each text block,
+   `drop < 0.05` drops every tiny region at once, e.g. small text and texture), `text x y w h` over each text block (in the analyzed crop's pixels),
    `r10 logo` on marks, `rN circle` / `rect` to force a primitive — only when the **whole** outline is that primitive
    (a disc with a lobe is not a circle: keep it free and fix the round stretch afterwards) —, `c0 = swatch:…` for
    brand inks, `name` the parts.
@@ -172,7 +176,8 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
    really is two translucent inks (the new inks must look right in the summary), `cN = cM` when two inks are one.
    Edits add up; `undo`, `undo 3` or `reset` go back. Check the new summary.
 3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer (on top — every build
-   and refine puts it back on top: re-order your hand-built layers afterwards); then
+   and refine puts it back on top: move it below your hand-built layers — `layers {reorder, name, position:
+   "below:<lowest hand layer>"}` — before every check; refine measures with it on top); then
    `create_text` into the returned `text_boxes` (fonts and sizes as § 3). Text on a circle can't be boxed: drop its
    letters (`drop < …` or ranges) — the ring under them fills the gap — and set it on a path (§ 3).
 4. **Refine.** `preview {reference}` once; `scene {action: "refine", id}` corrects inks shifted by colour conversion,
@@ -194,7 +199,11 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
 (soft shading, texture), or a part keeps coming out lumpy → draw that part with § 5a–5c (profile tracks + fit) and
 keep the scene for the rest. Don't spend more than two builds on one part.
 **A soft-shaded illustration** (gradients on the main shapes — a hat, petals, skin): no ramp hint comes for soft
-shading, so draw the shaded shapes by hand (§ 5a–5c, gradients § 7) and use the scene only for the flat parts.
+shading, so draw the shaded shapes by hand (§ 5a–5c, gradients § 7) and use the scene only for the flat parts. Recipe:
+build the scene once for everything, put the hand-drawn layers above it (they hide its shaded parts, nothing to
+delete), and don't refine after hand work (refine rebuilds the scene on top). Small soft-shaded parts (petals) and
+jewellery (pearls, stones): primitives with radial gradients — a part crop of them comes out as patches, and
+`drop < %` removes jewellery-scale detail.
 
 **Keeping only part of a scene** (the substrate, the primitives): build, then remove the rest by name —
 `delete_items {refs: ["name:<layer> r12", …]}` (the summary's ids; a region you named is drawn under that name alone:

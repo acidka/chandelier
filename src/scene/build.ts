@@ -27,8 +27,12 @@ export interface TextBox { rect: number[]; colour: string; cap: number; regions:
 export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; items: number; swatches: number; anchors: number; bytes: number; regions: number[]; textBoxes: TextBox[] } {
   const layer = o.layer ?? 'Scene', { w, h } = s.work, [rx, ry, rw, rh] = o.rect;
   const sx = rw / w, sy = rh / h, bx = (o.bleed ?? 0) / sx, by = (o.bleed ?? 0) / sy;
-  const shapes = s.shapes;
-  const used = [...new Set(shapes.map((sh) => s.meta[sh.region].colour))].sort((a, b) => a - b);
+  // a loop of one segment collapses to a single point in Illustrator ("no drawable segments") and would fail the whole
+  // build: such loops are left out, and a region with nothing left is not drawn (a primitive is always drawable)
+  const shapes = s.shapes
+    .map((sh) => (s.prims[sh.region] ? sh : { ...sh, loops: sh.loops.filter((l) => l.length >= 2) }))
+    .filter((sh) => s.prims[sh.region] || sh.loops.length);
+  const used =[...new Set(shapes.map((sh) => s.meta[sh.region].colour))].sort((a, b) => a - b);
   const ramps = shapes.filter((sh) => s.ramps[sh.region]);
   const head: BatchStep[] = [
     { tool: 'delete_items', args: { refs: `layer:${layer}` } },
