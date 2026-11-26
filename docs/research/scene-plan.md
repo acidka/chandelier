@@ -404,7 +404,7 @@ owner's verdict recorded as is. Plus `bench/scene-bench.mjs` on the four suite r
 | 3 ✅ | `smooth.ts`, `quantize.ts` + tests — done 2026-11-26 | 1 d | 2 |
 | 4 ✅ | `regions.ts` + tests — done 2026-11-26 | 1.5 d | 3 |
 | 5 ✅ | `planar.ts` + invariant tests — done 2026-11-26 | 1.5 d | 4 |
-| 6 | `fitedges.ts` + tests | 1 d | 1, 5 |
+| 6 ✅ | `fitedges.ts` + tests — done 2026-11-26 | 1 d | 1, 5 |
 | 7 | `stack.ts`, `raster.ts`, est_rmse + seam tests | 1.5 d | 6 |
 | 8 | `summary.ts`, `overlay.ts`, `analyze.ts` + analyze/perf tests | 1 d | 7 |
 | 9 | `edits.ts` (S1), `store.ts` + tests | 1 d | 8 |
