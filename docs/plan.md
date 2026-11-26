@@ -217,6 +217,20 @@ The tool list is re-read on every agent request. With the 0.3 tools it is 53.6 K
 The `effects` tool knows 11 types plus raw `{xml}`. Lengths are session units, colours the usual specs (CMYK, RGB,
 gray or a swatch of one).
 
+### D15 — Image → scene: Node-side pipeline, stacked shapes, batch build ✅ decided (0.6, owner 2026-11-26)
+
+Free-form recreation cost 9–16 min because the agent did the pixel work itself. The `scene` tool does it in Node:
+rectify → Lab → bilateral smoothing → inks (k-means on flat pixels) → regions → planar map (each shared boundary
+stored once) → one fit per edge → stacked shapes → batch build. Plan and steps: [scene-plan.md](research/scene-plan.md).
+
+| Choice | Pros | Cons |
+|--------|------|------|
+| **Stacked shapes** (chosen) vs exact tiling | No hairline seams on screen, overlap against misregistration, whole layered shapes as a designer draws them; dropped / text regions filled by the shape below | A coincident edge can tint ≤ 25 % of one anti-aliased pixel row (screen only); tiling stays as the `stack off` edit |
+| **Edits as strings** (chosen) vs a typed edit schema | ~1.5 KB less schema per request; precise errors per edit | Parsed in Node, not validated by the MCP client |
+| **Build through `batch` + `create_path`** (chosen) vs an ES3 scene builder | No new runtime code; one undo step, rollback; same paths as every other tool | Each shared edge's text is written twice (≈ 150–250 KB for 150 regions); a runtime builder is the fallback if live timings are bad |
+| **State in memory + scene.json / labels.png** (chosen) | Survives a reconnect with `dir`; pixels re-derived (deterministic) | Reload re-runs ~1 s of analysis and needs the source image unchanged (sha1) |
+| **Behind `CHANDELIER_SCENE=1`** until it ships | Users pay no schema bytes (2.1 KB) while S1–S3 are proven | Raise the full-list budget to ~58.5 KB at release |
+
 ## 6. Tool catalogue
 
 Every mutating tool can also be a `batch` step: `{"tool": "create_shape", "args": {...}}`.
@@ -263,6 +277,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 35 | `tools` | Only in a tool profile (`CHANDELIER_TOOLS=lean` or a list): catalog, `query`, full schema by `name`, `call` + `args` for the tools left out of the list ([D13](#d13--tool-profiles-full-by-default-lean-on-request--decided-03)) | 0.3 |
 | 36 | `effects` | Live effects (0.4) through LiveEffect XML: drop shadow, outer / inner glow (colours), round corners, feather, blur, offset, roughen, zigzag, pucker & bloat, transform (copies), raw XML; `clear` ([D14](#d14--live-effects-through-liveeffect-xml--decided-04)) | 0.4 |
 | 37 | `events` | Experimental (0.5), only with `CHANDELIER_TRANSPORT=panel`: what the designer does, pushed by the Chandelier panel — `selection`, `document`, `saved`, `edited`, `message` (the designer wrote to the agent in the panel), `panel`, `paused`/`resumed`; `since` cursor, `wait` long poll, `types`; `say` shows the agent's answer in the panel; unread messages are never skipped; returns the current `state`. With `CHANDELIER_CHANNEL=1` panel messages are pushed into the session instead (Claude Code channels) ([panel plan](panel-plan.md)) | 8 |
+| 38 | `scene` | Image → editable vector scene (0.6, behind `CHANDELIER_SCENE=1`): `analyze` (crop or 4-point map, inks, regions, shared fitted edges → id, 1-page summary + overlay), `edit` (merge, drop, recolour to swatches / hex / inks, z moves, names, tolerance, text, stack on/off), `build` (one undo step: global swatches + stacked paths on a layer; rect, artboard, bleed); `refine` in S3 ([D15](#d15--image--scene-node-side-pipeline-stacked-shapes-batch-build--decided-06-owner-2026-11-26)) | 0.6 |
 
 Tool descriptions are kept short; the conventions (refs, colours, coordinates) live in the MCP server
 `instructions`, sent once per session instead of being repeated in 33 schemas.
@@ -286,7 +301,7 @@ Tool descriptions are kept short; the conventions (refs, colours, coordinates) l
 
 | Layer | How | When |
 |-------|-----|------|
-| TypeScript (schemas, queue, protocol, PDF boxes) | `vitest` unit tests, no Illustrator needed | Every commit (CI on GitHub Actions, macOS and Windows runners; the Windows job also drives `bridge-win.ps1` in fake-COM mode) |
+| TypeScript (schemas, queue, protocol, PDF boxes, the scene pipeline on synthetic images) | `vitest` unit tests, no Illustrator needed | Every commit (CI on GitHub Actions, macOS and Windows runners; the Windows job also drives `bridge-win.ps1` in fake-COM mode) |
 | Runtime pure helpers (colour parse, coords, SVG `d` parser, JSON) | Load `src/runtime/*.jsx` in Node with a tiny shim and test functions | Every commit |
 | ES3 compatibility of the runtime | Lint rule set that forbids ES5+ (`let`, arrows, `Array#map`, `JSON`, trailing commas) | Every commit |
 | Live integration | `npm run test:live` creates **scratch documents**, runs every tool, checks results, closes without saving; a guard aborts if another document becomes active | Before each release, on the owner's Mac |

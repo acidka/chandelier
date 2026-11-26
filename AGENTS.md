@@ -31,6 +31,7 @@ ssh -F tmp/windows-vm/ssh_config win  # into the Windows VM (docs/windows-plan.m
 node test/live-w1-bridge.mjs      # Windows, desktop session (run-interactive.ps1): bridge latency, script size, Unicode, errors (W1)
 node test/live-w1-activate.mjs    # Windows, desktop session: save/export with Illustrator in the background (W1)
 scripts/windows/run-interactive.ps1  # over SSH: run a command in the VM's desktop session (live tests need it)
+CHANDELIER_SCENE=1 npm start         # with the scene tool (image → vector scene, 0.6 in progress: docs/research/scene-plan.md)
 claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill, commands); marketplace in .claude-plugin/
 node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
 node scripts/cep/install.mjs --link  # dev-install the Chandelier panel (CEP) into Illustrator; --debug (DevTools :8098), --uninstall (docs/panel-plan.md)
