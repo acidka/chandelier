@@ -14,7 +14,7 @@ export interface Region {
   L: number; a: number; b: number;
   /** ink (quantizer cluster) most of its pixels had */
   group: number;
-  /** share of pixels within ΔE 5 of the mean */
+  /** share of pixels within ΔE 10 of the mean (JPEG noise on saturated inks reaches ΔE 5–8) */
   homog: number;
   /** the point deepest inside (label position) and its distance to the edge */
   pole: number[];
@@ -117,7 +117,7 @@ export function regionStats(map: Int32Array, w: number, h: number, count: number
   if (groupCount) for (const [id, g] of groupCount) { let best = -1, bn = 0; for (const [v, n] of g) if (n > bn) { bn = n; best = v; } R[id].group = best; }
   // homogeneity
   const near = new Float64Array(count);
-  for (let i = 0; i < w * h; i++) { const id = map[i]; if (id < 0) continue; const r = R[id]; if (de76(lab.L[i], lab.A[i], lab.B[i], r.L, r.a, r.b) < 5) near[id]++; }
+  for (let i = 0; i < w * h; i++) { const id = map[i]; if (id < 0) continue; const r = R[id]; if (de76(lab.L[i], lab.A[i], lab.B[i], r.L, r.a, r.b) < 10) near[id]++; }
   for (const r of R) r.homog = r.area ? near[r.id] / r.area : 0;
   // poles: 3-4 chamfer distance to the nearest pixel of another region (or the image border)
   const d = chamfer(map, w, h);
@@ -141,15 +141,22 @@ function chamfer(map: Int32Array, w: number, h: number): Uint32Array {
   return d;
 }
 
-/** Anti-aliased rims: thin regions (mean width < 2 px) whose colour lies between two of their neighbours' colours.
+/** Rims and halos: thin regions (mean width < 2 px) whose colour lies between two of their neighbours' colours, and
+ * thin ones (< 3 px) within 2 × minDe of a neighbour (JPEG ringing round letters); only next to solid shapes (≥ 2 px).
  * Their pixels go, nearest first, to the neighbour closest in colour. A real thin line (its own ink) stays. */
 export function dissolveThin(seg: Segmentation, lab: Lab, tol: number, centres?: Float32Array, minDe = 6): number {
   const { w, h, map, regions } = seg, dissolve = new Uint8Array(regions.length);
   let n = 0;
+  // a rim lies between two solid shapes; the fringe of a thin stroke (small text) hugs a thin core and must stay
+  const widthOf = (q: Region) => (q.perim ? (2 * q.area) / q.perim : 0);
+  const solid = (q: Region) => q.area > 0 && widthOf(q) >= 2;
   for (const r of regions) {
-    if (!r.area || r.nbrs.size < 2 || (2 * r.area) / r.perim >= 2) continue;
+    if (!r.area) continue;
+    const width = widthOf(r), nb = [...r.nbrs.entries()].sort((x, y) => y[1] - x[1]).map(([id]) => regions[id]).filter(solid).slice(0, 6);
+    // a thin ring or ribbon close to a solid neighbour's colour (JPEG ringing, a halo): part of that neighbour
+    if (width < 3 && nb.some((q) => de76(r.L, r.a, r.b, q.L, q.a, q.b) < 2 * minDe)) { dissolve[r.id] = 1; n++; continue; }
+    if (nb.length < 2 || width >= 2) continue;
     if (centres && r.group >= 0 && de76(r.L, r.a, r.b, centres[r.group * 3], centres[r.group * 3 + 1], centres[r.group * 3 + 2]) < minDe / 2) continue;
-    const nb = [...r.nbrs.entries()].sort((x, y) => y[1] - x[1]).slice(0, 6).map(([id]) => regions[id]);
     let between = false;
     for (let i = 0; i < nb.length && !between; i++) for (let j = i + 1; j < nb.length; j++) {
       const t = mixT([r.L, r.a, r.b], [nb[i].L, nb[i].a, nb[i].b], [nb[j].L, nb[j].a, nb[j].b], tol);

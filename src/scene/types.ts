@@ -1,0 +1,63 @@
+// scene: the model kept between analyze, edit, build and refine.
+import type { Img } from '../image.js';
+import type { Lab } from './color.js';
+import type { Quant } from './quantize.js';
+import type { Segmentation } from './regions.js';
+import type { PlanarMap } from './planar.js';
+import type { Seg } from '../fitcurve.js';
+
+export type Detail = 'low' | 'normal' | 'high';
+
+export interface Params {
+  image: string;
+  crop?: number[];
+  map?: number[][];
+  bilinear?: boolean;
+  size?: number[];
+  colors: number;
+  minDe: number;
+  detail: Detail;
+  maxPx: number;
+}
+
+/** an ink: one global swatch at build */
+export interface Colour { L: number; a: number; b: number; swatch?: string; name?: string }
+
+/** what edits changed about a region (by id; ids never change after analyze) */
+export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number }
+
+export interface Scene {
+  id: string;
+  dir: string;
+  params: Params;
+  source: { path: string; sha1: string; w: number; h: number };
+  work: Img;
+  toSource: (x: number, y: number) => [number, number];
+  lab: Lab;
+  quant: Quant;
+  seg: Segmentation;
+  colours: Colour[];
+  meta: RegionMeta[];
+  /** z overrides from edits: ids moved, in order (applied after the automatic order) */
+  zMoves: { id: number; how: 'top' | 'bottom' | 'over' | 'under'; ref?: number }[];
+  tile: boolean;
+  /** global tolerance (px) */
+  tol: number;
+  edits: string[];
+  // derived (recompute)
+  pm: PlanarMap;
+  fits: Seg[][];
+  z: number[];
+  render: Img;
+  /** per region: rendered vs labelled IoU */
+  iou: number[];
+  estRmse: number;
+  ms: number;
+  built?: { doc?: string; layer: string; rect: number[]; units?: string; items: Record<string, string> };
+}
+
+export const DETAIL: Record<Detail, { passes: number; area: number; tol: number }> = {
+  low: { passes: 2, area: 4, tol: 2 },
+  normal: { passes: 1, area: 1, tol: 1 },
+  high: { passes: 0, area: 0.25, tol: 0.6 },
+};
