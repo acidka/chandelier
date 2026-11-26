@@ -147,7 +147,8 @@ function fitEdge(e: Edge, tol: number, minDeg: number, T0?: number[], T1?: numbe
   if (!e.closed && p.length <= 5) return fitCurve([p[0], p[p.length - 1]], {});
   const c = corners(p, e.closed, 4, minDeg);
   const fixed = new Set(c);
-  p = relax(p, 3, e.closed, fixed);
+  // two passes of ±4: crack staircases and a JPEG fringe's ±1 px wobble become a smooth line; corners stay fixed
+  p = relax(relax(p, 4, e.closed, fixed), 4, e.closed, fixed);
   for (const i of c) p[i] = sharpen(e.pts, i, e.closed);
   if (e.closed) {
     if (c.length) {

@@ -154,12 +154,14 @@ export function dissolveThin(seg: Segmentation, lab: Lab, tol: number, centres?:
     if (!r.area) continue;
     const width = widthOf(r), nb = [...r.nbrs.entries()].sort((x, y) => y[1] - x[1]).map(([id]) => regions[id]).filter(solid).slice(0, 6);
     // a thin ring or ribbon close to a solid neighbour's colour (JPEG ringing, a halo): part of that neighbour
-    if (width < 3 && nb.some((q) => de76(r.L, r.a, r.b, q.L, q.a, q.b) < 2 * minDe)) { dissolve[r.id] = 1; n++; continue; }
-    if (nb.length < 2 || width >= 2) continue;
+    if (width < 3 && nb.some((q) => de76(r.L, r.a, r.b, q.L, q.a, q.b) < 3 * minDe)) { dissolve[r.id] = 1; n++; continue; }
+    // a JPEG fringe at full resolution is 2–3 px wide: a mixture that thin is a rim, not a stroke
+    if (nb.length < 2 || width >= 3.5) continue;
     if (centres && r.group >= 0 && de76(r.L, r.a, r.b, centres[r.group * 3], centres[r.group * 3 + 1], centres[r.group * 3 + 2]) < minDe / 2) continue;
     let between = false;
     for (let i = 0; i < nb.length && !between; i++) for (let j = i + 1; j < nb.length; j++) {
-      const t = mixT([r.L, r.a, r.b], [nb[i].L, nb[i].a, nb[i].b], [nb[j].L, nb[j].a, nb[j].b], tol);
+      // under 3 px a JPEG fringe's colour drifts off the straight mix (chroma blur): a looser test
+      const t = mixT([r.L, r.a, r.b], [nb[i].L, nb[i].a, nb[i].b], [nb[j].L, nb[j].a, nb[j].b], width < 3 ? Math.max(tol, 40) : tol);
       if (t >= -0.1 && t <= 1.1) { between = true; break; } // a mix, or (nearly) one side: either way not an ink of its own
     }
     if (between) { dissolve[r.id] = 1; n++; }

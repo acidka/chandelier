@@ -20,7 +20,7 @@ describe('refine', () => {
     expect(bad.dev).toBeGreaterThan(1.5); // the search spans ±3 px around the curve
     const rep = refine(s, m1);
     expect(rep.fixed.some((f) => f.what === `edge r${e.left}|r${e.right}`)).toBe(true);
-    expect(s.edgeTol![e.left < e.right ? `${e.left},${e.right}` : `${e.right},${e.left}`]).toBe(0.5);
+    expect(s.edgeTol![e.left < e.right ? `${e.left},${e.right}` : `${e.right},${e.left}`]).toBe(0.75);
     const now = measure(s, s.render).edges.find((x) => x.left === e.left && x.right === e.right)!;
     expect(now.dev).toBeLessThan(1);
   });

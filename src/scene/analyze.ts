@@ -1,7 +1,7 @@
 // scene analyze: the whole pixel pipeline in one call — rectify, Lab, smooth, quantize, regions, planar map, fits,
 // z order, own render and error. recompute() redoes the geometry after edits.
 import { createHash } from 'node:crypto';
-import type { Img } from '../image.js';
+import { fitLongest, type Img } from '../image.js';
 import { rgbToLab, labToRgb, type Lab } from './color.js';
 import { planeStats, findRamps, rampOf } from './ramps.js';
 import { rectify } from './rectify.js';
@@ -35,7 +35,9 @@ export function prepare(src: Img, p: Params) {
   const work = r.img, raw = rgbToLab(work), lab = bilateral(raw, { passes: d.passes });
   const skip = work.a ? work.a.map((v) => (v < 128 ? 1 : 0)) : undefined;
   const quant = sortInks(quantize(lab, { colors: p.colors, minDe: p.minDe, skip }));
-  return { work, toSource: r.toSource, lab, quant, photo: isPhoto(raw, d.passes ? lab : bilateral(raw)) };
+  // noise measured at ≤ 600 px: a full-resolution JPEG of flat art has pixel noise too, a photo keeps its grain
+  const small = fitLongest(work, 600), sl = rgbToLab(small);
+  return { work, toSource: r.toSource, lab, quant, photo: isPhoto(sl, bilateral(sl)) };
 }
 
 export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path: string; bytes?: Buffer }): Scene {
@@ -136,10 +138,16 @@ export function primitives(s: Scene, shapes: Shape[]): (Prim | null)[] {
   return out;
 }
 
-/** a photo or rendered mockup: the median pixel differs from its smoothed self (noise, grain); flat artwork is exact */
+/** a photo or rendered mockup: inside flat areas (no edge nearby in the smoothed image) pixels still differ from their
+ * smoothed selves (grain, sensor noise); flat artwork is clean there, JPEG noise sits only near its edges */
 export function isPhoto(raw: Lab, smooth: Lab): boolean {
-  const d: number[] = [];
-  for (let i = 0; i < raw.L.length; i += 7) d.push(Math.hypot(raw.L[i] - smooth.L[i], raw.A[i] - smooth.A[i], raw.B[i] - smooth.B[i]));
+  const { w, h } = raw, d: number[] = [];
+  for (let y = 2; y < h - 2; y += 2) for (let x = 2; x < w - 2; x += 2) {
+    const i = y * w + x;
+    let g = 0;
+    for (const j of [i - 2, i + 2, i - 2 * w, i + 2 * w]) g = Math.max(g, Math.abs(smooth.L[j] - smooth.L[i]) + Math.abs(smooth.A[j] - smooth.A[i]) + Math.abs(smooth.B[j] - smooth.B[i]));
+    if (g < 3) d.push(Math.hypot(raw.L[i] - smooth.L[i], raw.A[i] - smooth.A[i], raw.B[i] - smooth.B[i]));
+  }
   d.sort((a, b) => a - b);
-  return d.length > 0 && d[d.length >> 1] > 0.25;
+  return d.length > 100 && d[d.length >> 1] > 0.25;
 }

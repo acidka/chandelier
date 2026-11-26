@@ -29,7 +29,7 @@ describe('scene S4 hooks', () => {
     const s = analyze(img(), P, { dir: '/tmp', path: 'x' });
     const R = s.seg.regions, disc = R.findIndex((r) => r.area > 0 && r.b < -20), dot = R.findIndex((r) => r.area > 0 && r.L > 95 && r.cx > 150), box = R.findIndex((r) => r.area > 0 && r.a > 20);
     applyEdits(s, [`r${disc} logo`, `r${box} placeholder`, `name r${box} Photo`]);
-    expect(s.meta[dot].tol).toBe(0.5);
+    expect(s.meta[dot].tol).toBe(0.75); // half the default 1.5
     const steps = buildSteps(s, { rect: [0, 0, 300, 200] }).batches[0];
     const g = steps.find((x) => x.tool === 'arrange_items')!;
     expect(g.args).toMatchObject({ action: 'group', name: `Logo r${disc}` });

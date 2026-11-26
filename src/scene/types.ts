@@ -73,7 +73,7 @@ export interface Scene {
 }
 
 export const DETAIL: Record<Detail, { passes: number; area: number; tol: number }> = {
-  low: { passes: 2, area: 4, tol: 2 },
-  normal: { passes: 1, area: 1, tol: 1 },
-  high: { passes: 0, area: 0.25, tol: 0.6 },
+  low: { passes: 2, area: 4, tol: 2.5 },
+  normal: { passes: 1, area: 1, tol: 1.5 },
+  high: { passes: 0, area: 0.25, tol: 0.8 },
 };
