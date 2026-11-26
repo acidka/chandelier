@@ -645,3 +645,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-26 | `scene` tool: implementation plan (S1–S4, 17 tasks) in research/scene-plan.md; owner decisions on rollout flag, stacked shapes, S1 exit, photo lighting |
 | 2026-11-26 | Scene task 1: fixed end tangents in `fitCurve` (`t0`, `t1`), `segsToD` and drawing helpers exported for the scene pipeline |
 | 2026-11-26 | Scene task 2: `src/scene/color.ts` (sRGB ↔ Lab D65, ΔE76, hex / `lab()` strings) and `rectify.ts` (crop, projective or row-wise 4-point map, convexity check, supersampled); synthetic test fixtures |
+| 2026-11-26 | Scene task 3: `smooth.ts` (bilateral filter on Lab) and `quantize.ts` (weighted k-means on a Lab histogram fitted on flat pixels only, so anti-aliased rims get no ink of their own; merge under `min_de`; near-pair hints) |
