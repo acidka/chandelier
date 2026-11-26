@@ -178,17 +178,17 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
    gradient; `layers rA rB` only when the overlap
    really is two translucent inks (the new inks must look right in the summary), `cN = cM` when two inks are one.
    Edits add up; `undo`, `undo 3` or `reset` go back. Check the new summary.
-3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer (on top — every build
-   and refine puts it back on top: move it below your hand-built layers — `layers {reorder, name, position:
-   "below:<lowest hand layer>"}` — before every check; refine measures with it on top); then
+3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer: a new layer goes on
+   top, or where `position` says (`"below:<lowest hand layer>"`, `"bottom"`); a rebuild or refine keeps the layer
+   where it is, replaces only its own items (items you added stay) and keeps regions you deleted dropped; then
    `create_text` into the returned `text_boxes` (fonts and sizes as § 3). Text on a circle can't be boxed: drop its
    letters (`drop < …` or ranges) — the ring under them fills the gap — and set it on a path (§ 3).
 4. **Refine.** `preview {reference}` once; `scene {action: "refine", id}` corrects inks shifted by colour conversion,
    re-fits edges that miss and rebuilds; it undoes its own fixes when they make the scene worse and names inks whose
    regions disagree (shading: give them their own ink or a ramp). A tolerance you set (`tolerance rN 3`) wins.
    Refine also corrects inks you only named; an ink set to an existing swatch (`c0 = swatch:Name`) is never changed.
-   Refine **rebuilds the whole layer**: items you deleted after the build come back, items you added to it are lost.
-   Drop in the scene instead, or redo the deletions after refine; keep hand-built parts on their own layers.
+   Refine measures the artboard as it looks, hand-built layers included: run it before hand work that covers the
+   scene, or keep that work beside the scene, not over it.
 5. **Parts.** A part that needs more detail or a cleaner build (a globe, a mark inside a badge, a detailed tree in a
    logo): analyze a `crop` of just that part (with `detail: "high"` for fine detail) and build it with `rect` (where it
    goes, session units) and its own `layer`. The crop cuts every shape crossing its edge square: make it reach past
@@ -205,16 +205,15 @@ keep the scene for the rest. Don't spend more than two builds on one part.
 scene for the **whole** illustration from one analyze of the full image (`detail: "high"`, default `colors`), and in
 one edit call: `ramp` the bands of each big soft-shaded shape into one gradient shape, set the few inks that merged
 (hair, lips) by hand, `merge` split parts, `name` the inks. Don't hand-draw the big shapes instead (the runs that
-did looked worse), and don't refine after hand work (refine rebuilds the scene on top). Draw by hand only what the
+did looked worse), and refine before the hand work (it measures what covers the scene too). Draw by hand only what the
 scene can't hold: a layered flower — petals as rotated ellipses or fitted shapes with **flat** fills in 2–3 greens and
 a darker outline stroke, back petals first (radial gradients on every petal looked "bubbly"); jewellery (pearls,
 stones) — `drop < %` removes detail that small.
 
-**Keeping only part of a scene** (the substrate, the primitives): build, then remove the rest by name —
-`delete_items {refs: ["name:<layer> r12", …]}` (the summary's ids; a region you named is drawn under that name alone:
-`name:<Name>`) — or build the parts you keep from a crop.
-**Lost transparency** (black or white corners around a logo): the scene can't leave them empty yet; build, then delete
-the corner shapes by name.
+**Keeping only part of a scene** (the substrate, the primitives): drop the rest in the scene — `drop in x y w h`
+(every region inside a box, image px), ranges, `drop < %` — or delete built items by name (`name:<layer> r12`; a
+region you named is drawn under that name alone: `name:<Name>`); a later rebuild keeps deleted regions dropped.
+**Lost transparency** (black or white corners around a logo): `drop r1 r2 fill none` leaves them empty.
 
 ### 5a. Decompose into layers
 

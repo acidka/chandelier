@@ -114,6 +114,7 @@ export function recompute(s: Scene): void {
     return { loops: sh.loops, rgb: colourRgb(s, sh.region), evenodd: sh.holes, id: sh.region, blend: sh.blend, grad: rp ? { ...rp, c0: labToRgb(rp.c0[0], rp.c0[1], rp.c0[2]), c1: labToRgb(rp.c1[0], rp.c1[1], rp.c1[2]) } : undefined };
   }), w, h, { ids: true, bg: [255, 255, 255] });
   s.render = out.img;
+  s.drawn = out.ids;
   s.estRmse = Math.round(rmse(s.work, out.img) * 1000) / 1000;
   // IoU of each region's visible pixels in the render vs its labels
   const inter = new Float64Array(s.seg.regions.length), uni = new Float64Array(s.seg.regions.length);

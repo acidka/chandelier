@@ -23,8 +23,8 @@ export const scene: ToolDef = {
   name: 'scene',
   description: `Image → editable vector scene; the pixel work happens here, Illustrator only at build. Image px until build.
 "analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high → id, a 1-page summary (regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
-"edit": id, edits ["merge r3 r4" (r3 keeps its ink), "drop r12 r20-r40" (the region it sits on fills it; "… fill r0" to choose), "drop < 0.05" (all under 0.05 %), "keep r12", "undo", "undo 3", "reset", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "ramp r3 r4 r5" (one region, linear gradient), "r3 flat", "layers r3 r5" (translucent: their overlap drawn by both, multiply), "r10 logo" (grouped, finer), "r4 placeholder", "text x y w h" (regions in the box left for live text; build returns text_boxes), "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
-"build": id; rect (default the artboard), artboard, bleed, layer ("Scene") → one undo step: global swatches + one path (or live rect/ellipse for clean primitives) per region, bottom to top; a re-build replaces the layer.
+"edit": id, edits ["merge r3 r4" (r3 keeps its ink), "drop r12 r20-r40" (the region it sits on fills it; "… fill r0" to choose, "… fill none" = left empty), "drop < 0.05" (all under 0.05 %), "drop in x y w h" (all inside the box), "keep r12", "undo", "undo 3", "reset", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "ramp r3 r4 r5" (one region, linear gradient), "r3 flat", "layers r3 r5" (translucent: their overlap drawn by both, multiply), "r10 logo" (grouped, finer), "r4 placeholder", "text x y w h" (regions in the box left for live text; build returns text_boxes), "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
+"build": id; rect (default the artboard), artboard, bleed, layer ("Scene"), position (new layer: "top" default; "bottom", "below:Name"; an existing layer stays put unless given) → one undo step: global swatches + one path (or live rect/ellipse for clean primitives) per region, bottom to top; a re-build replaces its own items (regions you deleted stay dropped, items you added stay).
 "refine": id; threshold (ΔE, 6) → measures the build (Illustrator render; own render before a build) per region and edge against the image, corrects shifted inks and re-fits edges that miss, rebuilds once → report + heat map | new render.
 dir: where scene.json is kept (default a temp folder; id may be its path).`,
   shape: {
@@ -45,6 +45,7 @@ dir: where scene.json is kept (default a temp folder; id may be its path).`,
     artboard: z.number().int().min(0).optional(),
     bleed: z.number().min(0).optional(),
     layer: z.string().optional(),
+    position: z.string().optional(),
     threshold: z.number().positive().optional(),
     dir: z.string().optional(),
   },
@@ -96,7 +97,20 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
     rect = [0, 0, ab.rect[2], ab.rect[3]];
   }
   const t0 = performance.now(), layer = a.layer ?? 'Scene';
-  const plan = buildSteps(s, { rect, bleed: a.bleed, layer, artboard: a.artboard });
+  // what is on the layer now: a new layer is created (no delete step); a rebuild replaces only its own items, and regions
+  // whose items were deleted since are dropped instead of coming back
+  const present = await layerItems(ctx, layer);
+  let clear: 'layer' | 'none' | string[] = present ? 'layer' : 'none';
+  const kept: string[] = [];
+  if (present && s.built?.layer === layer) {
+    const own = Object.entries(s.built!.items), still = own.filter(([, u]) => present.has(u));
+    if (still.length) {
+      const gone = own.filter(([, u]) => !present.has(u)).map(([r]) => r);
+      if (gone.length) { applyEdits(s, ['drop ' + gone.join(' ')]); kept.push(...gone); }
+      clear = still.map(([, u]) => u);
+    }
+  }
+  const plan = buildSteps(s, { rect, bleed: a.bleed, layer, artboard: a.artboard, position: a.position ?? (present ? undefined : 'top'), clear });
   const batch = ctx.tools.get('batch')!;
   const items: Record<string, string> = {}, warnings: string[] = [];
   for (const steps of plan.batches) {
@@ -113,9 +127,21 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
   const out = {
     id: s.id, layer, items: plan.items, swatches: plan.swatches, anchors: plan.anchors, bytes: plan.bytes, rect, units: ctx.settings.units,
     ...(plan.textBoxes.length ? { text_boxes: plan.textBoxes } : {}),
+    ...(kept.length ? { dropped_deleted: kept.join(' ') } : {}),
     undo: plan.batches.length === 1 ? 'one step' : `${plan.batches.length} steps (scene too large for one call: detail low or merge)`, calls: plan.batches.length, ms: Math.round(performance.now() - t0),
   };
   return { content: [{ type: 'text', text: J(out) }, ...warnings.map((t) => ({ type: 'text' as const, text: t }))] };
+}
+
+/** uuids of the items on a layer (all depths), or null when the layer doesn't exist */
+async function layerItems(ctx: Ctx, layer: string): Promise<Set<string> | null> {
+  const out = new Set<string>();
+  for (let offset = 0; ; offset += 1000) {
+    const env = await ctx.rt.cmd<{ items: { uuid: string | number }[]; more?: boolean }>('find_items', { layer, fields: ['uuid'], limit: 1000, offset });
+    if (!env.ok) return null; // no such layer (or no document)
+    for (const it of env.data!.items) out.add(String(it.uuid));
+    if (!env.data!.more || !env.data!.items.length) return out;
+  }
 }
 
 async function doRefine(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
@@ -133,7 +159,7 @@ async function doRefine(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
   const m = measure(s, render), rep = refine(s, m, a.threshold ?? 6);
   let rebuilt: unknown = false;
   if (s.built && rep.fixed.length && !rep.reverted) {
-    const b = await doBuild(s, { layer: s.built.layer, rect: s.built.rect, artboard: s.built.artboard, bleed: s.built.bleed }, ctx);
+    const b = await doBuild(s, { layer: s.built.layer, rect: s.built.rect, artboard: s.built.artboard, bleed: s.built.bleed }, ctx); // keeps the layer's place and hand-added items
     if (b.isError) return b;
     rebuilt = JSON.parse((b.content[0] as { text: string }).text);
   }

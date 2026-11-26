@@ -139,3 +139,12 @@ describe('text boxes', () => {
     expect(at(60, 50)).toEqual(at(5, 5)); // the counter shows the background, not white
   });
 });
+
+describe('drop in a box', () => {
+  it('drops every region inside the box, not the ones crossing it', () => {
+    const s = fresh(), inside = s.seg.regions.filter((r) => r.area && s.z[r.id] > 0 && r.bbox[2] < 100);
+    applyEdits(s, ['drop in 0 0 100 100']);
+    for (const r of inside) expect(s.meta[r.id].drop).toBe(true);
+    expect(s.meta[0].drop).toBeFalsy();
+  });
+});

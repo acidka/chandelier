@@ -96,17 +96,24 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
     } else if (reg.test(t[0]) && t[1] === 'flat') {
       s.meta[region(t[0])].ramp = false; res.changed = true;
     } else if (head === 'drop' || head === 'keep') {
-      // drop rA rB-rC [fill rF] · drop < 0.05 (every region under that % of the image, but the bottom one)
+      // drop rA rB-rC [fill rF | fill none] · drop < 0.05 (every region under that % of the image, but the bottom one) ·
+      // drop in x y w h [fill …] (every region inside the box)
       if (t.length < 2) fail('needs regions (r3, r10-r40) or "< area%"');
       let ids: number[], fillId: number | undefined;
-      if (t[1] === '<' || t[1].startsWith('<')) {
+      if (t[1] === 'in') {
+        // drop in x y w h [fill rF]: every region lying wholly inside the box (image px of the analyzed image)
+        const f = t.indexOf('fill'), v = t.slice(2, f >= 0 ? f : undefined).map(Number);
+        if (v.length !== 4 || v.some((x) => !isFinite(x)) || v[2] <= 0 || v[3] <= 0) fail('drop in x y w h (image px of the analyzed image)');
+        if (f >= 0) fillId = t[f + 1]?.toLowerCase() === 'none' ? -1 : region(t[f + 1]);
+        ids = R.filter((r) => r.area && s.z[r.id] > 0 && r.bbox[0] >= v[0] && r.bbox[1] >= v[1] && r.bbox[2] < v[0] + v[2] && r.bbox[3] < v[1] + v[3]).map((r) => r.id);
+      } else if (t[1] === '<' || t[1].startsWith('<')) {
         const pct = parseFloat(t[1] === '<' ? t[2] : t[1].slice(1));
         if (!(pct > 0)) fail('drop < area% (e.g. drop < 0.05)');
         const total = s.work.w * s.work.h;
         ids = R.filter((r) => r.area && s.z[r.id] > 0 && (r.area / total) * 100 < pct && !s.meta[r.id].drop).map((r) => r.id);
       } else {
         const f = t.indexOf('fill');
-        if (f >= 0) { if (f !== t.length - 2) fail('drop rA … fill rF'); fillId = region(t[f + 1]); }
+        if (f >= 0) { if (f !== t.length - 2) fail('drop rA … fill rF | fill none'); fillId = t[f + 1].toLowerCase() === 'none' ? -1 : region(t[f + 1]); }
         ids = regions(t.slice(1, f >= 0 ? f : undefined));
       }
       for (const id of ids) {

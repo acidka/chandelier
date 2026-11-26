@@ -13,6 +13,12 @@ export interface BuildOpts {
   bleed?: number;
   layer?: string;
   artboard?: number;
+  /** where the layer goes: "top" | "bottom" | "above:Name" | "below:Name"; omitted = top for a new layer, an existing
+   * layer stays where it is */
+  position?: string;
+  /** what the build replaces: the whole layer (default), only these items (a rebuild: hand-added items stay), or
+   * nothing (a new layer) */
+  clear?: 'layer' | 'none' | string[];
 }
 
 export interface BatchStep { tool: string; args: Record<string, unknown>; artboard?: number }
@@ -35,8 +41,8 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
   const used =[...new Set(shapes.map((sh) => s.meta[sh.region].colour))].sort((a, b) => a - b);
   const ramps = shapes.filter((sh) => s.ramps[sh.region]);
   const head: BatchStep[] = [
-    { tool: 'delete_items', args: { refs: `layer:${layer}` } },
-    { tool: 'layers', args: { action: 'add', name: layer, position: 'top' } }, // above existing art, not under it
+    ...(o.clear === 'none' || (Array.isArray(o.clear) && !o.clear.length) ? [] : [{ tool: 'delete_items', args: { refs: Array.isArray(o.clear) ? o.clear : `layer:${layer}` } }]),
+    { tool: 'layers', args: { action: 'add', name: layer, ...(o.position ? { position: o.position } : {}) } },
     // hex, not lab(): Illustrator refuses a Lab colour in a global swatch (MRAP, quirk C34); it converts hex through the document profile
     ...used.filter((ci) => !s.colours[ci].swatch).map((ci) => ({ tool: 'swatches', args: { action: 'add', kind: 'global', name: swatchName(s, ci, layer), color: labHex(s.colours[ci].L, s.colours[ci].a, s.colours[ci].b) } })),
     // a ramp: its own gradient swatch; stops placed where Illustrator's default span (the item's width, centred,

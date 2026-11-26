@@ -27,7 +27,7 @@ export interface Params {
 export interface Colour { L: number; a: number; b: number; swatch?: string; name?: string }
 
 /** what edits changed about a region (by id; ids never change after analyze) */
-export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number; /** force a primitive, or 'free' = never */ prim?: PrimKind | 'free'; /** linear gradient from the region's colour plane */ ramp?: boolean; /** a translucent layer: drawn over these overlap regions too, multiply */ multiply?: number[]; /** grouped as a logo with what lies on it */ logo?: boolean; /** not drawn: a named empty box instead */ placeholder?: boolean; /** a dropped region is covered by this one */ fill?: number }
+export interface RegionMeta { colour: number; name?: string; drop?: boolean; text?: boolean; tol?: number; /** force a primitive, or 'free' = never */ prim?: PrimKind | 'free'; /** linear gradient from the region's colour plane */ ramp?: boolean; /** a translucent layer: drawn over these overlap regions too, multiply */ multiply?: number[]; /** grouped as a logo with what lies on it */ logo?: boolean; /** not drawn: a named empty box instead */ placeholder?: boolean; /** a dropped region is covered by this one; -1 = left empty (lost transparency) */ fill?: number }
 
 export interface Scene {
   id: string;
@@ -69,6 +69,8 @@ export interface Scene {
   /** drawn shapes, bottom to top */
   shapes: Shape[];
   render: Img;
+  /** region drawn at each pixel of render (-1 = none), from the last recompute; not saved */
+  drawn?: Int32Array;
   /** per region: rendered vs labelled IoU */
   iou: number[];
   estRmse: number;

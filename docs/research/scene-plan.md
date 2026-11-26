@@ -456,31 +456,31 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F12 | ✅ | 04 v9 | edits add up with no undo |
 | F13 | ✅ | 04 v9 | summary's segment count 2–3× below what the build wrote; dropped regions still listed as inks |
 | F14 | ✅ | 04 v9 | `layers rA rB` suggested for inks that can't be multiply (gave a red ink) |
-| F15 | ⏳ | 08 v2 | no way to remove lost transparency: `drop … fill none` is a parse error; black corners deleted by hand |
-| F16 | ⏳ | 08 v2 | `edit {overlay: true}` returns the analyze image, not the edited state |
+| F15 | ✅ | 08 v2 | no way to remove lost transparency: now `drop … fill none` leaves the area empty |
+| F16 | ✅ | 08 v2 | `edit {overlay: true}` showed the analyzed labels: the overlay now outlines what is drawn after the edits and labels only drawn regions |
 | F17 | ⏳ | 08 v2 | refine's tightened tolerances (0.4) follow JPEG noise; its rmse never moved in run 2 |
 | F18 | ⏳ | 08 v1, v2 | thin constant-width outlines come out as lumpy filled bands (both runs redrew them as stroked centrelines) |
 | F19 | ⏳ | 08 v2 | forcing `circle` on a disc whose outline is only partly round throws the fit 5 mm off |
 | F20 | ⏳ | 04 v10 | `create_path {map}` is projective, the scene maps bilinear: hand-built parts sat ~40 px off until the agent wrote its own map |
-| F21 | ⏳ | 04 v9, v10 | first build to a new layer warns "Nothing found for layer:…" (noise) |
+| F21 | ✅ | 04 v9, v10 | first build to a new layer warned "Nothing found for layer:…": a new layer gets no delete step |
 | F22 | ⏳ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show |
 | F23 | ⏳ | 08 v2 | `scene` used far more calls than the baseline on flat art (16 scene + 34 other vs 19 in total) |
-| F24 | ⏳ | 06 v2 | `refine` rebuilds the whole layer: a region deleted after the build came back (and hand-added items on the layer would be lost); the base region r0 can't be dropped in the scene |
+| F24 | ✅ | 06 v2 | `refine` / rebuild replaced the whole layer: now only its own items (hand-added items stay), and regions whose items were deleted stay dropped (`dropped_deleted`) |
 | F25 | ⏳ | 06 v2 | a part crop cuts every shape crossing the crop edge square (the ground swoosh's ends; tips added by hand) |
-| F26 | ⏳ | 06 v2 | the default analyze of one flat ink rendered as foil: 12 inks, 817 regions (no hint to lower `colors`) |
+| F26 | ✅ | 06 v2 | the default analyze of one flat ink rendered as foil: 12 inks, 817 regions: hint "photo with N inks: … colors = that number" |
 | F27 | ✅ | 09 v3 | `cN = cM` (documented) failed "use swatch:Name, #rrggbb, lab(L,a,b) or cN": now moves every region of cN to cM |
 | F28 | ⏳ | 09 v3 | a crop of soft-shaded petals came back `photo: true` (lighting flattened); no switch to turn photo mode off |
 | F29 | ⏳ | 09 v3 | no ramp hints on hat, skin or petals (soft gradients): all gradients built by hand |
-| F30 | ⏳ | 09 v3 | every build / refine puts the scene layer back on top of the hand-built layers |
+| F30 | ✅ | 09 v3 | every build / refine put the scene layer on top: `position` for a new layer; an existing layer stays where it is |
 | F31 | ⏳ | 09 v3 | refine on a 426-region scene reverted everything while listing 8 disagreeing inks |
 | F33 | ✅ | 06 v3 | build failed on a degenerate tiny region ("item 106: The path has no drawable segments") and rolled back: one-segment loops are now left out, a region with nothing drawable is skipped |
 | F34 | ✅ | 06 v3 | dark counters inside a `text` box (D, A, R, O) were drawn white (no filler: their only neighbour, the letter, was skipped too): a skipped region takes the filler of the skipped one it sits on |
-| F35 | ⏳ | 06 v3 | no edit to drop every region inside a box (keeping only the background took ~110 ids from a script) |
+| F35 | ✅ | 06 v3 | no edit to drop every region inside a box: `drop in x y w h [fill …]` |
 | F36 | ⏳ | 06 v3 | crown leaves touching a dropped frame line belong to the line's region and go with it (no split edit) |
 | F37 | ⏳ | 06 v3 | `max_px` doesn't upscale a small crop: `detail: high` can't add resolution |
 | F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` |
 | F39 | ⏳ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) |
-| F40 | ⏳ | 09 v4 | analyze overlays of small crops (234 px) are too small to read |
+| F40 | ✅ | 09 v4 | analyze overlays of small crops too small to read: enlarged up to 4× |
 | F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds

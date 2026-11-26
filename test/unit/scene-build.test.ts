@@ -23,7 +23,7 @@ describe('buildSteps', () => {
     expect(b.batches).toHaveLength(1);
     const st = b.batches[0];
     expect(st[0]).toEqual({ tool: 'delete_items', args: { refs: 'layer:Art' } });
-    expect(st[1]).toEqual({ tool: 'layers', args: { action: 'add', name: 'Art', position: 'top' } });
+    expect(st[1]).toEqual({ tool: 'layers', args: { action: 'add', name: 'Art' } }); // an existing layer keeps its place
     const sw = st.filter((x) => x.tool === 'swatches');
     expect(sw).toHaveLength(3); // paper, orange, dark (the hole is paper again)
     expect(sw[0].args).toMatchObject({ kind: 'global', name: 'Art c0', color: expect.stringMatching(/^#[0-9a-f]{6}$/) });
@@ -92,5 +92,24 @@ describe('buildSteps degenerate loops', () => {
     sh.loops = [[[seg[0], seg[1], seg[2], seg[0]]]]; // one closed segment: a single point to Illustrator
     const b = buildSteps(s, { rect: [0, 0, 200, 100] });
     expect(b.regions).not.toContain(sh.region);
+  });
+});
+
+describe('buildSteps layer handling', () => {
+  it('position given; a rebuild deletes only its own items; a new layer has no delete step', () => {
+    const s = analyze(img(), P, { dir: '/tmp/x', path: 'x.png' });
+    const a = buildSteps(s, { rect: [0, 0, 200, 100], layer: 'Art', position: 'below:Hand', clear: ['u1', 'u2'] }).batches[0];
+    expect(a[0]).toEqual({ tool: 'delete_items', args: { refs: ['u1', 'u2'] } });
+    expect(a[1]).toEqual({ tool: 'layers', args: { action: 'add', name: 'Art', position: 'below:Hand' } });
+    const b = buildSteps(s, { rect: [0, 0, 200, 100], layer: 'Art', position: 'top', clear: 'none' }).batches[0];
+    expect(b[0].tool).toBe('layers');
+  });
+  it('"drop … fill none" leaves the area empty (lost transparency)', () => {
+    const s = analyze(img(), P, { dir: '/tmp/x', path: 'x.png' });
+    const dot = s.seg.regions.findIndex((r) => r.area > 0 && s.z[r.id] > 0);
+    applyEdits(s, [`drop r${dot} fill none`]);
+    expect(s.fillers.has(dot)).toBe(false);
+    const r = s.seg.regions[dot], [cx, cy] = r.pole.map(Math.round), i = (cy * s.work.w + cx) * 3;
+    expect(Array.from(s.render.rgb.slice(i, i + 3))).toEqual([255, 255, 255]);
   });
 });

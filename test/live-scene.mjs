@@ -58,6 +58,32 @@ await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(v.total
 await call('scene', { action: 'edit', id, edits: ['drop r6', 'name c0 Paper'] });
 await call('scene', { action: 'build', id }, { check: (v) => assert(v.items === 6, 'after drop ' + v.items) });
 await call('swatches', { action: 'list', kind: 'global' }, { check: (v) => assert(JSON.stringify(v).includes('Paper'), 'named swatch') });
+// hand work around a scene: a hand layer above it, an item added to the scene layer, a scene item deleted by hand;
+// a rebuild (and refine) keeps the layer's place and the added item, and the deleted region stays dropped
+await call('layers', { action: 'add', name: 'Hand', position: 'top' });
+await call('create_shape', { shape: 'rect', x: 10, y: 10, w: 20, h: 20, fill: '#00aa00', layer: 'Hand', name: 'hand box' });
+await call('create_shape', { shape: 'rect', x: 40, y: 10, w: 20, h: 20, fill: '#aa00aa', layer: 'Scene', name: 'added box' });
+await call('delete_items', { refs: 'name:Scene r1' });
+await call('scene', { action: 'build', id }, { check: (v, r) => {
+  assert(v.dropped_deleted === 'r1', 'deleted region reported: ' + v.dropped_deleted);
+  assert(v.items === 5, 'rebuild without r1: ' + v.items);
+  assert(r.content.length === 1, 'no warnings: ' + JSON.stringify(r.content.slice(1)));
+} });
+await call('find_items', { name: 'added box' }, { check: (v) => assert(v.total === 1, 'item added to the scene layer survives the rebuild') });
+await call('find_items', { name: 'Scene r1' }, { check: (v) => assert(!v.total, 'r1 stays deleted') });
+await call('layers', { action: 'list' }, { check: (v) => {
+  const names = v.layers.map((l) => l.name);
+  assert(names.indexOf('Hand') < names.indexOf('Scene'), 'the scene layer stays below the hand layer: ' + names.join(','));
+} });
+await call('scene', { action: 'refine', id });
+await call('find_items', { name: 'added box' }, { check: (v) => assert(v.total === 1, 'added item survives refine') });
+await call('layers', { action: 'list' }, { check: (v) => {
+  const names = v.layers.map((l) => l.name);
+  assert(names.indexOf('Hand') < names.indexOf('Scene'), 'refine keeps the layer order: ' + names.join(','));
+} });
+// a new layer placed by position, no "nothing found" warning on the first build
+await call('scene', { action: 'build', id, layer: 'Scene 2', position: 'bottom' }, { check: (v, r) => assert(r.content.length === 1, 'first build: no warning ' + JSON.stringify(r.content.slice(1))) });
+await call('layers', { action: 'list' }, { check: (v) => assert(v.layers[v.layers.length - 1].name === 'Scene 2', 'position bottom: ' + v.layers.map((l) => l.name).join(',')) });
 
 await call('documents', { action: 'close', discard: true });
 process.exit(await done() ? 1 : 0);

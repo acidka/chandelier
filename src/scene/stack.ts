@@ -58,6 +58,7 @@ export function fillers(regions: Region[], z: number[], skip: Set<number>, given
   for (const x of skip) {
     if (!regions[x]?.area) continue;
     const g = given.get(x);
+    if (g === -1) continue; // "fill none": left empty
     if (g !== undefined && regions[g]?.area && !skip.has(g)) { out.set(x, g); continue; }
     let best = -1, bl = -1, any = -1, al = -1;
     for (const [n, len] of regions[x].nbrs) {
@@ -73,7 +74,7 @@ export function fillers(regions: Region[], z: number[], skip: Set<number>, given
   for (let changed = true; changed; ) {
     changed = false;
     for (const x of skip) {
-      if (!regions[x]?.area || out.has(x)) continue;
+      if (!regions[x]?.area || out.has(x) || given.get(x) === -1) continue;
       let best = -1, bl = -1, any = -1, al = -1;
       for (const [n, len] of regions[x].nbrs) {
         if (!out.has(n)) continue;

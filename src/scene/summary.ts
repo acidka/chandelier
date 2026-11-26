@@ -55,6 +55,7 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   const hints: string[] = [], minDe = s.params.minDe;
   // many tiny regions (small text, texture): one edit drops them, the shapes below fill their place
   const tiny = drawnRegs.filter((r) => r.area < total * 5e-4);
+  if (s.photo && usedColours.length > 6) hints.push(`photo with ${usedColours.length} inks: if the artwork is fewer flat inks rendered with a material (foil, emboss, print on texture), analyze again with colors = that number`);
   if (tiny.length > 60) hints.push(`${tiny.length} regions under 0.05 % (small text or texture): "drop < 0.05", or "text x y w h" over text`);
   for (const g of s.rampGroups) {
     const live = g.ids.filter((i) => s.seg.regions[i].area > 0);
