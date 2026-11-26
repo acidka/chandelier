@@ -27,8 +27,9 @@ export function quantize(lab: Lab, o: QuantOpts = {}): Quant {
   const n = lab.w * lab.h, kMax = Math.max(1, Math.min(64, o.colors ?? 16)), minDe = o.minDe ?? 6;
   // centres come from flat pixels only: anti-aliased rims and soft edges are mixtures of two inks and would get
   // clusters of their own (they are assigned to the nearest ink afterwards); all pixels if too few are flat
-  const side = new Int32Array(n).fill(-1);
-  const flat = flatMask(lab, Math.max(3, minDe), o.skip, side);
+  const fr: Fringe = { t: new Float32Array(n), k: new Int8Array(n).fill(-1) };
+  const flat = flatMask(lab, Math.max(3, minDe), o.skip, fr);
+  const side = fringeSides(fr, lab.w, lab.h);
   // histogram
   const idx = new Map<number, number>(), bins: number[][] = []; // [n flat, ΣL, Σa, Σb, n all]
   const pixBin = new Int32Array(n);
@@ -141,16 +142,46 @@ export function nearPairs(q: Quant, limit: number): { a: number; b: number; de: 
  * neighbours (left/right or up/down; diagonals too) and clearly differs from one of them is an anti-aliased or soft
  * edge. A thin line's pixels are not between their neighbours (they are darker than both), so lines keep their ink.
  * null when under 10 % of the pixels qualify. */
-function flatMask(lab: Lab, lim: number, skip?: Uint8Array, side?: Int32Array): Uint8Array | null {
+/** fringe pixels: k = the neighbour pair (index into PAIRS) the pixel lies between, t = its place on the mix p → q */
+interface Fringe { t: Float32Array; k: Int8Array }
+const PAIRS = [[-1, 0, 1, 0], [0, -1, 0, 1], [-1, -1, 1, 1], [1, -1, -1, 1]];
+
+/** the side each fringe pixel joins (p or q of its pair): the nearer one by its mix position t. Near a tie (an edge
+ * through the pixel middle, where noise alone would decide and a half-covered row zigzags by 1 px) t is averaged along
+ * the edge (±4 fringe pixels of the same pair), and a tie that stays goes to p, so the whole row decides alike. Clear
+ * pixels keep their own t: on a tight curve the neighbours along a straight line are not the same coverage. */
+function fringeSides(fr: Fringe, w: number, h: number): Int32Array {
+  const side = new Int32Array(w * h).fill(-1);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, k = fr.k[i];
+    if (k < 0) continue;
+    const p = (y + PAIRS[k][1]) * w + x + PAIRS[k][0], q = (y + PAIRS[k][3]) * w + x + PAIRS[k][2];
+    if (Math.abs(fr.t[i] - 0.5) >= 0.1) { side[i] = fr.t[i] < 0.5 ? p : q; continue; }
+    const [ax, ay, bx, by] = PAIRS[k], ux = -(by - ay) / 2, uy = (bx - ax) / 2; // along the edge
+    let sum = fr.t[i], c = 1;
+    for (const s of [1, -1]) for (let d = 1; d <= 4; d++) {
+      const xx = x + s * d * ux, yy = y + s * d * uy;
+      if (xx < 0 || yy < 0 || xx >= w || yy >= h) break;
+      const j = yy * w + xx;
+      if (fr.k[j] !== k || Math.abs(fr.t[j] - 0.5) >= 0.1) break; // only a run of near-ties: a straight edge at one coverage
+      sum += fr.t[j]; c++;
+    }
+    const m = sum / c;
+    side[i] = m < 0.5 || Math.abs(m - 0.5) < 0.03 ? p : q;
+  }
+  return side;
+}
+
+function flatMask(lab: Lab, lim: number, skip?: Uint8Array, fr?: Fringe): Uint8Array | null {
   const { w, h, L, A, B } = lab, out = new Uint8Array(w * h), l2 = lim * lim;
   let n = 0, total = 0;
-  const pairs = [[-1, 0, 1, 0], [0, -1, 0, 1], [-1, -1, 1, 1], [1, -1, -1, 1]];
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
     const i = y * w + x;
     if (skip?.[i]) continue;
     total++;
     let ok = 1;
-    for (const [ax, ay, bx, by] of pairs) {
+    for (let k = 0; k < PAIRS.length; k++) {
+      const [ax, ay, bx, by] = PAIRS[k];
       const x1 = x + ax, y1 = y + ay, x2 = x + bx, y2 = y + by;
       if (x1 < 0 || y1 < 0 || x2 < 0 || y2 < 0 || x1 >= w || x2 >= w || y1 >= h || y2 >= h) continue;
       const p = y1 * w + x1, q = y2 * w + x2;
@@ -160,7 +191,7 @@ function flatMask(lab: Lab, lim: number, skip?: Uint8Array, side?: Int32Array): 
       // straight mix of its two sides; textured surfaces stay inks
       const t = mixT([L[i], A[i], B[i]], [L[p], A[p], B[p]], [L[q], A[q], B[q]], lim * 1.5);
       const tl = t > 0.1 && t < 0.9 ? t : mixT([L[i], A[i], B[i]], [L[p], A[p], B[p]], [L[q], A[q], B[q]], 40);
-      if ((t > 0.1 && t < 0.9) || (tl > 0.25 && tl < 0.75)) { ok = 0; if (side) side[i] = (t > 0.1 && t < 0.9 ? t : tl) < 0.5 ? p : q; break; } // between the two sides: a mixture, not an ink
+      if ((t > 0.1 && t < 0.9) || (tl > 0.25 && tl < 0.75)) { ok = 0; if (fr) { fr.k[i] = k; fr.t[i] = t > 0.1 && t < 0.9 ? t : tl; } break; } // between the two sides: a mixture, not an ink
     }
     out[i] = ok; n += ok;
   }

@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-26 (bugs #7–#15 fixed; #16, #17 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-26 (bugs #7–#15 fixed; #16–#20 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -15,6 +15,9 @@ Illustrator-side issues seen on Windows are quirks C30, C31.
 |---|---|---|---|---|---|---|
 | 16 | 🟡 | 2026-11-26, recreate suite case 08 | `batch` with a step `artboard`, `path_ops` | A `path_ops` result `box` inside a batch step with `artboard: 1` came back in the artboard-0 frame, other steps in the step's frame (not yet reproduced) | Read boxes with `find_items` after the batch | Pass the step's settings to the result formatting of `path_ops` |
 | 17 | 🟡 | 2026-11-26, recreate suite case 04 | `preflight` | Every `shade` step (multiply, < 100 % opacity) is listed as a transparency info item: 645 lines for one panel | Ignore `info` items | Group transparency infos by layer / blend, give a count |
+| 18 | 🟡 | 2026-11-26, recreate suite case 06 | `layers add {position: "below:<locked layer>"}` | Fails "Cannot modify a layer that is locked" when the layer it goes below is locked (not yet reproduced) | Add at the top, then reorder | Unlock the neighbour for the move and lock it again |
+| 19 | 🟡 | 2026-11-26, recreate suite case 06 | `preview {reference}` `differences` | `items` lists items on hidden layers (not yet reproduced) | Ignore names from hidden layers | Skip hidden items / layers when naming differences |
+| 20 | 🟡 | 2026-11-26, recreate suite case 06 | `preview {grid}` | `grid` works only with `image`, not on artboard renders | Save the render (`save_to`) and preview it as an image | Draw the grid on artboard renders too |
 
 ## To verify
 

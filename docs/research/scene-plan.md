@@ -465,6 +465,9 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F21 | ⏳ | 04 v9, v10 | first build to a new layer warns "Nothing found for layer:…" (noise) |
 | F22 | ⏳ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show |
 | F23 | ⏳ | 08 v2 | `scene` used far more calls than the baseline on flat art (16 scene + 34 other vs 19 in total) |
+| F24 | ⏳ | 06 v2 | `refine` rebuilds the whole layer: a region deleted after the build came back (and hand-added items on the layer would be lost); the base region r0 can't be dropped in the scene |
+| F25 | ⏳ | 06 v2 | a part crop cuts every shape crossing the crop edge square (the ground swoosh's ends; tips added by hand) |
+| F26 | ⏳ | 06 v2 | the default analyze of one flat ink rendered as foil: 12 inks, 817 regions (no hint to lower `colors`) |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
 no family match for "Myriad Pro Bold" when only Myriad Variable Concept is installed (no suggestion).
@@ -491,6 +494,12 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G16 | ✅ | 04 v10 | comparing a tapered face mapped onto a rectangle: rmse stays high (compare with the warped reference) |
 | G17 | ✅ | 04 v10 | keeping only the substrate from a scene and removing the rest cleanly |
 | G18 | ✅ | 04 v9 | `refine` changes named inks (global swatches) silently — say so, or leave named inks alone |
+| G19 | ✅ | 06 v2 | one flat ink rendered with material (foil, emboss, print on texture): analyze with `colors` = the number of flat inks |
+| G20 | ✅ | 06 v2 | a named region's item takes its given name: delete by `name:<Name>` (no layer prefix), not `r12` |
+| G21 | ✅ | 06 v2 | refine rebuilds the layer: redo deletions after it (or drop in the scene); hand work on its own layer |
+| G22 | ✅ | 06 v2 | a part crop must reach past every free end of the part (or end where the part ends) |
+| G23 | ✅ | 06 v2 | centred point text with tracking sits half a tracking step left: shift it by tracking / 2 |
+| G24 | ✅ | 06 v2 | wordmark width: one letter's width with `horizontal_scale` first, then the overall width with tracking |
 
 ### Owner decisions pending
 
@@ -508,3 +517,14 @@ fringe pixels, rims must run between two shapes, small enclosed near-colour patc
 points → 09 face built 0.119 → 0.096, 06 crown unchanged (0.142 vs floor 0.071), 08 figures 0.090. Open: one extra
 anchor on a square with a half-covered row (test relaxed, TODO), 06 crown (min-area merge eats holes), fitting stage
 loss on 09 (0.074 → 0.090). Next: rerun 06 scene, re-test 09 scene with this build, label docs 08 / ribbons.
+
+**06 scene rerun (v2, 2026-11-26):** 6.5 min / 52 calls / rmse 0.097 (manual v1 0.103); owner: the tree is almost
+identical to the reference. What made it: a crop of just the tree, `colors: 2` (one flat ink rendered as foil),
+`detail: high` — the whole-image analyze gave 12 inks / 817 regions. Findings F24–F26, G19–G24 below.
+
+**Half-covered rows fixed** (square test strict again: 4 segments): an edge through a pixel row's middle gives every
+fringe pixel t ≈ 0.50 ± 0.01, so noise chose the side pixel by pixel → 1 px zigzags the fitter can't smooth. Now a
+near-tie (|t − 0.5| < 0.1) is averaged along the edge over neighbouring near-ties of the same pair (±4), and a tie
+that stays goes to p (up/left); clear pixels keep their own t (averaging them along a straight line on a tight curve
+turned a r = 12 px circle into a rounded square). Headroom built rmse before → after, normal / high: 06 0.067 → 0.066 /
+0.064 → 0.063, 09 0.054 → 0.056 / 0.053 → 0.052, 08 0.086 → 0.085 / 0.076 → 0.079 (no change beyond ±0.003).
