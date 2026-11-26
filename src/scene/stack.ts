@@ -45,8 +45,30 @@ export interface StackOpts {
   own?: Map<number, Seg[]>;
   /** regions drawn as exactly this set of regions (translucent layers: the region plus its overlaps), multiply */
   exact?: Map<number, number[]>;
-  /** regions not drawn (they stay in the stack) */
+  /** regions not drawn (dropped, text, placeholder) */
   skip?: Set<number>;
+  /** for each region not drawn: the region whose shape covers it (default: its lower neighbour with the longest
+   * shared boundary) — a dropped speck is filled by what it sits on, not by whatever runs under it */
+  filler?: Map<number, number>;
+}
+
+/** the region that fills each skipped region: given, else the lower drawn neighbour with the longest shared edge */
+export function fillers(regions: Region[], z: number[], skip: Set<number>, given: Map<number, number> = new Map()): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const x of skip) {
+    if (!regions[x]?.area) continue;
+    const g = given.get(x);
+    if (g !== undefined && regions[g]?.area && !skip.has(g)) { out.set(x, g); continue; }
+    let best = -1, bl = -1, any = -1, al = -1;
+    for (const [n, len] of regions[x].nbrs) {
+      if (!regions[n].area || skip.has(n)) continue;
+      if (len > al) { al = len; any = n; }
+      if (z[n] < z[x] && len > bl) { bl = len; best = n; }
+    }
+    const f = best >= 0 ? best : any;
+    if (f >= 0) out.set(x, f);
+  }
+  return out;
 }
 
 /** loop → its segments (shared edges reversed where the loop runs against them) */
@@ -69,11 +91,15 @@ export function stacked(pm: PlanarMap, regions: Region[], z: number[], fits: Seg
     if (exact) set = new Set([id, ...exact]);
     else if (o.tile) set = new Set([id]);
     else {
-      // the connected group of regions at or above this one, reached from it
+      // the connected group of drawn regions at or above this one, reached from it
       set = new Set([id]);
       const q = [id];
-      while (q.length) for (const n of regions[q.pop()!].nbrs.keys()) if (!set.has(n) && z[n] >= z[id]) { set.add(n); q.push(n); }
+      // a region not drawn is crossed only by the shape that fills it (and then what lies beyond it is reached too)
+      const ok = (n: number) => !o.skip?.has(n) || (o.filler?.get(n) !== undefined && set.has(o.filler.get(n)!));
+      while (q.length) for (const n of regions[q.pop()!].nbrs.keys()) if (!set.has(n) && z[n] >= z[id] && ok(n)) { set.add(n); q.push(n); }
     }
+    // regions not drawn go with their filler
+    if (!exact && o.filler) for (const [x, f] of o.filler) if (set.has(f)) set.add(x);
     const loops = loopsOf(pm, set);
     out.push({ region: id, loops: loops.map((l) => loopSegs(pm, fits, l)), raw: loops, holes: loops.some((l) => !l.outer), ...(exact ? { blend: 'multiply' as const } : {}) });
   }

@@ -106,8 +106,12 @@ const ok = (pr: Prim, sc: { mean: number; p95: number }, size: number, area: num
  * `force` the best of that kind even if it misses. */
 export function detectPrimitive(pts: number[][], force?: PrimKind | 'polygon'): Prim | null {
   if (pts.length < 8) return null;
+  if (force === 'circle') {
+    const c = fitCircle(pts), pr: Prim = { kind: 'circle', cx: c[0], cy: c[1], a: c[2], b: c[2], angle: 0, err: 0 };
+    return { ...pr, err: Math.round(score(pr, pts).mean * 100) / 100 };
+  }
   const m = moments(pts), cands: { pr: Prim; sc: { mean: number; p95: number }; size: number }[] = [];
-  const want = (k: PrimKind) => !force || force === k || (force === 'ellipse' && k === 'circle') || (force === 'circle' && k === 'ellipse');
+  const want = (k: PrimKind) => !force || force === k || (force === 'ellipse' && k === 'circle');
   // ellipse from moments
   if (want('ellipse')) {
     const tr = m.mxx + m.myy, det = m.mxx * m.myy - m.mxy * m.mxy, disc = Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
@@ -189,3 +193,16 @@ export function primSegs(pr: Prim): Seg[] {
 
 /** axis-aligned rectangles, rounded rectangles, ellipses and circles become live shapes at build */
 export const live = (pr: Prim) => pr.angle === 0 && pr.kind !== 'polygon';
+
+/** least-squares circle through points (Kåsa): [cx, cy, r] */
+export function fitCircle(p: number[][]): number[] {
+  let sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0, sxz = 0, syz = 0, sz = 0;
+  const n = p.length, mx = p.reduce((a, q) => a + q[0], 0) / n, my = p.reduce((a, q) => a + q[1], 0) / n;
+  for (const [X, Y] of p) { const x = X - mx, y = Y - my, z = x * x + y * y; sx += x; sy += y; sxx += x * x; syy += y * y; sxy += x * y; sxz += x * z; syz += y * z; sz += z; }
+  // solve [sxx sxy sx; sxy syy sy; sx sy n] [a b c] = [-sxz -syz -sz]
+  const M = [[sxx, sxy, sx], [sxy, syy, sy], [sx, sy, n]], v = [-sxz, -syz, -sz];
+  const det = (m: number[][]) => m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) - m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+  const D = det(M), [a, b, c] = [0, 1, 2].map((j) => det(M.map((row, i) => row.map((x, k) => (k === j ? v[i] : x)))) / D);
+  const cx = -a / 2, cy = -b / 2;
+  return [cx + mx, cy + my, Math.sqrt(Math.max(0, cx * cx + cy * cy - c))];
+}

@@ -10,7 +10,7 @@ import { quantize, type Quant } from './quantize.js';
 import { segment, regionStats } from './regions.js';
 import { planarMap } from './planar.js';
 import { fitEdges } from './fitedges.js';
-import { zOrder, stacked, type Shape } from './stack.js';
+import { zOrder, stacked, fillers, type Shape } from './stack.js';
 import { partPts } from './planar.js';
 import { detectPrimitive, primSegs, type Prim } from './primitives.js';
 import { rasterize, rmse } from './raster.js';
@@ -63,9 +63,10 @@ export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path
     source: { path: o.path, sha1: o.bytes ? createHash('sha1').update(o.bytes).digest('hex') : '', w: src.w, h: src.h },
     work, toSource: r.toSource, lab, photo, rampGroups, quant, seg, colours,
     meta: seg.regions.map((g) => ({ colour: Math.max(0, g.group) })),
-    zMoves: [], tile: false, tol: d.tol, edits: [], textBoxes: [],
+    zMoves: [], tile: false, tol: d.tol, edits: [], textBoxes: [], fillers: new Map(),
     pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
   };
+  s.initial = snapshot(s);
   recompute(s);
   s.ms = Math.round(performance.now() - t0);
   return s;
@@ -101,7 +102,9 @@ export function recompute(s: Scene): void {
   s.fits = fitEdges(s.pm, { tolOf });
   s.z = applyZ(s, zOrder(s.pm, s.seg.regions));
   const exact = new Map(s.meta.map((m, i) => [i, m.multiply] as const).filter(([i, m]) => m && s.seg.regions[i].area) as [number, number[]][]);
-  const shapes = stacked(s.pm, s.seg.regions, s.z, s.fits, { tile: s.tile, skip: skipped(s), exact });
+  const skip = skipped(s), given = new Map(s.meta.map((m, i) => [i, m.fill] as const).filter(([, f]) => f !== undefined) as [number, number][]);
+  s.fillers = fillers(s.seg.regions, s.z, skip, given);
+  const shapes = stacked(s.pm, s.seg.regions, s.z, s.fits, { tile: s.tile, skip, exact, filler: s.fillers });
   s.prims = primitives(s, shapes);
   for (const sh of shapes) { const p = s.prims[sh.region]; if (p) { sh.loops = [primSegs(p)]; sh.holes = false; } }
   s.shapes = shapes;
@@ -130,9 +133,12 @@ export function primitives(s: Scene, shapes: Shape[]): (Prim | null)[] {
   if (s.tile) return out;
   for (const sh of shapes) {
     const m = s.meta[sh.region], r = s.seg.regions[sh.region];
-    if (m.prim === 'free' || sh.raw.length !== 1 || !sh.raw[0].outer || (r.area < 60 && !m.prim)) continue;
+    if (m.prim === 'free' || !sh.raw.length || (r.area < 60 && !m.prim)) continue;
+    // automatic: one clean outline; forced: the largest outer loop (holes and pieces drawn on it don't matter)
+    const outer = sh.raw.filter((l) => l.outer).sort((a, b) => a.area - b.area)[0];
+    if (!outer || (!m.prim && (sh.raw.length !== 1))) continue;
     const pts: number[][] = [];
-    for (const p of sh.raw[0].parts) { const q = partPts(s.pm, p); pts.push(...(pts.length ? q.slice(1) : q)); }
+    for (const p of outer.parts) { const q = partPts(s.pm, p); pts.push(...(pts.length ? q.slice(1) : q)); }
     out[sh.region] = detectPrimitive(pts, m.prim);
   }
   return out;
@@ -150,4 +156,9 @@ export function isPhoto(raw: Lab, smooth: Lab): boolean {
   }
   d.sort((a, b) => a - b);
   return d.length > 100 && d[d.length >> 1] > 0.25;
+}
+
+/** the state right after analyze (edits `undo` / `reset` replay from here) */
+export function snapshot(s: Scene): Scene['initial'] {
+  return { map: new Int32Array(s.seg.map), colours: JSON.parse(JSON.stringify(s.colours)), meta: JSON.parse(JSON.stringify(s.meta)), tol: s.tol };
 }

@@ -8,7 +8,8 @@ import { recompute } from './analyze.js';
 import type { Img } from '../image.js';
 import type { Scene } from './types.js';
 
-export interface RegionError { r: number; de: number; iou: number }
+/** got: the render's mean in the region, ref: the image's (Lab) */
+export interface RegionError { r: number; de: number; iou: number; got: number[]; ref: number[] }
 export interface EdgeError { e: number; left: number; right: number; dev: number }
 export interface Measure { rmse: number; regions: RegionError[]; edges: EdgeError[] }
 
@@ -64,9 +65,12 @@ export function measure(s: Scene, render: Img): Measure {
   R.forEach((r, id) => {
     if (!r.area || s.meta[id].drop || s.meta[id].text || acc[id][3] < 10) return;
     const a = acc[id], b = ref[id], n = a[3];
-    regions.push({ r: id, de: Math.round(de76(a[0] / n, a[1] / n, a[2] / n, b[0] / n, b[1] / n, b[2] / n) * 10) / 10, iou: s.iou[id] });
+    const got = [a[0] / n, a[1] / n, a[2] / n], want = [b[0] / n, b[1] / n, b[2] / n];
+    regions.push({ r: id, de: Math.round(de76(got[0], got[1], got[2], want[0], want[1], want[2]) * 10) / 10, iou: s.iou[id], got, ref: want });
   });
-  const edges: EdgeError[] = s.pm.edges.filter((e) => e.left >= 0 && e.right >= 0).map((e) => ({ e: e.id, left: e.left, right: e.right, dev: edgeDeviation(s, e.id) }));
+  // only edges between drawn regions: a dropped or text region's edges are not in the build
+  const drawn = (r: number) => r >= 0 && !s.meta[r].drop && !s.meta[r].text && !s.meta[r].placeholder;
+  const edges: EdgeError[] = s.pm.edges.filter((e) => drawn(e.left) && drawn(e.right)).map((e) => ({ e: e.id, left: e.left, right: e.right, dev: edgeDeviation(s, e.id) }));
   let sq = 0;
   for (let i = 0; i < render.rgb.length; i++) { const d = render.rgb[i] - s.work.rgb[i]; sq += d * d; }
   return { rmse: Math.round((Math.sqrt(sq / render.rgb.length) / 255) * 1000) / 1000, regions, edges };
@@ -75,53 +79,66 @@ export function measure(s: Scene, render: Img): Measure {
 export interface RefineReport {
   rmse_before: number;
   fixed: { what: string; why: string }[];
+  /** more fixes of the same kind, counted */
+  more?: number;
   left: { r: number; why: string }[];
+  /** the fixes made our own estimate worse: undone, nothing to rebuild */
+  reverted?: boolean;
   checks: { darkest: { ref: number; scene: number }; lightest: { ref: number; scene: number }; max_segments: { r: number; n: number } };
 }
 
-/** apply the fixes for one measurement; recomputes the scene */
+/** apply the fixes for one measurement; recomputes the scene. Undoes them when our own estimate gets worse. */
 export function refine(s: Scene, m: Measure, threshold = 6): RefineReport {
   const fixed: RefineReport['fixed'] = [], left: RefineReport['left'] = [];
-  // inks: shift each colour group by the area-weighted error of its regions (render vs image), when it misses
-  const groups = new Map<number, { e: number[]; n: number }>();
-  const rl = s.seg.regions;
+  const rl = s.seg.regions, before = { colours: JSON.parse(JSON.stringify(s.colours)), edgeTol: { ...(s.edgeTol ?? {}) }, est: s.estRmse };
+  // inks: move each ink by the render's mean miss over its regions (a colour-conversion shift is the same everywhere);
+  // when its regions miss in different directions (lighting, shading on one of them) the ink stays and it is reported
+  const groups = new Map<number, { r: number; e: number[]; w: number }[]>();
   for (const x of m.regions) {
-    if (x.de <= threshold || s.meta[x.r].ramp || s.meta[x.r].multiply) continue;
-    const c = s.meta[x.r].colour, g = groups.get(c) ?? { e: [0, 0, 0], n: 0 };
-    const r = rl[x.r], col = s.colours[c];
-    // the region's own mean is the target; the ink should move by the mean miss
-    g.e[0] += (r.L - col.L) * r.area; g.e[1] += (r.a - col.a) * r.area; g.e[2] += (r.b - col.b) * r.area; g.n += r.area;
-    groups.set(c, g);
+    if (s.meta[x.r].ramp || s.meta[x.r].multiply) continue;
+    const c = s.meta[x.r].colour;
+    if (!groups.has(c)) groups.set(c, []);
+    groups.get(c)!.push({ r: x.r, e: [x.ref[0] - x.got[0], x.ref[1] - x.got[1], x.ref[2] - x.got[2]], w: rl[x.r].area });
   }
-  for (const [c, g] of groups) {
-    const col = s.colours[c], dl = g.e.map((v) => v / g.n);
-    if (Math.hypot(dl[0], dl[1], dl[2]) < 1 || col.swatch) continue; // swatches named by the user stay
-    s.colours[c] = { ...col, L: col.L + dl[0], a: col.a + dl[1], b: col.b + dl[2] };
-    fixed.push({ what: `c${c}`, why: `tone ΔE ${Math.hypot(dl[0], dl[1], dl[2]).toFixed(1)} → corrected` });
+  for (const [c, list] of groups) {
+    const col = s.colours[c], W = list.reduce((a, x) => a + x.w, 0);
+    const mean = [0, 1, 2].map((k) => list.reduce((a, x) => a + x.e[k] * x.w, 0) / W), size = Math.hypot(mean[0], mean[1], mean[2]);
+    const spread = Math.max(...list.map((x) => Math.hypot(x.e[0] - mean[0], x.e[1] - mean[1], x.e[2] - mean[2])));
+    if (col.swatch) continue; // swatches the user chose stay
+    if (list.length > 1 && spread > threshold) { left.push({ r: list[0].r, why: `c${c} misses ΔE ${size.toFixed(1)} but its regions disagree (ΔE ${spread.toFixed(0)} apart: shading?) — give them their own ink (rN = #hex) or ramp` }); continue; }
+    if (size <= threshold) continue;
+    s.colours[c] = { ...col, L: col.L + mean[0], a: col.a + mean[1], b: col.b + mean[2] };
+    fixed.push({ what: `c${c}`, why: `tone ΔE ${size.toFixed(1)} → corrected` });
   }
-  // edges: tighter tolerance where the fit misses the image edge
+  // edges: tighter tolerance where the fit misses the image edge (a tolerance set by an edit is left alone)
   s.edgeTol = s.edgeTol ?? {};
+  const edgeFixes: RefineReport['fixed'] = [];
   for (const e of m.edges) {
-    const tol = Math.min(...[e.left, e.right].map((r) => s.meta[r].tol ?? s.tol));
-    if (e.dev <= Math.max(1, tol)) continue; // misses the image edge by more than its own tolerance
+    if (s.meta[e.left].tol !== undefined || s.meta[e.right].tol !== undefined) continue;
+    if (e.dev <= Math.max(1, s.tol)) continue; // misses the image edge by more than its own tolerance
     const key = e.left < e.right ? `${e.left},${e.right}` : `${e.right},${e.left}`;
-    const now = s.edgeTol[key] ?? tol;
-    if (now <= 0.3) { left.push({ r: e.left, why: `edge r${e.left}|r${e.right} ${e.dev} px off at tolerance ${now}` }); continue; }
-    s.edgeTol[key] = Math.max(0.3, now / 2);
-    fixed.push({ what: `edge r${e.left}|r${e.right}`, why: `${e.dev} px off → tolerance ${s.edgeTol[key]}` });
+    const now = s.edgeTol[key] ?? s.tol;
+    if (now <= 0.4) { left.push({ r: e.left, why: `edge r${e.left}|r${e.right} ${e.dev} px off at tolerance ${now}` }); continue; }
+    s.edgeTol[key] = Math.max(0.4, now / 2);
+    edgeFixes.push({ what: `edge r${e.left}|r${e.right}`, why: `${e.dev} px off → tolerance ${s.edgeTol[key]}` });
   }
+  fixed.push(...edgeFixes.slice(0, 8));
+  const more = Math.max(0, edgeFixes.length - 8);
   for (const x of m.regions) if (x.iou < 0.8 && rl[x.r].area > s.work.w * s.work.h * 0.002) left.push({ r: x.r, why: `shape IoU ${x.iou} (merge or split?)` });
   // tone checks the owner looks at: darkest and lightest region
   const live = m.regions.filter((x) => rl[x.r].area > s.work.w * s.work.h * 0.001);
   const by = (f: (a: number, b: number) => boolean) => live.reduce((p, x) => (f(rl[x.r].L, rl[p.r].L) ? x : p), live[0]);
   const dk = live.length ? by((a, b) => a < b) : null, lt = live.length ? by((a, b) => a > b) : null;
   const L = (id: number) => Math.round(s.colours[s.meta[id].colour].L);
-  const before = m.rmse;
-  recompute(s);
+  let reverted = false;
+  if (fixed.length) {
+    recompute(s);
+    if (s.estRmse > before.est + 0.002) { s.colours = before.colours; s.edgeTol = before.edgeTol; recompute(s); reverted = true; }
+  }
   let maxSeg = { r: -1, n: 0 };
   for (const sh of s.shapes) { const n = sh.loops.reduce((a, l) => a + l.length, 0); if (n > maxSeg.n) maxSeg = { r: sh.region, n }; }
   return {
-    rmse_before: before, fixed, left: left.slice(0, 8),
+    rmse_before: m.rmse, fixed: reverted ? [] : fixed, ...(more && !reverted ? { more } : {}), left: left.slice(0, 8), ...(reverted ? { reverted } : {}),
     checks: { darkest: dk ? { ref: Math.round(rl[dk.r].L), scene: L(dk.r) } : { ref: 0, scene: 0 }, lightest: lt ? { ref: Math.round(rl[lt.r].L), scene: L(lt.r) } : { ref: 0, scene: 0 }, max_segments: maxSeg },
   };
 }

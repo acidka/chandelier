@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-25 (bugs #7–#15 fixed) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-26 (bugs #7–#15 fixed; #16, #17 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -9,7 +9,12 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 
 ## Open
 
-None (2026-11-25). Illustrator-side issues seen on Windows are quirks C30, C31. New rows: `| # | Sev. | Found | Where | Bug | Workaround | Fix idea |`.
+Illustrator-side issues seen on Windows are quirks C30, C31.
+
+| # | Sev. | Found | Where | Bug | Workaround | Fix idea |
+|---|---|---|---|---|---|---|
+| 16 | 🟡 | 2026-11-26, recreate suite case 08 | `batch` with a step `artboard`, `path_ops` | A `path_ops` result `box` inside a batch step with `artboard: 1` came back in the artboard-0 frame, other steps in the step's frame (not yet reproduced) | Read boxes with `find_items` after the batch | Pass the step's settings to the result formatting of `path_ops` |
+| 17 | 🟡 | 2026-11-26, recreate suite case 04 | `preflight` | Every `shade` step (multiply, < 100 % opacity) is listed as a transparency info item: 645 lines for one panel | Ignore `info` items | Group transparency infos by layer / blend, give a count |
 
 ## To verify
 

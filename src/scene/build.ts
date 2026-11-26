@@ -32,7 +32,7 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
   const ramps = shapes.filter((sh) => s.ramps[sh.region]);
   const head: BatchStep[] = [
     { tool: 'delete_items', args: { refs: `layer:${layer}` } },
-    { tool: 'layers', args: { action: 'add', name: layer } },
+    { tool: 'layers', args: { action: 'add', name: layer, position: 'top' } }, // above existing art, not under it
     // hex, not lab(): Illustrator refuses a Lab colour in a global swatch (MRAP, quirk C34); it converts hex through the document profile
     ...used.filter((ci) => !s.colours[ci].swatch).map((ci) => ({ tool: 'swatches', args: { action: 'add', kind: 'global', name: swatchName(s, ci, layer), color: labHex(s.colours[ci].L, s.colours[ci].a, s.colours[ci].b) } })),
     // a ramp: its own gradient swatch; stops placed where Illustrator's default span (the item's width, centred,

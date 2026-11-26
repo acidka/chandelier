@@ -23,7 +23,7 @@ describe('buildSteps', () => {
     expect(b.batches).toHaveLength(1);
     const st = b.batches[0];
     expect(st[0]).toEqual({ tool: 'delete_items', args: { refs: 'layer:Art' } });
-    expect(st[1]).toEqual({ tool: 'layers', args: { action: 'add', name: 'Art' } });
+    expect(st[1]).toEqual({ tool: 'layers', args: { action: 'add', name: 'Art', position: 'top' } });
     const sw = st.filter((x) => x.tool === 'swatches');
     expect(sw).toHaveLength(3); // paper, orange, dark (the hole is paper again)
     expect(sw[0].args).toMatchObject({ kind: 'global', name: 'Art c0', color: expect.stringMatching(/^#[0-9a-f]{6}$/) });

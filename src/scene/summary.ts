@@ -14,7 +14,7 @@ export const alive = (s: Scene) => s.seg.regions.filter((r) => r.area > 0);
 export function kindOf(s: Scene, id: number): string {
   const m = s.meta[id];
   const p = s.prims[id], shape = p ? (p.kind === 'polygon' ? `poly${p.n}` : p.kind) : '';
-  const k = m.drop ? 'drop' : m.text ? 'text' : m.placeholder ? 'box' : m.logo ? 'logo' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
+  const k = m.drop ? (s.fillers.has(id) ? `drop→r${s.fillers.get(id)}` : 'drop') : m.text ? 'text' : m.placeholder ? 'box' : m.logo ? 'logo' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
   return m.multiply ? k + '×' : k;
 }
 
@@ -24,19 +24,21 @@ export function conf(s: Scene, id: number): number {
 
 export function summary(s: Scene, o: SummaryOpts = {}): string {
   const { w, h } = s.work, total = w * h, regs = alive(s).sort((a, b) => b.area - a.area);
-  const usedColours = [...new Set(regs.map((r) => s.meta[r.id].colour))].sort((a, b) => a - b);
-  const anchors = s.fits.reduce((a, f) => a + f.length, 0);
-  const head = { id: s.id, file: o.file, px: [w, h], ...(s.photo ? { photo: true } : {}), regions: regs.length, colours: usedColours.length, edges: s.pm.edges.length, anchors, est_rmse: s.estRmse, ms: s.ms };
+  const drawnRegs = regs.filter((r) => !s.meta[r.id].drop && !s.meta[r.id].text && !s.meta[r.id].placeholder);
+  const usedColours = [...new Set(drawnRegs.map((r) => s.meta[r.id].colour))].sort((a, b) => a - b);
+  // what the build writes: the drawn shapes' segments (a shared edge counts in each shape that uses it)
+  const anchors = s.shapes.reduce((a, sh) => a + sh.loops.reduce((x, l) => x + l.length, 0), 0);
+  const head = { id: s.id, file: o.file, px: [w, h], ...(s.photo ? { photo: true } : {}), regions: regs.length, drawn: drawnRegs.length, colours: usedColours.length, edges: s.pm.edges.length, anchors, est_rmse: s.estRmse, ms: s.ms };
   const lines = [JSON.stringify(head)];
   const limit = o.limit ?? 40;
   let rows = regs.slice(0, limit);
   if (o.show?.length) rows = o.show.map((id) => s.seg.regions[id]).filter((r) => r && r.area > 0);
   if (o.showColour !== undefined) rows = regs.filter((r) => s.meta[r.id].colour === o.showColour);
-  lines.push('id    colour   area%   kind    z    next              conf c    name');
+  lines.push('id    colour   area%   kind      z    next              conf c    name');
   for (const r of rows) {
     const c = s.colours[s.meta[r.id].colour];
     const next = [...r.nbrs.entries()].filter(([n]) => s.seg.regions[n].area > 0).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n]) => 'r' + n).join(' ');
-    lines.push(pad('r' + r.id, 6) + pad(labHex(c.L, c.a, c.b), 9) + pad(pct((r.area / total) * 100), 8) + pad(kindOf(s, r.id), 8) + pad(String(s.z[r.id]), 5) + pad(next || '-', 18) + pad(conf(s, r.id).toFixed(2).replace(/^0/, ''), 5) + pad('c' + s.meta[r.id].colour, 5) + (s.meta[r.id].name ?? ''));
+    lines.push(pad('r' + r.id, 6) + pad(labHex(c.L, c.a, c.b), 9) + pad(pct((r.area / total) * 100), 8) + pad(kindOf(s, r.id), 10) + pad(String(s.z[r.id]), 5) + pad(next || '-', 18) + pad(conf(s, r.id).toFixed(2).replace(/^0/, ''), 5) + pad('c' + s.meta[r.id].colour, 5) + (s.meta[r.id].name ?? ''));
   }
   if (!o.show && o.showColour === undefined && regs.length > limit) {
     const rest = regs.slice(limit), max = (rest[0].area / total) * 100;
@@ -44,13 +46,16 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   }
   // inks
   const members = new Map<number, number[]>();
-  for (const r of regs) { const c = s.meta[r.id].colour; if (!members.has(c)) members.set(c, []); members.get(c)!.push(r.id); }
+  for (const r of drawnRegs) { const c = s.meta[r.id].colour; if (!members.has(c)) members.set(c, []); members.get(c)!.push(r.id); }
   lines.push('colours: ' + usedColours.map((ci) => {
     const c = s.colours[ci], m = members.get(ci)!;
     return `c${ci} ${c.swatch ? 'swatch:' + c.swatch : labHex(c.L, c.a, c.b)}${c.name ? ' "' + c.name + '"' : ''} ${m.slice(0, 5).map((i) => 'r' + i).join(' ')}${m.length > 5 ? ` +${m.length - 5}` : ''}`;
   }).join(' · '));
   // hints
   const hints: string[] = [], minDe = s.params.minDe;
+  // many tiny regions (small text, texture): one edit drops them, the shapes below fill their place
+  const tiny = drawnRegs.filter((r) => r.area < total * 5e-4);
+  if (tiny.length > 60) hints.push(`${tiny.length} regions under 0.05 % (small text or texture): "drop < 0.05", or "text x y w h" over text`);
   for (const g of s.rampGroups) {
     const live = g.ids.filter((i) => s.seg.regions[i].area > 0);
     if (g.merged) { if (live.length && !s.meta[live[0]].ramp) hints.push(`r${live[0]}: lighting flattened (ΔL ${g.dL}; "ramp r${live[0]}" keeps it as a gradient)`); }

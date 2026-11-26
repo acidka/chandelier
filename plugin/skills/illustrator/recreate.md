@@ -90,6 +90,12 @@ Skip what already exists (a document, a reference artboard): reuse it.
   correct-looking grid with a wrong first weekday is the classic miss.
 - Check alignment and spacing in a close-up against the reference: baselines on one line, equal gaps, rules where they
   start and end.
+- **Text on a circle** (badges, seals, emblems): a circular path for each arc, `create_text {kind: "path", on_path}`.
+  The path's direction decides the side: the top arc runs left → right **over** the top (clockwise from 9 to 3
+  o'clock), the bottom arc left → right **through** the bottom (counter-clockwise from 7 to 5 o'clock) so it reads
+  upright. The path's radius is the baseline: top arc = ring's centre radius − cap height / 2, bottom arc = centre
+  radius + cap height / 2. Size from the angle the text spans: measure the arc length of the reference's text at its
+  baseline radius and match it with `horizontal_scale` or tracking, not size.
 
 ## 4. Logos, icons and geometric marks
 
@@ -110,23 +116,34 @@ Where agents usually fail: lumpy "camouflage" or "mountain" outlines instead of 
 
 ### 5.0 With the `scene` tool (when it is listed)
 
-`scene` does the pixel work: inks, regions, shared edges fitted once, primitives, ramps, overlaps. You decide.
+`scene` does the pixel work: inks, regions, shared edges fitted once, primitives, ramps, overlaps. You decide. It
+is strongest on flat art (logos, emblems, flat illustrations, signage); on photos with soft shading use it for the
+flat parts and draw shaded bands with § 5a–5c and § 7.
 
-1. `scene {action: "analyze", image, map: [TL, TR, BR, BL]}` for a photographed face (corners from
-   `preview {image, grid}`; `bilinear: true` for a tapered face), or `crop` for a flat file; `size` = the artboard's
-   aspect. Read the summary table and the overlay (ids on the image | flat render). `photo: true` means lighting was
-   flattened (§ 1: light is not artwork).
-2. One `edit` call with all decisions: `merge` what is one part, `drop` noise and photo-only things (folds, shadows,
-   side faces), `text x y w h` over every text block (live text comes later), `r10 logo` on marks, `c0 = swatch:…` for
-   brand inks, `name` the parts. Follow the hints that fit the artwork: `ramp …` (a real gradient), `layers rA rB`
-   (translucent overlap, § 5a), `cN = cM` (one ink split in two). Check the new summary.
-3. `scene {action: "build", id}` → one undo step on layer "Scene"; then `create_text` into the returned `text_boxes`
-   (fonts and sizes as § 3).
-4. `preview {reference}` once; `scene {action: "refine", id}` corrects shifted inks and loose edges and rebuilds.
-   What is still wrong: an edit and a re-build (it replaces the layer), or the manual method below for that part.
+1. **Analyze.** `scene {action: "analyze", image, map: [TL, TR, BR, BL]}` for a photographed face (corners from
+   `preview {image, grid}`; `bilinear: true` for a tapered face; on a box with rounded or wrapped edges put each side
+   where the bands start to bend, not at the silhouette), or `crop` for a flat file; `size` = the artboard's aspect.
+   Read the table and the overlay (ids on the image | flat render). `photo: true` means lighting was flattened (§ 1:
+   light is not artwork). Choose crop, map and `max_px` once: analyzing again with other values gives new region ids.
+2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
+   (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
+   `drop < 0.05` drops every tiny region at once, e.g. small text and texture), `text x y w h` over each text block,
+   `r10 logo` on marks, `rN circle` / `rect` to force a primitive, `c0 = swatch:…` for brand inks, `name` the parts.
+   Hints are suggestions: take `ramp …` only for a gradient that is artwork, `layers rA rB` only when the overlap
+   really is two translucent inks (the new inks must look right in the summary), `cN = cM` when two inks are one.
+   Edits add up; `undo`, `undo 3` or `reset` go back. Check the new summary.
+3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer (on top); then
+   `create_text` into the returned `text_boxes` (fonts and sizes as § 3). Text on a circle can't be boxed: drop its
+   letters (`drop < …` or ranges) — the ring under them fills the gap — and set it on a path (§ 3).
+4. **Refine.** `preview {reference}` once; `scene {action: "refine", id}` corrects inks shifted by colour conversion,
+   re-fits edges that miss and rebuilds; it undoes its own fixes when they make the scene worse and names inks whose
+   regions disagree (shading: give them their own ink or a ramp). A tolerance you set (`tolerance rN 3`) wins.
+5. **Parts.** A part that needs more detail or a cleaner build (a globe, a mark inside a badge): analyze a `crop` of
+   just that part and build it with `rect` (where it goes, session units) and its own `layer`.
 
-The manual method (§ 5a–5c) stays for what the scene gets wrong: curve-following shading (§ 7), a part that must be
-constructed (§ 4), a shape the image shows only partly.
+**When to leave the scene:** after one round of edits the build still shows camouflage-like boundaries inside bands
+(soft shading, texture), or a part keeps coming out lumpy → draw that part with § 5a–5c (profile tracks + fit) and
+keep the scene for the rest. Don't spend more than two builds on one part.
 
 ### 5a. Decompose into layers
 
@@ -146,6 +163,9 @@ constructed (§ 4), a shape the image shows only partly.
   the shape with the shared edge, then cut it with `path_ops {op: "minus_front"}` and a cutter whose edge is the
   separate stretch; the shared stretch stays identical and the result keeps its fill, opacity and blend.
 - A band whose tone changes **along** its length with no edge is a gradient fill, not an extra shape.
+- **Opaque stacked bands** (no translucency): build each band as its own top edge plus a box running down past the
+  panel (closed below the bottom edge), stacked bottom to top — the next band covers the rest. No band needs a second
+  edge, so no shared-edge slivers; the shared stretches stay single curves.
 
 ### 5b. Measure edges densely — never invent
 
@@ -175,7 +195,9 @@ constructed (§ 4), a shape the image shows only partly.
   seen, keeping its slope; that is not inventing.
 - **Edges that seem to cross:** sample the tone in the thin gap on both sides of the meeting point. One shape's tone
   on both sides → they merge (shared curve from there); the tone changes → one continues hidden; two shapes' tone →
-  they really cross. An edge that ends under another shape: anchor its end **on** that edge, with a free angle.
+  they really cross. An edge that ends under another shape: anchor its end **on** that edge, with a free angle —
+  e.g. a pale band's top edge whose last fit point is a point taken from the kraft edge it runs into (one shared point,
+  the tip is then exact).
 
 ### 5c. Draw smooth curves — designer anchors, fitted
 
@@ -270,6 +292,9 @@ nothing just before `to`, inside a clip group masked by a copy of the shape, so 
   bug that darkens where the photo is dark *lowers* rmse. Use it as a trend between rounds with the same crop; decide
   tone questions by samples and profiles at fixed points. `content_box` gives a `note` instead of a shift when the
   two boxes differ in shape (a side face in the photo).
+- **Lost transparency** (a logo exported on black or white corners): those corners are not artwork and dominate rmse
+  (a round emblem on black: ~0.46 from the corners alone). Judge by `content_box` and close-ups, or crop the
+  comparison to a rectangle inside the artwork.
 
 ## 9. Finish
 

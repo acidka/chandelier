@@ -410,7 +410,7 @@ owner's verdict recorded as is. Plus `bench/scene-bench.mjs` on the four suite r
 | 9 ✅ | `edits.ts` (S1), `store.ts` + tests — done 2026-11-26 | 1 d | 8 |
 | 10 ✅ | `build.ts`, `src/tools/scene.ts` behind `CHANDELIER_SCENE=1`; plan.md row + D15 — done 2026-11-26 | 1 d | 9 |
 | 11 ✅ | `test/live-scene.mjs`, `bench/scene-bench.mjs`; live tuning (payload, timing, Lab swatch) — done 2026-11-26 | 1 d | 10 |
-| 12 | S1 evaluation on case 04 (arms B, C), benchmarks § 2i, roadmap S1, recreate.md note | 1 d + owner | 11 |
+| 12 🔄 | S1 evaluation on case 04 (arms B, C), benchmarks § 2i, roadmap S1, recreate.md note — run 1 on 04 and 08 (§ 2i), fixes made; suite re-run next | 1 d + owner | 11 |
 | 13 ✅ | S2a primitives + shared arcs + `create_shape` emission — done 2026-11-26 | 1.5 d | 12 |
 | 14 ✅ | S2b ramps, gradient-span probe (+ `A.setFill`), shade along edge — done 2026-11-26 | 2–2.5 d | 12 |
 | 15 ✅ | S2c overlap → multiply; arm D partial — done 2026-11-26 | 1.5 d | 14 |

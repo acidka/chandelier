@@ -30,7 +30,7 @@ describe('scene edits', () => {
   it('drop / keep, recolour, z moves, names, tolerance, stack', () => {
     const s = fresh(), d = idOf(s, (r) => r.cx > 140 && r.cy > 80), k = idOf(s, (r) => r.cx > 70 && r.cx < 130 && r.cy > 80);
     applyEdits(s, [`drop r${d}`]);
-    expect(summary(s)).toMatch(new RegExp(`^r${d} .* drop `, 'm'));
+    expect(summary(s)).toMatch(new RegExp(`^r${d} .* drop→r0 `, "m"));
     applyEdits(s, [`keep r${d}`, `r${d} = #ff0000`, `c0 = swatch:Paper`, `name c0 Kraft`, `name r${k} Big dot`, `r${d} under r${k}`, `tolerance r${k} 0.5`, `tolerance 2`, 'stack off']);
     expect(s.meta[d].drop).toBe(false);
     expect(s.colours[s.meta[d].colour]).toMatchObject({ L: expect.closeTo(53.2, 0) });
@@ -71,5 +71,54 @@ describe('scene store', () => {
     expect(await get(s.id, join(dir, 't.png'))).toBe(s);
     expect((await get(file, join(dir, 't.png'))).id).toBe(s.id);
     await expect(get('s9999', join(dir, 't.png'))).rejects.toThrow(/no scene "s9999"/);
+  });
+});
+
+describe('scene edits after the first suite runs', () => {
+  it('ranges, drop by size, drop … fill, swatch names with spaces', () => {
+    const s = fresh(), n = s.seg.regions.filter((r) => r.area > 0).length;
+    applyEdits(s, ['drop r1-r3']);
+    expect([1, 2, 3].filter((i) => s.seg.regions[i]?.area).every((i) => s.meta[i].drop)).toBe(true);
+    applyEdits(s, ['reset']);
+    expect(s.meta.every((m) => !m.drop)).toBe(true);
+    expect(s.edits).toEqual([]);
+    const r = applyEdits(s, ['drop < 1']); // the small blue dot (≈ 2.4 %? no: 15² π / 30000 ≈ 2.4 %) stays, specks go
+    expect(r.dropped).toBeGreaterThanOrEqual(0);
+    applyEdits(s, ['reset', 'drop < 3']);
+    const dot = s.seg.regions.findIndex((x) => x.area > 0 && x.b < -20);
+    expect(s.meta[dot].drop).toBe(true);
+    expect(s.seg.regions.filter((x) => x.area > 0 && !s.meta[x.id].drop).length).toBeLessThan(n);
+    applyEdits(s, ['c0 = swatch:v1 Warm Paper']);
+    expect(s.colours[0].swatch).toBe('v1 Warm Paper');
+  });
+  it('a dropped region is filled by what it sits on, or by the given region', () => {
+    const s = fresh(), big = idOf(s, (r) => r.cx > 70 && r.cx < 130 && r.cy > 80), dot = idOf(s, (r) => r.cx > 140 && r.cy > 80);
+    applyEdits(s, [`drop r${dot}`]);
+    expect(s.fillers.get(dot)).toBe(0); // the paper around it, not a neighbour that runs under
+    applyEdits(s, [`keep r${dot}`, `drop r${dot} fill r${big}`]);
+    expect(s.fillers.get(dot)).toBe(big);
+    const shape = s.shapes.find((sh) => sh.region === big)!;
+    expect(shape.raw.length).toBeGreaterThan(0);
+  });
+  it('undo [n] replays the earlier edits; tolerance clears what refine tightened', () => {
+    const s = fresh();
+    applyEdits(s, ['name r0 Paper', 'drop r1', 'drop r2']);
+    applyEdits(s, ['undo']);
+    expect(s.meta[0].name).toBe('Paper'); expect(s.meta[1].drop).toBe(true); expect(s.meta[2].drop).toBeFalsy();
+    applyEdits(s, ['undo 2']);
+    expect(s.meta[0].name).toBeUndefined();
+    s.edgeTol = { '0,1': 0.3, '2,3': 0.3 };
+    applyEdits(s, ['tolerance r1 3']);
+    expect(s.edgeTol).toEqual({ '2,3': 0.3 });
+    applyEdits(s, ['tolerance 2']);
+    expect(s.edgeTol).toEqual({});
+  });
+  it('forced circle: a true circle even when other shapes sit on it', () => {
+    const im = paint(240, 200, [ellipse(120, 100, 80, 80, ORANGE), rect(100, 40, 40, 120, DARK), ellipse(150, 100, 15, 15, BLUE)], { bg: BG, noise: 1 });
+    const s = analyze(im, P, { dir: '/tmp/x', path: 'x.png' });
+    const disc = s.seg.regions.findIndex((r) => r.area > 0 && r.a > 20 && r.area > 5000);
+    applyEdits(s, [`r${disc} circle`]);
+    const p = s.prims[disc]!;
+    expect(p.kind).toBe('circle'); expect(p.a).toBeCloseTo(80, -0.5); expect(p.cx).toBeCloseTo(120, -0.3);
   });
 });

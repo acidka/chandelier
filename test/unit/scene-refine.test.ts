@@ -3,7 +3,7 @@ import { analyze } from '../../src/scene/analyze.js';
 import { applyEdits } from '../../src/scene/edits.js';
 import { measure, refine } from '../../src/scene/refine.js';
 import { rgbLab } from '../../src/scene/color.js';
-import { paint, below, ellipse, type RGB } from './scene-fixtures.js';
+import { paint, below, ellipse, rect, type RGB } from './scene-fixtures.js';
 
 const P = { image: 'x', colors: 16, minDe: 6, detail: 'normal' as const, maxPx: 1000 };
 const BG: RGB = [240, 230, 210], ORANGE: RGB = [217, 130, 43], BLUE: RGB = [40, 90, 170];
@@ -41,5 +41,16 @@ describe('refine', () => {
     const rep = refine(s, measure(s, s.render));
     expect(rep.fixed).toEqual([]);
     expect(rgbLab(0, 0, 0)[0]).toBe(0);
+  });
+  it('an ink whose regions miss in different directions (shading) is left alone and reported', () => {
+    // two orange areas of one ink, one of them in shadow: their image colours differ by ~ΔE 15
+    const im = paint(300, 200, [rect(10, 10, 120, 180, [217, 130, 43]), rect(170, 10, 120, 180, [190, 108, 30])], { bg: BG, noise: 1 });
+    const s = analyze(im, { ...P, minDe: 20 }, { dir: '/tmp', path: 'x' }); // one ink for both
+    const ids = s.seg.regions.filter((r) => r.area > 0 && r.a > 15).map((r) => r.id);
+    expect(new Set(ids.map((i) => s.meta[i].colour)).size).toBe(1);
+    const c = s.meta[ids[0]].colour, before = { ...s.colours[c] };
+    const rep = refine(s, measure(s, s.render), 4);
+    expect(s.colours[c]).toEqual(before);
+    expect(rep.left.some((x) => /disagree/.test(x.why))).toBe(true);
   });
 });

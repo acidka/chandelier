@@ -632,6 +632,22 @@ Gaps that one case hit:
 - 03: opaque paper bands whose colour changes along their length; a fallback for script lettering.
 - 04: `extend` on closed bands built from several lists; band ends that fade out.
 
+## 2i. `scene` tool, suite run 1 (first two cases) — 2026-11-26
+
+Fresh subagents from recreate.md § 5.0 with the `scene` tool listed (build behind `CHANDELIER_SCENE=1`), Chandelier
+tools only, one case at a time. Illustrator 29.1, macOS 27.2, Node 22.23.
+
+| Case | Run | Time | Tool uses / tokens | RMSE (crop) | What `scene` gave | Result |
+|---|---|---|---|---|---|---|
+| 04 ribbons photo | v9 vs v8 (§ 2h: 9.1 min, 46 / 156 k, 0.178) | 10.5 min | 59 / 197 k | 0.150 ([8,40,1087,1315]) | nothing kept: 5 builds with camouflage edges along soft shading, then profile + fit by hand | clean but flatter than v8 (fewer bands) |
+| 08 round emblem | v1 (no baseline) | 10.3 min | 61 / 208 k | 0.491 ([213,4,844,844]; black corners alone ~0.46) | the globe (scene on a crop); ring/disc by hand, figures traced by the agent's own code from the scene labels | looks close |
+
+Both missed the target (3–5 min, 10–15 calls). Causes found and fixed the same day (before run 2): JPEG fringes
+became hundreds of sliver regions and lumpy edges, a flat logo crop read as a photo, no bulk drop, dropped areas
+filled by the wrong shape, `circle` ignored, refine averaging an ink over shaded regions and keeping worse rebuilds,
+swatch names losing spaces, build layer at the bottom; guide § 5.0 rewritten (when to leave the scene, parts, text on
+a circle). Offline effect on case 08's crop: 572 → 288 regions, 5,539 → 2,716 segments.
+
 ## 3. Targets
 
 | Metric | Target | Status |

@@ -39,7 +39,11 @@ export function findOverlaps(s: Scene, limit = s.params.minDe): Overlap[] {
     for (let i = 0; i < nb.length; i++) for (let j = i + 1; j < nb.length; j++) {
       const a = nb[i], b = nb[j], sa = substrate(s, a), sb = substrate(s, b);
       if (sa < 0 || sa !== sb || sa === x.id) continue;
-      const S = R[sa], m = multiplied([R[a].L, R[a].a, R[a].b], [R[b].L, R[b].a, R[b].b], [S.L, S.a, S.b]);
+      const S = R[sa];
+      // multiply only darkens: a layer lighter than its paper in any channel is not a translucent ink
+      const SA = linOf(S.L, S.a, S.b);
+      if ([a, b].some((id) => linOf(R[id].L, R[id].a, R[id].b).some((v, k) => v > SA[k] * 1.02))) continue;
+      const m = multiplied([R[a].L, R[a].a, R[a].b], [R[b].L, R[b].a, R[b].b], [S.L, S.a, S.b]);
       const de = de76(m[0], m[1], m[2], x.L, x.a, x.b);
       if (de < limit) out.push({ x: x.id, a, b, s: sa, de: Math.round(de * 10) / 10 });
     }

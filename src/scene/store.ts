@@ -19,9 +19,14 @@ export function save(s: Scene): string {
   const { w, h } = s.work, rgb = new Uint8Array(w * h * 3);
   for (let i = 0; i < w * h; i++) { const v = s.seg.map[i] + 2; rgb[i * 3] = v >> 16; rgb[i * 3 + 1] = (v >> 8) & 255; rgb[i * 3 + 2] = v & 255; }
   writeFileSync(join(dir, 'labels.png'), encodePng({ w, h, rgb }));
+  if (s.initial && !existsSync(join(dir, 'labels0.png'))) {
+    const r0 = new Uint8Array(w * h * 3);
+    for (let i = 0; i < w * h; i++) { const v = s.initial.map[i] + 2; r0[i * 3] = v >> 16; r0[i * 3 + 1] = (v >> 8) & 255; r0[i * 3 + 2] = v & 255; }
+    writeFileSync(join(dir, 'labels0.png'), encodePng({ w, h, rgb: r0 }));
+  }
   const json = {
     version: 1, id: s.id, params: s.params, source: s.source, photo: s.photo, rampGroups: s.rampGroups, colours: s.colours, meta: s.meta, zMoves: s.zMoves, tile: s.tile, tol: s.tol, edgeTol: s.edgeTol,
-    edits: s.edits, textBoxes: s.textBoxes, built: s.built, regionCount: s.seg.regions.length,
+    edits: s.edits, textBoxes: s.textBoxes, built: s.built, initial: s.initial ? { colours: s.initial.colours, meta: s.initial.meta, tol: s.initial.tol } : undefined, regionCount: s.seg.regions.length,
     // for readers: the regions as the summary lists them
     regions: s.seg.regions.filter((r) => r.area > 0).map((r) => ({ id: r.id, area: r.area, bbox: r.bbox, z: s.z[r.id], colour: s.meta[r.id].colour, name: s.meta[r.id].name })),
   };
@@ -45,8 +50,13 @@ export async function load(file: string, tmpPng: string): Promise<Scene> {
   const s: Scene = {
     id: j.id, dir: dirname(dirname(file)), params: j.params, source: j.source, work, toSource, lab, photo: j.photo ?? photo, rampGroups: j.rampGroups ?? [], quant, seg,
     colours: j.colours, meta: j.meta, zMoves: j.zMoves, tile: j.tile, tol: j.tol, edgeTol: j.edgeTol, edits: j.edits, textBoxes: j.textBoxes ?? [], built: j.built,
-    pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
+    pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], fillers: new Map(), render: work, iou: [], estRmse: 0, ms: 0,
   };
+  if (j.initial && existsSync(join(dirname(file), 'labels0.png'))) {
+    const l0 = decodePng(readFileSync(join(dirname(file), 'labels0.png'))), m0 = new Int32Array(map.length);
+    for (let i = 0; i < m0.length; i++) m0[i] = ((l0.rgb[i * 3] << 16) | (l0.rgb[i * 3 + 1] << 8) | l0.rgb[i * 3 + 2]) - 2;
+    s.initial = { map: m0, ...j.initial };
+  }
   recompute(s);
   put(s);
   return s;
