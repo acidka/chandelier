@@ -85,5 +85,22 @@ await call('layers', { action: 'list' }, { check: (v) => {
 await call('scene', { action: 'build', id, layer: 'Scene 2', position: 'bottom' }, { check: (v, r) => assert(r.content.length === 1, 'first build: no warning ' + JSON.stringify(r.content.slice(1))) });
 await call('layers', { action: 'list' }, { check: (v) => assert(v.layers[v.layers.length - 1].name === 'Scene 2', 'position bottom: ' + v.layers.map((l) => l.name).join(',')) });
 
+// more than 100 items: the runtime lists 100 created items per step; a rebuild must still replace every one
+{
+  const GW = 480, GH = 360, dots = new Uint8Array(GW * 4 * GH * 4 * 3);
+  for (let y = 0; y < GH * 4; y++) for (let x = 0; x < GW * 4; x++) {
+    const px = (x + 0.5) / 4, py = (y + 0.5) / 4, cx = Math.round((px - 20) / 36) * 36 + 20, cy = Math.round((py - 20) / 28) * 28 + 20;
+    const on = px > 6 && py > 6 && Math.hypot(px - cx, py - cy) <= 8;
+    dots.set(on ? [30, 60, 160] : [245, 240, 230], (y * GW * 4 + x) * 3);
+  }
+  const grid = join(tmp, 'dots.png');
+  writeFileSync(grid, encodePng(resize({ w: GW * 4, h: GH * 4, rgb: dots }, GW, GH)));
+  let gid, drawn;
+  await call('scene', { action: 'analyze', image: grid }, { check: (v, r) => { const head = JSON.parse(first(r).split('\n')[0]); gid = head.id; assert(head.regions > 100, 'many regions: ' + head.regions); } });
+  await call('scene', { action: 'build', id: gid, layer: 'Dots' }, { check: (v) => { drawn = v.items; assert(v.items > 100, 'items ' + v.items); } });
+  await call('scene', { action: 'edit', id: gid, edits: ['drop r60-r120'] });
+  await call('scene', { action: 'build', id: gid, layer: 'Dots' }, { check: (v) => { drawn = v.items; } });
+  await call('find_items', { layer: 'Dots', count_only: true }, { check: (v) => assert(v.total === drawn, 'rebuild left no stale items: ' + v.total + ' on the layer, ' + drawn + ' drawn') });
+}
 await call('documents', { action: 'close', discard: true });
 process.exit(await done() ? 1 : 0);

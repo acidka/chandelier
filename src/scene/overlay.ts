@@ -5,7 +5,7 @@ import { put, label } from '../imageview.js';
 import { alive } from './summary.js';
 import type { Scene } from './types.js';
 
-export function overlay(s: Scene, maxPx = 1024): Img {
+export function overlay(s: Scene, maxPx = 1600): Img {
   const { w, h } = s.work, gap = 8;
   // small crops are enlarged (up to 4×) so ids and boundaries stay readable
   const k = Math.min(4, maxPx / Math.max(2 * w + gap, h));

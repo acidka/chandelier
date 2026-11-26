@@ -191,12 +191,15 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
 3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer: a new layer goes on
    top, or where `position` says (`"below:<lowest hand layer>"`, `"bottom"`); a rebuild or refine keeps the layer
    where it is, replaces only its own items (items you added stay) and keeps regions you deleted dropped; then
-   `create_text` into the returned `text_boxes` (fonts and sizes as § 3). Text on a circle can't be boxed: drop its
+   `create_text` into the returned `text_boxes` (fonts and sizes as § 3: measure caps in the image — the box's
+   height is not the cap height). Text on a circle can't be boxed: drop its
    letters (`drop < …` or ranges) — the ring under them fills the gap — and set it on a path (§ 3).
 4. **Refine.** `preview {reference}` once; `scene {action: "refine", id}` corrects inks shifted by colour conversion,
    re-fits edges that miss and rebuilds; it undoes its own fixes when they make the scene worse and names inks whose
    regions disagree (shading: give them their own ink or a ramp). A tolerance you set (`tolerance rN 3`) wins.
-   Refine also corrects inks you only named; an ink set to an existing swatch (`c0 = swatch:Name`) is never changed.
+   Refine also corrects inks you only named; an ink set to an existing swatch (`c0 = swatch:Name`) is never changed —
+   so set an ink you sampled on purpose to a swatch. Check every ink refine changed in a close-up (on a soft-shaded
+   face it once turned a skin shadow into a dark brown patch).
    Refine measures the artboard as it looks, hand-built layers included: run it before hand work that covers the
    scene, or keep that work beside the scene, not over it.
 5. **Parts.** A part that needs more detail or a cleaner build (a globe, a mark inside a badge, a detailed tree in a
@@ -216,9 +219,10 @@ scene for the **whole** illustration from one analyze of the full image (`detail
 one edit call: `ramp` the bands of each big soft-shaded shape into one gradient shape, set the few inks that merged
 (hair, lips) by hand, `merge` split parts, `name` the inks. Don't hand-draw the big shapes instead (the runs that
 did looked worse), and refine before the hand work (it measures what covers the scene too). Draw by hand only what the
-scene can't hold: a layered flower — petals as rotated ellipses or fitted shapes with **flat** fills in 2–3 greens and
+scene can't hold: lips (the scene's come out as a lumpy blob — two fitted paths), a layered flower — petals as rotated ellipses or fitted shapes with **flat** fills in 2–3 greens and
 a darker outline stroke, back petals first (radial gradients on every petal looked "bubbly"); jewellery (pearls,
-stones) — `drop < %` removes detail that small.
+stones) — `drop < %` removes detail that small. Dropping a part that wraps another (a bracelet round a wrist) fills
+it with what lies under it (often the dark sleeve): `fill` the right region, or draw the covered piece.
 
 **Keeping only part of a scene** (the substrate, the primitives): drop the rest in the scene — `drop in x y w h`
 (every region inside a box, image px), ranges, `drop < %` — or delete built items by name (`name:<layer> r12`; a

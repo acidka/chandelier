@@ -481,6 +481,10 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` |
 | F39 | ⏳ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) |
 | F40 | ✅ | 09 v4 | analyze overlays of small crops too small to read: enlarged up to 4× |
+| F41 | ✅ | 09 v5 | a rebuild left items from the first build (r143–r151): the runtime lists 100 created items per step, the build recorded only those — steps now hold ≤ 100 items, leftovers found by name are cleared; live test with 170 items |
+| F42 | ⏳ | 09 v5 | refine "corrected" a skin-shadow ink (ΔE 26.8) into a dark brown patch |
+| F43 | ✅ | 09 v5 | the overlay of a 620 px image was shrunk to ~500 px per half: overlays up to 1600 px |
+| F44 | ⏳ | 09 v5 | `text_boxes` cap height (25.3 mm for the title) doesn't match the real caps |
 | F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
@@ -530,6 +534,10 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G39 | ✅ (revised) | 09 v4 | petals: flat fills in 2–3 greens + darker outline, back first (radial gradients looked bubbly); jewellery by hand |
 | G40 | ✅ | 09 v4 | `max_px` never upsamples: a small crop stays small |
 | G41 | ✅ | 09 v4 | wordmark: cap height with size first, then width with `horizontal_scale`, then tracking |
+| G42 | ✅ | 09 v5 | check inks refine changed in a close-up; an ink you sampled on purpose: set it to a swatch so refine leaves it |
+| G43 | ✅ | 09 v5 | lips belong with flower and jewellery on the "draw by hand" list (the scene's lips are a lumpy blob) |
+| G44 | ✅ | 09 v5 | measure caps from the image, not from `text_boxes` |
+| G45 | ✅ | 09 v5 | dropping a part that wraps another (a bracelet on a wrist) fills it with what lies under: draw the covered piece (skin) or `fill` the right region |
 | G31 | ✅ | 09 v3 | `name:` refs match the whole document: they hit another version's item of the same name |
 
 ### Owner decisions pending

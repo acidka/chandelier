@@ -25,8 +25,8 @@ describe('analyze', () => {
     expect(head).toMatchObject({ id: s.id, px: [400, 300], regions: 7, colours: 7 });
     expect(text).toMatch(/^r0 /m); expect(text).toMatch(/colours: c0 /);
     const ov = overlay(s);
-    expect(Math.max(ov.w, ov.h)).toBeLessThanOrEqual(1024);
-    expect(ov.w).toBe(2 * Math.round(400 * Math.min(4, 1024 / 808)) + 8); // small images are enlarged to fit
+    expect(Math.max(ov.w, ov.h)).toBeLessThanOrEqual(1600);
+    expect(ov.w).toBe(2 * Math.round(400 * Math.min(4, 1600 / 808)) + 8); // small images are enlarged to fit
   });
   it('a 4-point map and maxPx; ids by area; z: background bottom', () => {
     const s = analyze(poster(), P({ map: [[0, 0], [400, 0], [400, 300], [0, 300]], maxPx: 200 }), { dir: '/tmp/x', path: 'x.png' });

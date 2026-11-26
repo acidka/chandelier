@@ -107,7 +107,11 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
     if (still.length) {
       const gone = own.filter(([, u]) => !present.has(u)).map(([r]) => r);
       if (gone.length) { applyEdits(s, ['drop ' + gone.join(' ')]); kept.push(...gone); }
-      clear = still.map(([, u]) => u);
+      // plus scene items the record misses (a build before 0.6 recorded only 100 per step): found by their names
+      const mine = new Set(still.map(([, u]) => u)), names = new Set(s.meta.map((m) => m.name).filter(Boolean) as string[]);
+      const sceneName = (n: string) => n.startsWith(layer + ' r') || /^(Logo|Placeholder) r\d+$/.test(n) || names.has(n);
+      for (const [u, n] of present) if (!mine.has(u) && sceneName(n) && !own.some(([, x]) => x === u)) mine.add(u);
+      clear = [...mine];
     }
   }
   const plan = buildSteps(s, { rect, bleed: a.bleed, layer, artboard: a.artboard, position: a.position ?? (present ? undefined : 'top'), clear });
@@ -120,7 +124,13 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
     for (const c of res.content.slice(1)) warnings.push((c as { text: string }).text);
     const d = JSON.parse(body) as { results: { ok: boolean; data?: { items?: { uuid: string }[] } }[] };
     let k = Object.keys(items).length;
-    steps.forEach((st, i) => { if (st.tool === 'create_path' || st.tool === 'create_shape') for (const it of d.results[i]?.data?.items ?? []) items['r' + plan.regions[k++]] = it.uuid; });
+    steps.forEach((st, i) => {
+      // region items only (a placeholder box is a single create_shape without items, not a region's shape)
+      if ((st.tool !== 'create_path' && st.tool !== 'create_shape') || !Array.isArray(st.args.items)) return;
+      const listed = d.results[i]?.data?.items ?? [];
+      if (listed.length < (st.args.items as unknown[]).length) warnings.push(`step ${i}: ${listed.length} of ${(st.args.items as unknown[]).length} items listed — a rebuild may leave the rest`);
+      for (const it of listed) items['r' + plan.regions[k++]] = String(it.uuid);
+    });
   }
   s.built = { layer, rect, artboard: a.artboard, bleed: a.bleed, units: ctx.settings.units, items };
   save(s);
@@ -134,12 +144,13 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
 }
 
 /** uuids of the items on a layer (all depths), or null when the layer doesn't exist */
-async function layerItems(ctx: Ctx, layer: string): Promise<Set<string> | null> {
-  const out = new Set<string>();
+/** uuid → name of the top-level items on a layer, or null when the layer doesn't exist */
+async function layerItems(ctx: Ctx, layer: string): Promise<Map<string, string> | null> {
+  const out = new Map<string, string>();
   for (let offset = 0; ; offset += 1000) {
-    const env = await ctx.rt.cmd<{ items: { uuid: string | number }[]; more?: boolean }>('find_items', { layer, fields: ['uuid'], limit: 1000, offset });
+    const env = await ctx.rt.cmd<{ items: { uuid: string | number; name?: string }[]; more?: boolean }>('find_items', { layer, top_level: true, fields: ['uuid', 'name'], limit: 1000, offset });
     if (!env.ok) return null; // no such layer (or no document)
-    for (const it of env.data!.items) out.add(String(it.uuid));
+    for (const it of env.data!.items) out.set(String(it.uuid), it.name ?? '');
     if (!env.data!.more || !env.data!.items.length) return out;
   }
 }

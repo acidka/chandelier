@@ -23,7 +23,9 @@ export interface BuildOpts {
 
 export interface BatchStep { tool: string; args: Record<string, unknown>; artboard?: number }
 
-const MAX_ITEMS = 1500, MAX_BYTES = 1_500_000;
+// at most 100 items per step: the runtime lists only the first 100 created items of a step (A.outList), and the build
+// must know every uuid to replace exactly its own items on a rebuild
+const MAX_ITEMS = 100, MAX_BYTES = 1_500_000;
 
 export const swatchName = (s: Scene, ci: number, layer: string) => s.colours[ci].swatch ?? s.colours[ci].name ?? `${layer} c${ci}`;
 
