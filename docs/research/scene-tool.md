@@ -1,6 +1,6 @@
 # `scene`: image → editable vector scene (proposal)
 
-Status: proposal, 2026-11-26; the main item of milestone 0.6 "faster free-form recreation" ([roadmap](../roadmap.md)).
+Status: proposal, 2026-11-26; [implementation plan](scene-plan.md) with owner decisions; the main item of milestone 0.6 "faster free-form recreation" ([roadmap](../roadmap.md)).
 
 ## Problem
 

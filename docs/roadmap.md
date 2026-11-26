@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-11-25 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
+Last updated: 2026-11-26 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
 
 Known bugs and unverified parts: [bugs.md](bugs.md).
 
@@ -419,7 +419,8 @@ Carried over from 0.5.2 when it was released.
   Chandelier does the pixel work, the agent only decides: `analyze` (rectify, Lab colour quantize, regions, shared
   edges fitted once, primitives, tone ramps → a 1-page summary + overlay), `edit` (merge, recolour to swatches, to
   text, to a primitive, drop), `build` (layers, global swatches, one undo step), `refine` (per-region error, re-fit
-  only bad regions). Pure TS, no installs. Target (estimate): free-form jobs ~3–5 min, 10–15 calls, < 100 k tokens
+  only bad regions). Pure TS, no installs. [Implementation plan](research/scene-plan.md) (owner decisions
+  2026-11-26: behind `CHANDELIER_SCENE=1` until release, stacked shapes, S1 exit = speed win, photo lighting flattened). Target (estimate): free-form jobs ~3–5 min, 10–15 calls, < 100 k tokens
   - [ ] S1: rectify, quantize, regions, shared edges, fit, build; suite case 04 vs v7/v8 and Image Trace
   - [ ] S2: primitive recognition, tone ramps (gradients / `shade`)
   - [ ] S3: `refine` loop
@@ -639,3 +640,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | **0.5.3 released**: recreate tools (`preview {image, profile}`, `create_path {fit, shade, map, extend, clip_to}`), the general recreate guide, bugs #13–#15 |
 | 2026-11-26 | Plan-then-run approval mode added to phase 8 as a candidate (🧊): [research/plan-then-run.md](research/plan-then-run.md) |
 | 2026-11-26 | Milestone 0.6: `scene` tool (image → editable vector scene) added as the main item: [research/scene-tool.md](research/scene-tool.md) |
+| 2026-11-26 | `scene` tool: implementation plan (S1–S4, 17 tasks) in research/scene-plan.md; owner decisions on rollout flag, stacked shapes, S1 exit, photo lighting |

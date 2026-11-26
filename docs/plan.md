@@ -202,7 +202,7 @@ The tool list is re-read on every agent request. With the 0.3 tools it is 53.6 K
 |--------|------|------|
 | Keep trimming descriptions under a fixed budget | One list for every client | Diminishing returns; agents need the details that get cut |
 | Pure "search & call" (only `search_tools` + `call_tool`) | Smallest list | An extra round trip before most calls; untyped calls → more argument errors; the build loop (~8 calls) gets longer |
-| **Profiles** (chosen): `full` (default) and `lean` = the 8 tools a build uses + a `tools` meta-tool (catalog, query, schema, call); other tools also run as `batch` steps | Clients that defer tool loading themselves (Claude Code, Claude Desktop) keep typed schemas; clients that load everything (or cap the count) get 15.4 KB (~4.9 k tokens) with no extra round trip on the usual path | Two lists to keep in budget (unit tests: full < 55 KB, lean < 18 KB) |
+| **Profiles** (chosen): `full` (default) and `lean` = the 8 tools a build uses + a `tools` meta-tool (catalog, query, schema, call); other tools also run as `batch` steps | Clients that defer tool loading themselves (Claude Code, Claude Desktop) keep typed schemas; clients that load everything (or cap the count) get 15.4 KB (~4.9 k tokens) with no extra round trip on the usual path | Two lists to keep in budget (unit tests: full < 56 KB since 0.4, lean < 18 KB) |
 
 `CHANDELIER_TOOLS=lean`, or a comma-separated list of tool names to show.
 
