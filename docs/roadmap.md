@@ -644,3 +644,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-26 | Milestone 0.6: `scene` tool (image → editable vector scene) added as the main item: [research/scene-tool.md](research/scene-tool.md) |
 | 2026-11-26 | `scene` tool: implementation plan (S1–S4, 17 tasks) in research/scene-plan.md; owner decisions on rollout flag, stacked shapes, S1 exit, photo lighting |
 | 2026-11-26 | Scene task 1: fixed end tangents in `fitCurve` (`t0`, `t1`), `segsToD` and drawing helpers exported for the scene pipeline |
+| 2026-11-26 | Scene task 2: `src/scene/color.ts` (sRGB ↔ Lab D65, ΔE76, hex / `lab()` strings) and `rectify.ts` (crop, projective or row-wise 4-point map, convexity check, supersampled); synthetic test fixtures |
