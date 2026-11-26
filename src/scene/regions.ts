@@ -208,7 +208,10 @@ export function dissolveThin(seg: Segmentation, lab: Lab, tol: number, centres?:
 
 /** Union-find merging of whole regions with running stats: small ones into their closest neighbour, then
  * neighbours closer than lim. Returns the root of every id. */
-export function mergeRegions(regions: Region[], minArea: number, lim: number): Int32Array {
+/** ΔE from every neighbour above which a region under the minimum area may be detail, not noise (see mergeRegions) */
+const KEEP_CONTRAST = 20;
+
+export function mergeRegions(regions: Region[], minArea: number, lim: number, keepContrast = KEEP_CONTRAST): Int32Array {
   const parent = new Int32Array(regions.length).map((_, i) => i);
   const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
   const R = regions.map((r) => ({ area: r.area, L: r.L * r.area, a: r.a * r.area, b: r.b * r.area, nbrs: new Map(r.nbrs) }));
@@ -226,6 +229,7 @@ export function mergeRegions(regions: Region[], minArea: number, lim: number): I
     parent[from] = to;
   };
   // small regions, smallest first
+  const large = R.map((_, i) => i).filter((i) => R[i].area >= minArea * 4);
   for (let round = 0; round < 4; round++) {
     let changed = false;
     const small = R.map((_, i) => i).filter((i) => R[i].area > 0 && R[i].area < minArea && R[i].nbrs.size).sort((x, y) => R[x].area - R[y].area);
@@ -233,6 +237,10 @@ export function mergeRegions(regions: Region[], minArea: number, lim: number): I
       if (find(i) !== i || R[i].area >= minArea || !R[i].nbrs.size) continue;
       let best = -1, bd = Infinity, bl = 0;
       for (const [n, len] of R[i].nbrs) { const d = dist(i, n); if (d < bd - 1e-9 || (Math.abs(d - bd) <= 1e-9 && len > bl)) { bd = d; bl = len; best = n; } }
+      // a small patch far from every neighbour in the colour of a large region elsewhere is detail, not noise: a hole
+      // in a tree crown shows the background, a letter's piece is the disc's yellow. Kept down to a quarter of the
+      // minimum area; a speck in a colour of its own still joins its neighbour
+      if (keepContrast > 0 && bd > keepContrast && R[i].area >= Math.max(4, minArea / 4) && large.some((j) => dist(i, j) < keepContrast / 2)) continue;
       join(i, best); changed = true;
     }
     if (!changed) break;

@@ -145,7 +145,11 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
     } else if (ink.test(t[0]) && t[1] === '=') {
       const id = inkId(t[0]), spec = after('=');
       if (!spec) fail('needs a colour');
-      s.colours[id] = { ...colourOf(spec, s.colours[id]), name: s.colours[id].name };
+      if (ink.test(spec)) {
+        // two inks are one: every region of cN takes cM (cN is no longer drawn)
+        const to = inkId(spec);
+        if (to !== id) for (const m of s.meta) if (m.colour === id) m.colour = to;
+      } else s.colours[id] = { ...colourOf(spec, s.colours[id]), name: s.colours[id].name };
       res.changed = true;
     } else if (reg.test(t[0]) && t[1] === '=') {
       const id = region(t[0]), spec = after('=');

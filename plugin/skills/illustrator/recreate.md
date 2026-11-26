@@ -26,6 +26,9 @@ curves), and **copying the photo instead of the artwork** (light, folds and pers
 
 ## 0. Set up for comparing
 
+`name:` refs match items anywhere in the document: in a document with other versions, give your items unique names
+(your prefix) or use `layer:` / uuids.
+
 Skip what already exists (a document, a reference artboard): reuse it.
 
 - `documents new` at the artwork's real size (units mm or in, bleed). Name layers by role.
@@ -81,10 +84,13 @@ Skip what already exists (a document, a reference artboard): reuse it.
 
 - Measure positions in pixels with `preview {image, region, grid: 10}` and convert with S; snap to the grid the
   design obviously uses (equal columns, a common margin, a baseline step) instead of copying each pixel.
-- **Font size ≈ cap height in px ÷ 0.7 × S** (x-height ÷ 0.5 for lowercase text). Weight from stroke thickness
+- **Font size ≈ cap height in px ÷ 0.7 × S** (x-height ÷ 0.5 for lowercase text) — a first guess: fonts differ (Futura's
+  caps came out 11 % too tall), so confirm the cap height in a close-up and adjust. Weight from stroke thickness
   against the cap height; width from a known word's length.
 - Fonts match fuzzily (`fonts {query}` when unsure). A missing font: the closest installed one, then match widths with
   `horizontal_scale` so lines break where the reference breaks. Body copy goes in area text.
+- **Non-Latin text** (Cyrillic, Greek…): the fuzzy font match doesn't check the script — look at the text in a
+  preview close-up; missing glyphs show as boxes or a fallback face. Pick a font that has the script.
 - **Wordmark width, in this order:** match one wide letter's width with `horizontal_scale`, then the whole word's width
   with tracking. Both at once take several rounds.
 - **Centred point text with tracking** sits left of x by half a tracking step (the last letter's tracking counts):
@@ -153,6 +159,9 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
    **Flat inks rendered with a material** (gold foil, emboss, print on textured paper, a mockup's lighting): give
    `colors` = the number of flat inks in the artwork (`colors: 2` for one foil ink on paper). The default splits the
    material's shading into a dozen inks and hundreds of specks.
+   **Detail settings:** small art in a large image → raise `max_px` (up to 3000); two inks that merge (hair into black,
+   lips into brown) → lower `min_de` (e.g. 3) or set the ink by hand (`rN = #hex`) — lowering `min_de` also splits
+   soft shading into facets, so prefer fixing the few inks.
 2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
    `drop < 0.05` drops every tiny region at once, e.g. small text and texture), `text x y w h` over each text block,
@@ -162,7 +171,8 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
    Hints are suggestions: take `ramp …` only for a gradient that is artwork, `layers rA rB` only when the overlap
    really is two translucent inks (the new inks must look right in the summary), `cN = cM` when two inks are one.
    Edits add up; `undo`, `undo 3` or `reset` go back. Check the new summary.
-3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer (on top); then
+3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer (on top — every build
+   and refine puts it back on top: re-order your hand-built layers afterwards); then
    `create_text` into the returned `text_boxes` (fonts and sizes as § 3). Text on a circle can't be boxed: drop its
    letters (`drop < …` or ranges) — the ring under them fills the gap — and set it on a path (§ 3).
 4. **Refine.** `preview {reference}` once; `scene {action: "refine", id}` corrects inks shifted by colour conversion,
@@ -176,10 +186,15 @@ flat parts and draw shaded bands with § 5a–5c and § 7.
    goes, session units) and its own `layer`. The crop cuts every shape crossing its edge square: make it reach past
    every free end of the part (tips, tails, swooshes), or put its edge where the part really ends. Frame lines of
    other parts that run through the crop: drop them in the scene and draw them by hand (§ 4).
+   A part built **over** the main scene shows its crop edge as a square seam, and removing its background exposes
+   regions of the main scene that run under it: build the part under the main layer, or clip it to the part's
+   silhouette.
 
 **When to leave the scene:** after one round of edits the build still shows camouflage-like boundaries inside bands
 (soft shading, texture), or a part keeps coming out lumpy → draw that part with § 5a–5c (profile tracks + fit) and
 keep the scene for the rest. Don't spend more than two builds on one part.
+**A soft-shaded illustration** (gradients on the main shapes — a hat, petals, skin): no ramp hint comes for soft
+shading, so draw the shaded shapes by hand (§ 5a–5c, gradients § 7) and use the scene only for the flat parts.
 
 **Keeping only part of a scene** (the substrate, the primitives): build, then remove the rest by name —
 `delete_items {refs: ["name:<layer> r12", …]}` (the summary's ids; a region you named is drawn under that name alone:

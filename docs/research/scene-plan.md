@@ -468,6 +468,12 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F24 | ⏳ | 06 v2 | `refine` rebuilds the whole layer: a region deleted after the build came back (and hand-added items on the layer would be lost); the base region r0 can't be dropped in the scene |
 | F25 | ⏳ | 06 v2 | a part crop cuts every shape crossing the crop edge square (the ground swoosh's ends; tips added by hand) |
 | F26 | ⏳ | 06 v2 | the default analyze of one flat ink rendered as foil: 12 inks, 817 regions (no hint to lower `colors`) |
+| F27 | ✅ | 09 v3 | `cN = cM` (documented) failed "use swatch:Name, #rrggbb, lab(L,a,b) or cN": now moves every region of cN to cM |
+| F28 | ⏳ | 09 v3 | a crop of soft-shaded petals came back `photo: true` (lighting flattened); no switch to turn photo mode off |
+| F29 | ⏳ | 09 v3 | no ramp hints on hat, skin or petals (soft gradients): all gradients built by hand |
+| F30 | ⏳ | 09 v3 | every build / refine puts the scene layer back on top of the hand-built layers |
+| F31 | ⏳ | 09 v3 | refine on a 426-region scene reverted everything while listing 8 disagreeing inks |
+| F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
 no family match for "Myriad Pro Bold" when only Myriad Variable Concept is installed (no suggestion).
@@ -500,6 +506,13 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G22 | ✅ | 06 v2 | a part crop must reach past every free end of the part (or end where the part ends) |
 | G23 | ✅ | 06 v2 | centred point text with tracking sits half a tracking step left: shift it by tracking / 2 |
 | G24 | ✅ | 06 v2 | wordmark width: one letter's width with `horizontal_scale` first, then the overall width with tracking |
+| G25 | ✅ | 09 v3 | when the whole subject is soft-shaded: hand-build the shaded parts with gradients, scene only for flat parts |
+| G26 | ✅ | 09 v3 | `max_px` (small art in a large image) and `min_de` (inks that merge: hair vs black, lips vs brown) |
+| G27 | ✅ | 09 v3 | a part build over the main scene: seams at the crop edge, regions running under it — build it under or clip it |
+| G28 | ✅ | 09 v3 | re-order hand-built layers after every build or refine (the scene layer goes on top) |
+| G29 | ✅ | 09 v3 | non-Latin text: check the font has the script in a preview (Avenir Next showed missing glyphs) |
+| G30 | ✅ | 09 v3 | cap height ÷ 0.7 overshot 11 % with Futura: confirm the size in a close-up |
+| G31 | ✅ | 09 v3 | `name:` refs match the whole document: they hit another version's item of the same name |
 
 ### Owner decisions pending
 
@@ -528,3 +541,18 @@ near-tie (|t − 0.5| < 0.1) is averaged along the edge over neighbouring near-t
 that stays goes to p (up/left); clear pixels keep their own t (averaging them along a straight line on a tight curve
 turned a r = 12 px circle into a rounded square). Headroom built rmse before → after, normal / high: 06 0.067 → 0.066 /
 0.064 → 0.063, 09 0.054 → 0.056 / 0.053 → 0.052, 08 0.086 → 0.085 / 0.076 → 0.079 (no change beyond ±0.003).
+
+**Headroom items closed (2026-11-26, `bench/scene-headroom.mjs` with a detail ROI: 06 crown `345,335,420,140`, 09 face
+`270,140,120,120` in working px):**
+- *06 crown:* the region step lost most (quant 0.075 → regions 0.117). Ablation: mode filter off 0.098, rim dissolve
+  rule A off 0.091, whole dissolve off 0.069 — but those keep the foil's shading and JPEG halos as regions (F1's lumps;
+  rmse rewards them), so they stay. Fix: a region under the minimum area that differs from every neighbour by ΔE > 20
+  **and** matches a large region's colour elsewhere (a hole showing the background, a letter's piece) is kept down to
+  a quarter of the minimum area; a speck in a colour of its own still joins. Crown built 0.140 → **0.130**, holes and
+  lobes visibly back; 08 regions 235 → 261, 09 unchanged.
+- *09 fitting loss* (face regions 0.079 → fitted 0.091): a trade-off, not a defect. Floor: no smoothing + tolerance 0.3
+  gives 0.075 at 3.6× the segments. Lighter smoothing (±2 × 2, tol 1.0): face 0.089, 08 0.079, +17 % segments — but
+  the 08 figures' lumps come back, so the fit stays as it is. The lips' rhombus comes from the region step: skin
+  facets cut the lip outline into edges of ≤ 5 points, drawn as straight lines.
+- *Re-test 09 with the scene* (v3): see benchmarks § 2i — the guide, not the build, limited it.
+- *Labels:* 08 and the ribbons document (04 runs) labelled.

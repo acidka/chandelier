@@ -647,8 +647,9 @@ start/end. RMSE comparable only within a case (same crop).
 | 08 round emblem | v1 | scene, run 1 | 10.3 min | 61 / 208 k | 0.491 ([213,4,844,844]) | the globe (scene on a crop); ring, disc, figures by hand / own tracer | looks close |
 | 08 | v2 | scene, run 2 (after fixes) | 9.5 min | 64 / 195 k | 0.488; inner square 0.142 | ring, disc (+ hand circle cap), figure bodies (slightly wavy), globe; outlines redrawn as strokes | looks close |
 | 08 | v3 | **manual (baseline)** | 10.0 min | **33 / 172 k** | 0.497; inner square **0.129** | — | clean; true concentric circles; globe simplified |
-| 09 flat illustration | v1 | manual (baseline) | 5.4 min | 28 / — | 0.138 | — | simpler face |
-| 09 | v2 | scene | 5.0 min | 49 / — | **0.095** | most of the illustration | closer than v1 |
+| 09 flat illustration | v1 | manual (baseline) | 5.4 min | 28 / 125 k | 0.138 | — | simpler face |
+| 09 | v2 | scene | 5.0 min | 49 / 155 k | 0.095 | most of the illustration | closer than v1 |
+| 09 | v3 | scene (headroom build) | 10.8 min | 90 / 248 k | 0.087 ([0,0,617,617]; not comparable with v2's crop) | face, hair, hand from a crop at 24 inks, `min_de 3`, detail high (426 regions); hat, flower, jewellery by hand with gradients | evaluator: worse than v2 — faceted face and hand, ragged hair, "grape" flower |
 | 06 foil logo mockup | v1 | manual (baseline) | 8.0 min | 42 / 153 k | 0.103 ([120,1,1050,1050]) | — | clean; tree crown simplified to a blob |
 | 06 | v2 | scene (headroom build) | 6.5 min | 52 / 164 k | **0.097** ([120,1,1050,1050]) | the tree: analyze of a crop of just the tree, `colors: 2`, `detail: high`, 124 regions, 1 refine; sun, rays, frame, text by hand | owner: **tree almost identical to the reference** |
 
@@ -656,6 +657,10 @@ Case 06 v2 (2026-11-26 23:04–23:10): a first analyze of the whole crop split t
 regions (unusable); the tree crop with 2 inks built clean on the first build. Its rmse left is mostly the wordmark
 font (Montserrat Bold vs the reference's wide geometric face). One round lost to a session in pt (the evaluator set mm
 before the server was reconnected).
+
+Case 09 v3 (2026-11-26 23:20–23:31): the hat was camouflage-like at every setting, so it and the flower were drawn by
+hand; the scene part (face, hand, hair) needed 24 inks and `min_de 3` to keep hair and lips apart, which faceted the
+skin. More calls and a busier result than v2: the guide gaps it found (G25–G31) are the output.
 
 Case 08's whole-artboard RMSE is ~0.46 from the reference's black corners alone (lost transparency); the inner square
 [25,25,100,100] compares the art.

@@ -91,6 +91,12 @@ describe('scene edits after the first suite runs', () => {
     applyEdits(s, ['c0 = swatch:v1 Warm Paper']);
     expect(s.colours[0].swatch).toBe('v1 Warm Paper');
   });
+  it('cN = cM: every region of cN takes ink cM', () => {
+    const s = fresh(), a = s.meta.findIndex((m) => m.colour === 1), from = s.meta[a].colour;
+    applyEdits(s, [`c${from} = c0`]);
+    expect(s.meta.filter((m) => m.colour === from)).toHaveLength(0);
+    expect(s.meta[a].colour).toBe(0);
+  });
   it('a dropped region is filled by what it sits on, or by the given region', () => {
     const s = fresh(), big = idOf(s, (r) => r.cx > 70 && r.cx < 130 && r.cy > 80), dot = idOf(s, (r) => r.cx > 140 && r.cy > 80);
     applyEdits(s, [`drop r${dot}`]);
