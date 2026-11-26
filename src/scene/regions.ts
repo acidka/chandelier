@@ -33,6 +33,8 @@ export interface SegOpts {
   /** regions under this many pixels join a neighbour */
   minArea?: number;
   modePasses?: number;
+  /** ink colours (quantizer centres, k × Lab): a thin region whose mean is its own ink is a real stroke, never a rim */
+  centres?: Float32Array;
 }
 
 export const SKIP = -2;
@@ -141,16 +143,17 @@ function chamfer(map: Int32Array, w: number, h: number): Uint32Array {
 
 /** Anti-aliased rims: thin regions (mean width < 2 px) whose colour lies between two of their neighbours' colours.
  * Their pixels go, nearest first, to the neighbour closest in colour. A real thin line (its own ink) stays. */
-export function dissolveThin(seg: Segmentation, lab: Lab, tol: number): number {
+export function dissolveThin(seg: Segmentation, lab: Lab, tol: number, centres?: Float32Array, minDe = 6): number {
   const { w, h, map, regions } = seg, dissolve = new Uint8Array(regions.length);
   let n = 0;
   for (const r of regions) {
     if (!r.area || r.nbrs.size < 2 || (2 * r.area) / r.perim >= 2) continue;
+    if (centres && r.group >= 0 && de76(r.L, r.a, r.b, centres[r.group * 3], centres[r.group * 3 + 1], centres[r.group * 3 + 2]) < minDe / 2) continue;
     const nb = [...r.nbrs.entries()].sort((x, y) => y[1] - x[1]).slice(0, 6).map(([id]) => regions[id]);
     let between = false;
     for (let i = 0; i < nb.length && !between; i++) for (let j = i + 1; j < nb.length; j++) {
       const t = mixT([r.L, r.a, r.b], [nb[i].L, nb[i].a, nb[i].b], [nb[j].L, nb[j].a, nb[j].b], tol);
-      if (t > 0.05 && t < 0.95) { between = true; break; }
+      if (t >= -0.1 && t <= 1.1) { between = true; break; } // a mix, or (nearly) one side: either way not an ink of its own
     }
     if (between) { dissolve[r.id] = 1; n++; }
   }
@@ -236,17 +239,17 @@ export function mergeRegions(regions: Region[], minArea: number, lim: number): I
 
 /** labels → regions: vote, components, rim dissolve, merges; ids sorted by area (r0 = largest) */
 export function segment(lab: Lab, labels: Uint8Array, o: SegOpts = {}): Segmentation {
-  const { w, h } = lab, minDe = o.minDe ?? 6, minArea = o.minArea ?? Math.max(16, Math.round(w * h * 2e-4));
+  const { w, h } = lab, minDe = o.minDe ?? 6, minArea = o.minArea ?? Math.max(12, Math.round(w * h * 5e-5));
   const voted = modeFilter(labels, w, h, o.modePasses ?? 2);
   const cc = components(voted, w, h);
   const seg: Segmentation = { w, h, map: cc.map, regions: regionStats(cc.map, w, h, cc.count, lab, voted) };
-  dissolveThin(seg, lab, Math.max(6, minDe * 2));
+  dissolveThin(seg, lab, Math.max(6, minDe * 2), o.centres, minDe);
   seg.regions = regionStats(seg.map, w, h, cc.count, lab, voted);
   const root = mergeRegions(seg.regions, minArea, minDe / 2);
   for (let i = 0; i < w * h; i++) if (seg.map[i] >= 0) seg.map[i] = root[seg.map[i]];
   const merged = compact(seg, lab, voted);
   // a rim fragment's neighbours were fragments too before the merges: check once more against the merged regions
-  return dissolveThin(merged, lab, Math.max(6, minDe * 2)) ? compact(merged, lab, voted) : merged;
+  return dissolveThin(merged, lab, Math.max(6, minDe * 2), o.centres, minDe) ? compact(merged, lab, voted) : merged;
 }
 
 /** renumber ids 0..n-1 by area (largest first) and recompute stats */
