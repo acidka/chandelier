@@ -433,3 +433,67 @@ Total ≈ 22–25 days of focused work plus owner reviews; S1 (1–12) ≈ 12 da
 8. Schema budget → flag until release (D-A).
 9. rmse vs the owner's judgement → refine's shape/tone checks; owner judges per case.
 10. Determinism / CI timing → seeded PRNG, lenient bounds, bench for real numbers.
+
+## 9. Findings from the suite runs (2026-11-26)
+
+Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fixed (commit on `feature/scene`).
+
+### Tool errors
+
+| # | Status | Seen in | Problem |
+|---|---|---|---|
+| F1 | ✅ | 04 v9, 08 v1 | JPEG fringes became hundreds of sliver regions; lumpy, camouflage-like edges |
+| F2 | ✅ | 08 v1 | a full-resolution crop of flat art was flagged `photo: true` |
+| F3 | ✅ | 08 v1 | no bulk drop (no ranges, no "by size"): ~600 letter regions dropped by a generated list |
+| F4 | ✅ | 08 v1 | a dropped region's area went to whatever ran under it (the globe became a red disc) |
+| F5 | ✅ | 08 v1 | `rN circle` ignored / ended as an ellipse when other shapes sat on the region |
+| F6 | ✅ | 04 v9 | refine averaged a shared ink over photo-shaded regions (amber pulled ΔE 19 towards brown) |
+| F7 | ✅ | 04 v9 | refine kept rebuilds that its own estimate rated worse |
+| F8 | ✅ | 08 v1 | refine re-fitted hundreds of edges of dropped regions; very long output |
+| F9 | ✅ | 08 v1 | `tolerance rN` overridden by refine's tightened edges |
+| F10 | ✅ | 08 v1 | `c0 = swatch:Name With Space` lost the spaces; the build failed |
+| F11 | ✅ | 08 v1 | build created its layer at the bottom (hidden under other art) |
+| F12 | ✅ | 04 v9 | edits add up with no undo |
+| F13 | ✅ | 04 v9 | summary's segment count 2–3× below what the build wrote; dropped regions still listed as inks |
+| F14 | ✅ | 04 v9 | `layers rA rB` suggested for inks that can't be multiply (gave a red ink) |
+| F15 | ⏳ | 08 v2 | no way to remove lost transparency: `drop … fill none` is a parse error; black corners deleted by hand |
+| F16 | ⏳ | 08 v2 | `edit {overlay: true}` returns the analyze image, not the edited state |
+| F17 | ⏳ | 08 v2 | refine's tightened tolerances (0.4) follow JPEG noise; its rmse never moved in run 2 |
+| F18 | ⏳ | 08 v1, v2 | thin constant-width outlines come out as lumpy filled bands (both runs redrew them as stroked centrelines) |
+| F19 | ⏳ | 08 v2 | forcing `circle` on a disc whose outline is only partly round throws the fit 5 mm off |
+| F20 | ⏳ | 04 v10 | `create_path {map}` is projective, the scene maps bilinear: hand-built parts sat ~40 px off until the agent wrote its own map |
+| F21 | ⏳ | 04 v9, v10 | first build to a new layer warns "Nothing found for layer:…" (noise) |
+| F22 | ⏳ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show |
+| F23 | ⏳ | 08 v2 | `scene` used far more calls than the baseline on flat art (16 scene + 34 other vs 19 in total) |
+
+Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
+no family match for "Myriad Pro Bold" when only Myriad Variable Concept is installed (no suggestion).
+
+### Guide gaps (recreate.md)
+
+| # | Status | Seen in | Gap |
+|---|---|---|---|
+| G1 | ✅ | 04 v9, 08 v1 | when to leave the scene for the manual method (§ 5.0) |
+| G2 | ✅ | 04 v9 | map sides on a box with wrapped edges; `max_px` / re-analyze changes ids; merge keeps the first ink |
+| G3 | ✅ | 08 v1 | text on a circle (§ 3); dropping letter regions under ring text |
+| G4 | ✅ | 08 v1 | building one part from a crop of it (§ 5.0 step 5) |
+| G5 | ✅ | 08 v1 | lost transparency makes rmse meaningless (§ 8) |
+| G6 | ✅ | 04 v9 | opaque stacked bands without slivers (§ 5a); an edge ending on another (§ 5b) |
+| G7 | ⏳ | 08 v2, v3 | constant-width outlines → stroked centreline (mean of the two edges), miter joins; corner = centreline intersection (a miter overshoots by w / (2 sin(θ/2))); `path_ops outline_stroke` for a fill |
+| G8 | ⏳ | 08 v2 | force a primitive only when the whole outline is that primitive; otherwise keep it free and fix the round stretch |
+| G9 | ⏳ | 08 v2, v3 | text size without capitals: x-height ÷ the font's x-height ratio; top and bottom arcs may differ; match the span by the first and last letters' angles; ring text not always centred on the disc |
+| G10 | ⏳ | 08 v3 | flat logos: read the structure from `region` + `grid` zooms first; profile tracks jump between shapes' edges (use them for coordinates only, split where the colour pair changes) |
+| G11 | ⏳ | 08 v3 | interlocking bands that change colour along their length: layer order, the top band's corner makes the colour boundary |
+| G12 | ⏳ | 08 v3 | small illustrative detail inside a mark (continents): how much to keep, how to read it |
+| G13 | ⏳ | 08 v3 | `create_path d`: say that x, y offset the path data (not a box's top-left) |
+| G14 | ⏳ | 04 v10 | the "weak step = shading ending" rule: check in a close-up whether the step is crisp (a thin band) or soft |
+| G15 | ⏳ | 04 v10 | joining edge pieces from different tracks: drop points near a steep join and let the fit bridge it |
+| G16 | ⏳ | 04 v10 | comparing a tapered face mapped onto a rectangle: rmse stays high (compare with the warped reference) |
+| G17 | ⏳ | 04 v10 | keeping only the substrate from a scene and removing the rest cleanly |
+| G18 | ⏳ | 04 v9 | `refine` changes named inks (global swatches) silently — say so, or leave named inks alone |
+
+### Owner decisions pending
+
+- What `scene` is for after these runs: whole designs, or analysis + substrate + primitives + single parts from a
+  crop (structure, inks, edge points for the agent's own build).
+- Remaining cases 05, 07, 09, 06, 01, 02: run in pairs (with and without `scene`) so every case has a baseline.

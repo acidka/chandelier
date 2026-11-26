@@ -632,21 +632,36 @@ Gaps that one case hit:
 - 03: opaque paper bands whose colour changes along their length; a fallback for script lettering.
 - 04: `extend` on closed bands built from several lists; band ends that fade out.
 
-## 2i. `scene` tool, suite run 1 (first two cases) — 2026-11-26
+## 2i. `scene` tool vs the manual method — suite runs, 2026-11-26
 
-Fresh subagents from recreate.md § 5.0 with the `scene` tool listed (build behind `CHANDELIER_SCENE=1`), Chandelier
-tools only, one case at a time. Illustrator 29.1, macOS 27.2, Node 22.23.
+Fresh subagents, one case at a time, Chandelier tools only (audited), recreate.md as the method; with `scene` listed
+(server with `CHANDELIER_SCENE=1`, branch `feature/scene`) they start from § 5.0, the baseline is told not to use it.
+Illustrator 29.1, macOS 27.2, Node 22.23. Tokens and tool uses from the task notifications; times from the agents'
+start/end. RMSE comparable only within a case (same crop).
 
-| Case | Run | Time | Tool uses / tokens | RMSE (crop) | What `scene` gave | Result |
-|---|---|---|---|---|---|---|
-| 04 ribbons photo | v9 vs v8 (§ 2h: 9.1 min, 46 / 156 k, 0.178) | 10.5 min | 59 / 197 k | 0.150 ([8,40,1087,1315]) | nothing kept: 5 builds with camouflage edges along soft shading, then profile + fit by hand | clean but flatter than v8 (fewer bands) |
-| 08 round emblem | v1 (no baseline) | 10.3 min | 61 / 208 k | 0.491 ([213,4,844,844]; black corners alone ~0.46) | the globe (scene on a crop); ring/disc by hand, figures traced by the agent's own code from the scene labels | looks close |
+| Case | Run | Method | Time | Tool uses / tokens | RMSE (crop) | What `scene` gave | Result |
+|---|---|---|---|---|---|---|---|
+| 04 ribbons photo | v8 (§ 2h) | manual | 9.1 min | 46 / 156 k | 0.178 ([8,40,1087,1315]) | — | owner: perfect |
+| 04 | v9 | scene, run 1 | 10.5 min | 59 / 197 k | 0.150 | nothing kept (5 builds, camouflage edges along soft shading) | clean, flatter than v8 |
+| 04 | v10 | scene, run 2 (after fixes) | **8.1 min** | 47 / 159 k | **0.138** | the kraft substrate; ribbons left the scene after one round (guide's exit rule), drawn by profile + fit + shade | layered, shaded |
+| 08 round emblem | v1 | scene, run 1 | 10.3 min | 61 / 208 k | 0.491 ([213,4,844,844]) | the globe (scene on a crop); ring, disc, figures by hand / own tracer | looks close |
+| 08 | v2 | scene, run 2 (after fixes) | 9.5 min | 64 / 195 k | 0.488; inner square 0.142 | ring, disc (+ hand circle cap), figure bodies (slightly wavy), globe; outlines redrawn as strokes | looks close |
+| 08 | v3 | **manual (baseline)** | 10.0 min | **33 / 172 k** | 0.497; inner square **0.129** | — | clean; true concentric circles; globe simplified |
 
-Both missed the target (3–5 min, 10–15 calls). Causes found and fixed the same day (before run 2): JPEG fringes
-became hundreds of sliver regions and lumpy edges, a flat logo crop read as a photo, no bulk drop, dropped areas
-filled by the wrong shape, `circle` ignored, refine averaging an ink over shaded regions and keeping worse rebuilds,
-swatch names losing spaces, build layer at the bottom; guide § 5.0 rewritten (when to leave the scene, parts, text on
-a circle). Offline effect on case 08's crop: 572 → 288 regions, 5,539 → 2,716 segments.
+Case 08's whole-artboard RMSE is ~0.46 from the reference's black corners alone (lost transparency); the inner square
+[25,25,100,100] compares the art.
+
+**Reading:** none of the runs reaches the 0.6 target (3–5 min, 10–15 calls). The fixes between run 1 and 2 helped
+(04: 10.5 → 8.1 min, best rmse of all runs; 08: more of the build came from the scene), but on the flat emblem the
+manual baseline was as good with half the tool uses: one measuring pass and one generated batch. The scene pays off
+for flat substrates, primitives and single parts built from a crop; whole designs still end in hand work. Errors and
+gaps from these runs: [scene-plan.md § 9](scene-plan.md#9-findings-from-the-suite-runs-2026-11-26).
+
+Fixes made after run 1 (before run 2): JPEG fringes no longer become sliver regions (wider rim rule, stronger
+relax, tolerance 1.5 px), photo detection on flat areas at ≤ 600 px, `drop < %`, id ranges, `drop … fill`, `undo` /
+`reset`, swatch names with spaces, forced `circle` by least squares, dropped areas filled by what they sit on, refine
+rewritten (render-based ink fix, disagreeing inks reported, drawn edges only, undo when worse), build layer on top;
+recreate.md § 5.0 rewritten. Offline effect on case 08's crop: 572 → 288 regions, 5,539 → 2,716 segments.
 
 ## 3. Targets
 
