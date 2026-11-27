@@ -243,12 +243,12 @@ describe('make and run a plan', () => {
     const out = JSON.parse(text(r));
     expect(out.failed).toMatchObject({ step: 1, tool: 'delete_items', error: 'No item named "Old*".' });
     expect(out.undo).toMatch(/back to the approved start/);
-    expect(calls.map((c) => c.cmd + (c.args?.action ? ':' + c.args.action : ''))).toEqual(['plan_probe', 'batch', 'history:undo', 'plan_probe']);
+    expect(calls.map((c) => c.cmd + (c.args?.action ? ':' + c.args.action : ''))).toEqual(['plan_probe', 'batch', 'plan_probe', 'history:undo', 'plan_probe']);
   });
   it('a failed step whose undo does not come back (merged calls, C31): redone and said so', async () => {
     let probes = 0;
     const { ctx, calls } = stubCtx((c) => {
-      if (c.cmd === 'plan_probe') return probeReply(++probes === 1 ? 'aaaa' : 'bbbb');
+      if (c.cmd === 'plan_probe') return probeReply(['aaaa', 'cccc', 'bbbb'][Math.min(2, probes++)]); // plan, after the run, after the undo
       if (c.cmd === 'batch') return { ok: true, data: { total: 2, completed: 2, marker: true, failed_step: 1, results: [{ ok: true, data: {} }, { ok: false, error: 'x' }] } };
       return { ok: true, data: { done: 1 } };
     });
@@ -256,6 +256,18 @@ describe('make and run a plan', () => {
     const out = JSON.parse(text(await runPlan({ plan_id: id }, ctx)));
     expect(out.undo).toMatch(/was redone/);
     expect(calls.at(-1)).toMatchObject({ cmd: 'history', args: { action: 'redo' } });
+  });
+  it('an undo that changed nothing (sent right after a render, C36) is tried again after a pause', async () => {
+    let probes = 0;
+    const { ctx, calls } = stubCtx((c) => {
+      if (c.cmd === 'plan_probe') return probeReply(['aaaa', 'cccc', 'cccc', 'aaaa'][Math.min(3, probes++)]);
+      if (c.cmd === 'batch') return { ok: true, data: { total: 2, completed: 2, marker: true, failed_step: 1, results: [{ ok: true, data: {} }, { ok: false, error: 'x' }] } };
+      return { ok: true, data: { done: 1 } };
+    });
+    const id = JSON.parse(text(await makePlan({ steps: STEPS, plan: true }, ctx), 1)).plan_id;
+    const out = JSON.parse(text(await runPlan({ plan_id: id }, ctx)));
+    expect(out.undo).toMatch(/back to the approved start/);
+    expect(calls.filter((c) => c.cmd === 'history').length).toBe(2);
   });
   it('file steps run last, after the changes, through their own tools; a plan starting with documents new closes it on failure', async () => {
     const { ctx, calls } = stubCtx((c) => {

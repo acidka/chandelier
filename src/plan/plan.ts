@@ -1,7 +1,7 @@
 // Plan-then-run (docs/research/plan-then-run-plan.md): the gate, making a plan (probe + card + approval), running an
 // approved plan (drift check, one undo step, undo on failure, file steps last) and multi-file plans.
 import { randomUUID } from 'node:crypto';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, statSync, readFileSync } from 'node:fs';
 import { resolve, join, basename, extname } from 'node:path';
 import { z } from 'zod';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -218,16 +218,29 @@ export async function runPlan(a: { plan_id: string; timeout?: number; results?: 
   }
 }
 
-/** Undo the failed run and check the document is back to the plan's start (C35 marker, C31 merged calls). */
-async function undoRun(rec: PlanRecord, steps: Step[], ctx: Ctx): Promise<{ back: boolean; note: string }> {
-  const u = await ctx.rt.cmd('history', { action: 'undo', count: 1 });
-  if (!u.ok) return { back: false, note: 'undo failed: ' + u.error + '; the document keeps what the steps before the failure did' };
-  const chk = await ctx.rt.cmd<{ fp: Fingerprint }>('plan_probe', { steps: runtimeSteps(steps) });
-  if (chk.ok && chk.data!.fp.h === rec.fp.h) return { back: true, note: 'the document is back to the approved start (one undo)' };
-  // the undo went further (two calls merged, C31) or not far enough: put it back as it was after the failure
-  await ctx.rt.cmd('history', { action: 'redo', count: 1 });
-  return { back: false, note: 'one undo did not bring the document back to the approved start, so it was redone: the document keeps what the steps before the failure did — check it (find_items / preview) before going on' };
+/** Undo the run (failed, or a rehearsal) and check the document is back to the plan's start. Quirks: a call that
+ * changed nothing is no undo step (C35: the run's marker makes one); an undo sent right after a render does nothing
+ * (C36: wait, then undo again); Windows may merge two calls into one step (C31: redo, say so). */
+export async function undoRun(rec: PlanRecord, steps: Step[], ctx: Ctx, settleMs = 0): Promise<{ back: boolean; note: string }> {
+  const probe = async () => { const r = await ctx.rt.cmd<{ fp: Fingerprint }>('plan_probe', { steps: runtimeSteps(steps) }); return r.ok ? r.data!.fp : null; };
+  const ran = await probe();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (settleMs || attempt) await sleep(attempt ? 500 : settleMs);
+    const u = await ctx.rt.cmd('history', { action: 'undo', count: 1 });
+    if (!u.ok) return { back: false, note: 'undo failed: ' + u.error + '; the document keeps what the steps before the failure did' };
+    const now = await probe();
+    if (now?.h === rec.fp.h) return { back: true, note: 'the document is back to the approved start (one undo)' };
+    // the undo changed nothing (C36): try once more after a pause
+    if (!(now && ran && now.h === ran.h)) {
+      // the undo went further (two calls merged, C31) or not far enough: put it back as it was after the run
+      const diff = now ? Object.keys(rec.fp).filter((k) => k !== 'h' && J(rec.fp[k]) !== J(now[k])).map((k) => `${k} ${J(rec.fp[k])} → ${J(now[k])}`).join('; ') : '';
+      await ctx.rt.cmd('history', { action: 'redo', count: 1 });
+      return { back: false, note: `one undo did not bring the document back to the approved start (${diff || 'an item the plan touches differs'}), so it was redone: the document keeps what the steps before the failure did — check it (find_items / preview) before going on` };
+    }
+  }
+  return { back: false, note: 'undo had no effect (Illustrator busy?): the document keeps what the steps before the failure did — check it, then history undo' };
 }
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function runDocPlan(rec: PlanRecord, a: { timeout?: number; results?: 'all' | 'errors' }, ctx: Ctx): Promise<CallToolResult> {
   const { parseSteps } = await batchMod();
@@ -308,23 +321,22 @@ async function rehearse(rec: PlanRecord, steps: Step[], ctx: Ctx): Promise<{ not
   ctx.settings.plan_run = token;
   try {
     if (steps.some((s) => s.activate)) await ctx.T.call('activate');
-    const env = await ctx.rt.cmd<any>('batch', { steps: runtimeSteps(steps), stop_on_error: true, plan: { h: rec.fp.h, fp: rec.fp } });
+    const png = join(ctx.tmp, `rehearse-${rec.id}.png`);
+    const env = await ctx.rt.cmd<any>('batch', { steps: runtimeSteps(steps), stop_on_error: true, plan: { h: rec.fp.h, fp: rec.fp, render: png, max_px: 900 } });
     if (!env.ok) return { note: 'could not run: ' + env.error, images: [], broken: /^DRIFT:/.test(env.error ?? '') };
     const d = env.data;
     let images: CallToolResult['content'] = [], note: string;
     if (d.failed_step !== undefined) note = `step ${d.failed_step} failed: ${d.results[d.failed_step]?.error}`;
     else {
-      const pv = ctx.tools.get('preview');
-      const r = pv?.run ? await pv.run({}, ctx) : null;
-      images = (r?.content ?? []).filter((c) => c.type === 'image');
-      note = images.length ? 'ran, rendered (image below) and undone' : 'ran and undone (no render)';
+      try { images = [{ type: 'image', data: readFileSync(png).toString('base64'), mimeType: 'image/png' }]; } catch { /* no render */ }
+      note = images.length ? 'ran, rendered (image below) and undone' : `ran and undone (no render${d.render_error ? ': ' + d.render_error : ''})`;
     }
     if (fresh) {
       if (d.failed_step === undefined) await ctx.rt.cmd('documents', { action: 'close', discard: true });
       return { note: note.replace('undone', 'closed without saving'), images };
     }
     if (d.failed_step === 0 && d.marker === false) return { note: note + '; nothing to undo (no undo marker, first step failed)', images };
-    const u = await undoRun(rec, steps, ctx);
+    const u = await undoRun(rec, steps, ctx, 500); // C36: an undo right after a render does nothing
     if (!u.back) return { note: `${note}; ${u.note}`, images, broken: true };
     return { note, images };
   } finally {

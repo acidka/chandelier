@@ -752,6 +752,11 @@ $.global.AIA = (function () {
     }
     var res = { total: steps.length, completed: out.length, results: out };
     if (a.plan) res.marker = marker;
+    // a rehearsal renders inside the same call, so the steps and the render are one undo step (a render alone can be
+    // one: exportFile below 72 ppi)
+    if (a.plan && a.plan.render && failed < 0) {
+      try { res.render = A.cmd.preview({ path: a.plan.render, max_px: a.plan.max_px || 900 }); } catch (e) { res.render_error = String(e.message || e); }
+    }
     if (failed >= 0) {
       res.failed_step = failed;
       if (a.rollback) { res.rolled_back = A.rollback(); A.closeEmptyNew(); }
