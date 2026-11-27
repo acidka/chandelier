@@ -40,6 +40,9 @@ Skip what already exists (a document, a reference artboard): reuse it.
 
 - `preview {image, grid: true}` (no Python/PIL/Swift/sips): pixel size, ppi, `content_box` (the page in a scan or
   photo). `region` zooms a part (up to 8×), `sample` reads colours, `page` renders a PDF or .ai page.
+- **Reading a zoomed preview:** grid labels are **image px**; a position you read off the shown picture is
+  `region.x + shown px ÷ zoom` (the reply gives `zoom`). For exact points use a small region (high zoom) around the
+  point, or `sample` (its `at` is image px), instead of estimating from a wide view.
 - Decide what is **print artwork** and what is **the photo or mockup**: perspective, folds and creases, curls, side
   faces, rings and bindings, shadows, highlights, reflections, paper texture, the table. Recreate only the artwork,
   flat and at its real size; say what you left out. Creases and folds (a faint line crossing other edges without
@@ -87,6 +90,10 @@ Skip what already exists (a document, a reference artboard): reuse it.
 - **Font size ≈ cap height in px ÷ 0.7 × S** (x-height ÷ 0.5 for lowercase text) — a first guess: fonts differ (Futura's
   caps came out 11 % too tall), so confirm the cap height in a close-up and adjust. Weight from stroke thickness
   against the cap height; width from a known word's length.
+  - **Measure each large text on its own:** two headings that look alike can differ (one cap height gave 59 pt for
+    both; they needed 61 and 54 pt).
+  - **Check a display line's width too:** compare the box `create_text` returns with the measured width of the line;
+    at the right cap height a title came out ~10 % narrow — fix with the font, `horizontal_scale` or tracking.
 - Fonts match fuzzily (`fonts {query}` when unsure). A missing font: the closest installed one, then match widths with
   `horizontal_scale` so lines break where the reference breaks. Body copy goes in area text.
 - **Choosing the font:** set the same line in 4–6 candidate fonts in one batch, compare the returned box widths with the
@@ -95,12 +102,16 @@ Skip what already exists (a document, a reference artboard): reuse it.
 - A geometric lowercase **wordmark** (circles or ellipses and stems) is faster to construct than to match with fonts:
   measure counters and stems in one zoom, unite the positive shapes, `minus_front` the counters and an arch's cutter.
 - **Non-Latin text** (Cyrillic, Greek…): the fuzzy font match doesn't check the script — look at the text in a
-  preview close-up; missing glyphs show as boxes or a fallback face. Pick a font that has the script.
+  preview close-up; missing glyphs show as boxes or a fallback face. Pick a font that has the script. Faces seen to
+  carry Cyrillic on macOS: Helvetica Neue (Light too), Arial, Times New Roman, Montserrat when installed;
+  AvenirNext-UltraLight showed boxes. Check the chosen face in a close-up before setting all the text.
 - **Wordmark, in this order:** cap height with the size, then one wide letter's width with `horizontal_scale`, then the
   whole word's width with tracking. All at once take several rounds.
 - **Centred point text with tracking:** check its position by the box `create_text` / `edit_text` return, or by
   `content_box` in a region preview — not by a formula.
 - A paragraph style update doesn't clear tracking set locally by `edit_text`: re-apply the `paragraph_style`.
+  Re-applying it clears **every** local override, `align` included (a centred line jumped ~50 mm): put `align`,
+  tracking and every other shared setting in the style itself, and set locally only what one frame needs.
 - `horizontal_scale` thickens or thins stems along with the width: check the stem weight against the reference after
   scaling, and change the weight if it is off.
 - Give every text its paragraph style and every colour its swatch, so the file can be restyled.
@@ -131,6 +142,11 @@ Skip what already exists (a document, a reference artboard): reuse it.
   repeated angles. Build from primitives (`create_shape`) and booleans (`path_ops` unite / minus_front / intersect),
   not from traced outlines; measure the few numbers that define them (radii, stroke widths, angles, centres).
 - Symmetric marks: build one half and mirror it (`duplicate_items` + `transform_items {reflect}`), then unite.
+- **Rotated shapes** (petals, leaves as ellipses, tilted bars): `create_shape` has no rotation — create the ellipse
+  upright at its measured length and width, centred where it belongs, then `transform_items {refs, rotate}` (degrees,
+  clockwise; `origin` = its centre by default). A ring of petals: one petal plus
+  `transform_items {rotate: 360 / n, copies: n − 1, origin: [cx, cy]}`. Size the whole flower from its measured box
+  first, then the petals from it.
 - **Constant-width outlines** (a frame, a loop drawn with one pen width): measure both edges, take their mean as the
   centreline and draw it as a **stroke** (`create_path {fit, stroke_width}` with `join: "miter"`), not as a filled
   band — a stroke keeps the width constant by construction. Corners: place the anchor at the **centreline**
@@ -171,20 +187,25 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
 
 1. **Analyze.** `scene {action: "analyze", image, map: [TL, TR, BR, BL]}` for a photographed face (corners from
    `preview {image, grid}`; `bilinear: true` for a tapered face; on a box with rounded or wrapped edges put each side
-   where the bands start to bend, not at the silhouette), or `crop` for a flat file; `size` = the artboard's aspect.
+   where the bands start to bend, not at the silhouette), or `crop` for a flat file; `size` = the artboard's aspect — the working image is **stretched** to it, so give `size` only when the crop is
+   the artwork drawn a little off (a 620 × 617 crop for a square: fine); an image with a different shape (a margin, a
+   caption strip) is cropped to the artwork first, and positions you place by hand come from the stretched image's px
+   (the summary's `px`), not the source's.
    Read the table (the 15 largest regions; `show r40-r80` lists others) and the overlay (ids on the image | flat render). `photo: true` means lighting was flattened (§ 1:
-   light is not artwork). Choose crop, map and `max_px` once: analyzing again with other values gives new region ids.
+   light is not artwork); a softly shaded **artwork** detected as a photo (petals, skin) → analyze with `photo: false`
+   to keep its shading as ramp hints. Choose crop, map and `max_px` once: analyzing again with other values gives new region ids.
    **Flat inks rendered with a material** (gold foil, emboss, print on textured paper, a mockup's lighting): give
    `colors` = the number of flat inks in the artwork (`colors: 2` for one foil ink on paper). The default splits the
    material's shading into a dozen inks and hundreds of specks.
-   **Detail settings:** small art in a large image → raise `max_px` (up to 3000; it never upsamples: a small crop stays
-   at its own size); two inks that merge (hair into black,
+   **Detail settings:** small art in a large image → raise `max_px` (up to 3000; a `max_px` you give also upscales a
+   smaller crop, which smooths its edges but adds no detail); two inks that merge (hair into black,
    lips into brown) → set those regions' inks by hand (`r9 = #231612`, `r33 = #9a1b19`, sampled with
    `preview {image, sample}`). Don't lower `min_de` or raise `colors` for it: that splits soft shading into facets
    all over the image (case 09: faceted skin and hand).
 2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
-   `drop < 0.05` drops every tiny region at once, e.g. small text and texture), `text x y w h` over each text block (in the analyzed crop's pixels),
+   `drop < 0.05` drops every tiny region at once, e.g. small text and texture — and with it eyelashes, eyes,
+   earrings and finger detail: `keep r41 r57` them right after, or drop by `drop in x y w h` boxes instead), `text x y w h` over each text block (in the analyzed crop's pixels),
    `r10 logo` on marks, `rN circle` / `rect` to force a primitive — only when the **whole** outline is that primitive
    (a disc with a lobe is not a circle: keep it free and fix the round stretch afterwards) —, `c0 = swatch:…` for
    brand inks, `name` the parts.
@@ -196,14 +217,15 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
 3. **Build.** `scene {action: "build", id, artboard, layer}` → one undo step on its own layer: a new layer goes on
    top, or where `position` says (`"below:<lowest hand layer>"`, `"bottom"`); a rebuild or refine keeps the layer
    where it is, replaces only its own items (items you added stay) and keeps regions you deleted dropped; then
-   `create_text` into the returned `text_boxes` (fonts and sizes as § 3: measure caps in the image — the box's
-   height is not the cap height). Text on a circle can't be boxed: drop its
+   `create_text` into the returned `text_boxes`: `colour` is the letters' ink and `cap` their cap height (from the
+   letters' heights — a first guess: confirm in a close-up and pick fonts as § 3). Text on a circle can't be boxed: drop its
    letters (`drop < …` or ranges) — the ring under them fills the gap — and set it on a path (§ 3).
 4. **Refine.** `preview {reference}` once; `scene {action: "refine", id}` corrects inks shifted by colour conversion,
-   re-fits edges that miss and rebuilds; it undoes its own fixes when they make the scene worse and names inks whose
-   regions disagree (shading: give them their own ink or a ramp). A tolerance you set (`tolerance rN 3`) wins.
-   Refine also corrects inks you only named; an ink set to an existing swatch (`c0 = swatch:Name`) is never changed —
-   so set an ink you sampled on purpose to a swatch. Check every ink refine changed in a close-up (on a soft-shaded
+   re-fits edges that miss and rebuilds; it undoes the kind of fix that makes the scene worse (`reverted: "inks"` or `"edges"`, or `true` for all), reports an ink
+   that misses by far on its only region instead of moving it, and names inks whose regions disagree (shading: give
+   them their own ink or a ramp). A tolerance you set (`tolerance rN 3`) wins.
+   Refine also corrects inks you only named or set by hand (`r9 = #231612` for hair, lips) — only an ink set to an
+   existing swatch (`c0 = swatch:Name`) is never changed: make every ink you sampled on purpose a swatch first. Check every ink refine changed in a close-up (on a soft-shaded
    face it once turned a skin shadow into a dark brown patch).
    Refine measures the artboard as it looks, hand-built layers included: run it before hand work that covers the
    scene, or keep that work beside the scene, not over it.
@@ -222,7 +244,7 @@ keep the scene for the rest. Don't spend more than two builds on one part.
 **A soft-shaded illustration** (gradients on the main shapes — a hat, skin; case 09, the owner's best run): keep the
 scene for the **whole** illustration from one analyze of the full image (`detail: "high"`, default `colors`), and in
 one edit call: `ramp` the bands of each big soft-shaded shape into one gradient shape, set the few inks that merged
-(hair, lips) by hand, `merge` split parts, `name` the inks. Don't hand-draw the big shapes instead (the runs that
+(hair, lips) by hand **as swatches** (`swatches add` the sampled colour, then `r9 = swatch:Hair`: refine changes any other hand-set ink, hair and lips included), `merge` split parts, `name` the inks. Don't hand-draw the big shapes instead (the runs that
 did looked worse), and refine before the hand work (it measures what covers the scene too). Draw by hand only what the
 scene can't hold: lips (the scene's come out as a lumpy blob — two fitted paths), a layered flower — petals as rotated ellipses or fitted shapes with **flat** fills in 2–3 greens and
 a darker outline stroke, back petals first (radial gradients on every petal looked "bubbly"); jewellery (pearls,
@@ -230,12 +252,17 @@ stones) — `drop < %` removes detail that small. Dropping a part that wraps ano
 it with what lies under it (often the dark sleeve): `fill` the right region, or draw the covered piece.
 
 **Keeping only part of a scene** (the substrate, the primitives): drop the rest in the scene — `drop in x y w h`
-(every region inside a box, image px), ranges, `drop < %` — or delete built items by name (`name:<layer> r12`; a
+(every region inside a box, image px; when nothing lies wholly inside — a patch that is part of a large region — add
+`fill rF` to repaint the box's part of it with rF), ranges, `drop < %` — or delete built items by name (`name:<layer> r12`; a
 region you named is drawn under that name alone: `name:<Name>`); a later rebuild keeps deleted regions dropped.
 **Small specks around a mark** (splashes, teardrops, dots under ~1 %, low conf): the scene draws them lopsided — drop
 them and construct each: a circle plus two tangent lines to the tip, at the measured size and angle (uneven if the
 reference is).
 **Lost transparency** (black or white corners around a logo): `drop r1 r2 fill none` leaves them empty.
+**One region holds several parts** (hair, a brim's underside and a sleeve all in one black region): recolouring it
+can't separate them. Analyze a part crop of the one that needs its own look (the hair), drop everything else in that
+part scene with `fill none`, and build it on its own layer **below** the hand-drawn layers (and under or clipped to
+the main scene, § 5.0 step 5).
 
 ### 5a. Decompose into layers
 
@@ -384,10 +411,13 @@ nothing just before `to`, inside a clip group masked by a copy of the shape, so 
    contour bands. `preview {region, reference, reference_crop}` compares one part side by side with its own rmse.
 - **Count** in each close-up of the reference and your render: lines of text, grid rows, bands, icons. One missing is
   a whole missing part, and the page view and rmse barely show it.
+- **Shifted parts:** move a set by the measured offset in one call — `transform_items {refs: "name:R2 Mini*", dx, dy}`
+  (or `layer:` / a list of uuids) — instead of re-creating it.
 - Change one thing per round (geometry, then colour). Stop when the close-ups are clean and what remains in
   `differences` is photo (folds, light, texture).
 - **Don't steer by rmse alone.** Photo areas inside the crop (side faces, curls, light) can outweigh the artwork, and a
-  bug that darkens where the photo is dark *lowers* rmse. Use it as a trend between rounds with the same crop; decide
+  bug that darkens where the photo is dark *lowers* rmse. Use it as a trend between rounds with the same crop **and the same render size** (keep `max_px` fixed: one artboard
+  gave 0.153 at 1024 px and 0.134 at 400 px); decide
   tone questions by samples and profiles at fixed points. `content_box` gives a `note` instead of a shift when the
   two boxes differ in shape (a side face in the photo).
 - **A tapered face mapped onto a rectangle:** the reference crop is the face's bounding box, your art fills the
