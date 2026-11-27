@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-27 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
 
-Current release: **0.6.1** (2026-11-27). What each release added and the dated log of every change:
+Current release: **0.6.2** (2026-11-27). What each release added and the dated log of every change:
 [CHANGELOG](../CHANGELOG.md). Known bugs and unverified parts: [bugs.md](bugs.md).
 
 This page keeps what is open and what is next; finished phases and milestones are one row each below; their

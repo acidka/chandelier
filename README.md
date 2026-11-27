@@ -237,13 +237,13 @@ behind them: [plan](docs/plan.md).
 
 ## Status
 
-Current release: **0.6.1** (2026-11-27) on macOS and Windows — npm, MCP Registry, Claude Code plugin and Claude Desktop bundle.
+Current release: **0.6.2** (2026-11-27) on macOS and Windows — npm, MCP Registry, Claude Code plugin and Claude Desktop bundle.
 
 | Release | Date | What it added |
 |---------|------|---------------|
+| **0.6.2** | 2026-11-27 | Documentation: a `CHANGELOG.md`, a shorter roadmap of what's open, the README and plan brought up to 0.6 (`scene`, 36 tools, the 0.6 benchmark runs); no code changes |
 | **0.6.1** | 2026-11-27 | `scene` analyze: small parts of their own colour keep it (lips, buttons), a `crop` is read with a margin so shapes crossing its edge stay whole, a size `drop` names the detail it took, ~10 % faster on flat art; calls go to the document you work in even if another window was brought to the front; large `preview` replies no longer drop the connection; bugs #28–#30 |
 | **0.6.0** | 2026-11-27 | `scene` tool: an image turned into an editable vector scene (inks, regions, smooth shared edges, one undo step); smaller replies by default; fewer turns (several zooms per `preview`, `run_script {recipe: "help"}`, units in replies, unknown arguments refused with a hint); curve fitting with matched joints, forced anchors and ends on other curves; `preflight {artboard}`; `CHANDELIER_APP` for one of several installed Illustrators; the recreate guide split per kind of job; bugs #16–#26 |
-| **0.5.3** | 2026-11-25 | Faster recreation from photos: `preview {image, profile}` finds edges, `create_path {fit, shade, map, extend, clip_to}` turns measured points into smooth curves and curve-following shading; the recreate guide works on any kind of design (calendars, mockups, packaging, photos); fixes: creating while the active layer is locked, gradient on live text refused instead of black, colour samples outside the zoomed region |
 
 Every release and the dated log of changes: [CHANGELOG](CHANGELOG.md). What's open and next: [roadmap](docs/roadmap.md).
 
