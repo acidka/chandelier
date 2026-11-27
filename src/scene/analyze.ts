@@ -2,7 +2,7 @@
 // z order, own render and error. recompute() redoes the geometry after edits.
 import { createHash } from 'node:crypto';
 import { fitLongest, type Img } from '../image.js';
-import { rgbToLab, labToRgb, type Lab } from './color.js';
+import { rgbToLab, labToRgb, de76, type Lab } from './color.js';
 import { planeStats, findRamps, rampOf } from './ramps.js';
 import { rectify } from './rectify.js';
 import { bilateral } from './smooth.js';
@@ -67,10 +67,77 @@ export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path
     zMoves: [], tile: false, tol: d.tol, edits: [], textBoxes: [], fillers: new Map(),
     pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
   };
+  if (p.ownInks !== false) ownInks(s, Math.max(minArea, 20));
   s.initial = snapshot(s);
   recompute(s);
   s.ms = Math.round(performance.now() - t0);
   return s;
+}
+
+/** a region's colour inside, 2 px or more from its outline (an outline mixes with its neighbours: a small region's
+ * plain mean is pulled towards them); n = 0 when it has no such pixels */
+export function interiorMeans(map: Int32Array, w: number, h: number, nReg: number, lab: Lab): { n: number; L: number; a: number; b: number; spread: number }[] {
+  const acc = new Float64Array(nReg * 5), R = 2;
+  // rows first: run of the same region ≥ 2R+1 around x, then the same over columns of that mask
+  const row = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    let start = 0;
+    for (let x = 1; x <= w; x++) {
+      if (x < w && map[y * w + x] === map[y * w + start]) continue;
+      for (let k = start + R; k <= x - 1 - R; k++) row[y * w + k] = 1;
+      start = x;
+    }
+  }
+  for (let y = R; y < h - R; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x, r = map[i];
+    if (r < 0 || !row[i]) continue;
+    let ok = true;
+    for (let k = -R; k <= R && ok; k++) ok = row[i + k * w] === 1 && map[i + k * w] === r;
+    if (!ok) continue;
+    const o = r * 5;
+    acc[o]++; acc[o + 1] += lab.L[i]; acc[o + 2] += lab.A[i]; acc[o + 3] += lab.B[i];
+    acc[o + 4] += lab.L[i] ** 2 + lab.A[i] ** 2 + lab.B[i] ** 2;
+  }
+  // spread: rms ΔE of the inside pixels from their mean (one colour: small; two inks in one region: large)
+  return Array.from({ length: nReg }, (_, r) => {
+    const o = r * 5, n = acc[o];
+    if (!n) return { n: 0, L: 0, a: 0, b: 0, spread: 0 };
+    const L = acc[o + 1] / n, a = acc[o + 2] / n, b = acc[o + 3] / n;
+    return { n, L, a, b, spread: Math.sqrt(Math.max(0, acc[o + 4] / n - L * L - a * a - b * b)) };
+  });
+}
+
+/** the inks come from a colour histogram, which has no sense of space: a small region of its own colour (lips, a
+ * button) loses its centre to a bigger ink 15–35 ΔE away. A region whose inside sits more than 2 × min_de (≥ 10)
+ * from its ink moves to an ink near its colour — an existing one, or a new one shared by regions of that colour.
+ * Only one-colour insides (spread < 1.5 × that): a region that took in pieces of two inks (letters merged into a ring)
+ * would get their average, a third colour that is in neither */
+export function ownInks(s: Scene, minInner: number): number {
+  const { w, h } = s.work, T = Math.max(10, 2 * s.params.minDe), R = s.seg.regions;
+  const inner = interiorMeans(s.seg.map, w, h, R.length, s.lab);
+  const far = R.map((_, i) => i).filter((i) => {
+    const m = inner[i], c = s.colours[s.meta[i].colour];
+    return R[i].area && m.n >= minInner && m.spread < T * 1.5 && de76(m.L, m.a, m.b, c.L, c.a, c.b) > T;
+  }).sort((x, y) => inner[y].n - inner[x].n);
+  const first = s.colours.length;
+  let moved = 0;
+  for (const i of far) {
+    const m = inner[i];
+    let best = -1, bd = Infinity;
+    s.colours.forEach((c, ci) => { const d = de76(m.L, m.a, m.b, c.L, c.a, c.b); if (d < bd) { bd = d; best = ci; } });
+    if (bd > (best >= first ? s.params.minDe * 1.5 : T)) {
+      if (s.colours.length >= 64) continue;
+      s.colours.push({ L: m.L, a: m.a, b: m.b }); best = s.colours.length - 1;
+    }
+    if (best !== s.meta[i].colour) { s.meta[i].colour = best; moved++; }
+  }
+  // a new ink is the weighted mean of its regions' insides
+  for (let ci = first; ci < s.colours.length; ci++) {
+    let n = 0, L = 0, a = 0, b = 0;
+    for (const i of far) if (s.meta[i].colour === ci) { const m = inner[i]; n += m.n; L += m.L * m.n; a += m.a * m.n; b += m.b * m.n; }
+    if (n) s.colours[ci] = { L: L / n, a: a / n, b: b / n };
+  }
+  return moved;
 }
 
 export const colourRgb = (s: Scene, id: number) => { const c = s.colours[s.meta[id].colour]; return labToRgb(c.L, c.a, c.b); };

@@ -1,6 +1,5 @@
 // scene: the 1-page summary an agent reads instead of the pixels (one JSON line, a region table, inks, hints).
 import { de76, labHex } from './color.js';
-import { nearPairs } from './quantize.js';
 import { findOverlaps } from './overlap.js';
 import type { Scene } from './types.js';
 
@@ -80,7 +79,13 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
     if (n > r.id && q.area > 0) { const d = de76(r.L, r.a, r.b, q.L, q.a, q.b); if (d < minDe * 1.5) pairs.push([d, r.id, n]); }
   }
   pairs.sort((a, b) => a[0] - b[0]).slice(0, 4).forEach(([d, a, b]) => hints.push(`merge r${a} r${b} (ΔE ${d.toFixed(1)})`));
-  nearPairs(s.quant, minDe * 1.5).filter((p) => usedColours.includes(p.a) && usedColours.includes(p.b)).slice(0, 3).forEach((p) => hints.push(`c${p.b} = c${p.a}? (ΔE ${p.de.toFixed(1)})`));
+  // the scene's inks, not the quantizer's: analyze adds inks for regions of their own colour (ownInks)
+  const near: { a: number; b: number; de: number }[] = [];
+  for (const [x, a] of usedColours.entries()) for (const b of usedColours.slice(x + 1)) {
+    const p = s.colours[a], q = s.colours[b], de = de76(p.L, p.a, p.b, q.L, q.a, q.b);
+    if (de < minDe * 1.5) near.push({ a: Math.min(a, b), b: Math.max(a, b), de });
+  }
+  near.sort((x, y) => x.de - y.de).slice(0, 3).forEach((p) => hints.push(`c${p.b} = c${p.a}? (ΔE ${p.de.toFixed(1)})`));
   regs.filter((r) => r.area > 20 && (2 * r.area) / r.perim < 2.5).slice(0, 3).forEach((r) => hints.push(`r${r.id} sliver ${((2 * r.area) / r.perim).toFixed(1)} px`));
   regs.filter((r) => !['drop', 'text', 'box'].includes(kindOf(s, r.id)) && r.area > total * 0.002 && conf(s, r.id) < 0.8).slice(0, 3).forEach((r) => hints.push(`r${r.id} conf ${conf(s, r.id).toFixed(2)} (merge? tolerance r${r.id} ${(s.tol / 2).toFixed(1)}?)`));
   if (hints.length) lines.push('hints: ' + hints.slice(0, 10).join(' · ') + (hints.length > 10 ? ` (+${hints.length - 10})` : ''));

@@ -33,9 +33,9 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
    `colors` = the number of flat inks in the artwork (`colors: 2` for one foil ink on paper). The default splits the
    material's shading into a dozen inks and hundreds of specks.
    **Detail settings:** small art in a large image → raise `max_px` (up to 3000; a `max_px` you give also upscales a
-   smaller crop, which smooths its edges but adds no detail); two inks that merge (hair into black,
-   lips into brown) → set those regions' inks by hand (`r9 = #231612`, `r33 = #9a1b19`, sampled with
-   `preview {image, sample}`). Don't lower `min_de` or raise `colors` for it: that splits soft shading into facets
+   smaller crop, which smooths its edges but adds no detail); a small region of its own colour (lips) gets its own
+   ink at analyze; two inks that merged into one region (hair into black) → set that region's ink by hand
+   (`r9 = #231612`, sampled with `preview {image, sample}`). Don't lower `min_de` or raise `colors` for it: that splits soft shading into facets
    all over the image (case 09: faceted skin and hand).
 2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;

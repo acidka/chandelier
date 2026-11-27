@@ -25,6 +25,8 @@ export interface Params {
   upscale?: boolean;
   /** photo mode forced on / off (F28); default: detected from the image's noise */
   photo?: boolean;
+  /** regions far from their ink get one near their own colour (default on) */
+  ownInks?: boolean;
 }
 
 /** an ink: one global swatch at build */

@@ -47,4 +47,18 @@ describe('analyze', () => {
     expect(performance.now() - t).toBeLessThan(20000); // CI runners and a parallel suite are slow
     expect(s.seg.regions.filter((r) => r.area > 0).length).toBe(51);
   }, 60000);
+
+  it('a small region of its own colour gets its own ink; the others keep theirs (ownInks)', { timeout: 20_000 }, () => {
+    // four inks allowed: background, skin, dark and brown win; the small red patch (lips) gets brown, the nearest
+    const img = paint(400, 300, [rect(40, 40, 200, 200, [233, 190, 160]), rect(260, 40, 120, 100, DARK), rect(260, 150, 120, 90, [130, 75, 50]), rect(110, 150, 40, 18, [190, 30, 40])], { bg: BG, noise: 2 });
+    const s = analyze(img, P({ colors: 4 }), { dir: '/tmp/x', path: 'x.png' });
+    const at = (x: number, y: number) => s.seg.map[y * 400 + x], col = (x: number, y: number) => s.colours[s.meta[at(x, y)].colour];
+    expect(s.quant.k).toBe(4);
+    expect(col(130, 159).a).toBeGreaterThan(50); // red, not brown
+    expect(s.colours.length).toBe(5);
+    expect(s.meta[at(300, 200)].colour).toBeLessThan(4); // brown keeps its own ink
+    const off = analyze(img, P({ colors: 4, ownInks: false }), { dir: '/tmp/x', path: 'x.png' });
+    expect(off.colours[off.meta[off.seg.map[159 * 400 + 130]].colour].a).toBeLessThan(35);
+    expect(s.estRmse).toBeLessThan(off.estRmse);
+  });
 });
