@@ -143,6 +143,11 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
 - **Side by side with you** *(experimental, 0.5)*. The [Chandelier panel](#chandelier-panel-experimental) puts a
   chat inside Illustrator: select something, write "make this red", and the agent changes exactly that; it can also
   watch your selection and wait for you.
+- **Approval mode** *(2026-11-27)*. `configure {approve: "plan"}` (or `CHANDELIER_APPROVE=plan`, locked on): the agent
+  sends a whole job as one plan; you see a short card (what changes on which layer, text before → after, every file
+  written and whether it overwrites) in the panel, a client dialog or the chat, and approve it once. It then runs as one
+  undo step; a failed step is undone; a plan made on a document that changed since is refused. Planning 100 items takes
+  ~25 ms ([benchmarks § 2k](docs/research/benchmarks.md#2k-plan-then-run-overhead--2026-11-27)).
 - **Agent-friendly.** Compact responses, conventions sent once in the server instructions, errors that say what to do
   next, and two ready prompts: `recreate_design` and `print_export`.
 

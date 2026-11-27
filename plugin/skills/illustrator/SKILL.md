@@ -113,6 +113,12 @@ constructed), [recreate-freeform.md](recreate-freeform.md) (free-form shapes by 
 | `preview {region}` blank | Give `artboard` with `region` |
 | Tempted to `pip install` or write a Swift/Python script to look at an image or PDF | `preview {image}`: size, crop/zoom, grid, colours, PDF pages |
 
+## Approval mode
+
+When a change is refused with "needs an approved plan": send the whole job as ONE `batch {steps, plan: true}` (save /
+close / export steps last), show the designer the card as it is and wait (or they approve it in the panel / a dialog),
+then `batch {plan_id}`. Never approve your own plan. Details: agent guide § Approval mode.
+
 ## Working from the Chandelier panel
 
 Only when the `events` tool is listed (the server runs with `CHANDELIER_TRANSPORT=panel`):

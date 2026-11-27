@@ -1,6 +1,6 @@
 # Plan-then-run: implementation plan
 
-Status: plan, 2026-11-27, branch `future/plan-then-run`. Spec: [plan-then-run.md](plan-then-run.md) (proposal,
+Status: **built** 2026-11-27 on branch `future/plan-then-run` (R0–R8; open checks in § 8). Decision: [plan.md D17](../plan.md#d17--plan-then-run-approval-mode--decided-2026-11-27-owner). Spec: [plan-then-run.md](plan-then-run.md) (proposal,
 2026-11-26). Roadmap: [phase 8](../roadmap.md#phase-8--future-).
 Grounded in the repo at `12687c7` (0.6.0). Measured 2026-11-27 (macOS 27.2, Node 22): `node scripts/schema-size.mjs` →
 36 tools, 59,936 chars; the budget test (`test/unit/server.test.ts`) is `< 60_000`, so **64 bytes are free**.
@@ -232,6 +232,40 @@ document (closed without saving afterwards). Quirk C35.
 | (d) C31 on Windows with the marker | ⏳ Not run yet (needs the VM) |
 | (e) Elicitation in Claude Code, Claude Desktop, Cursor | ⏳ Not run yet (needs a small test server added to each client) |
 
+Live checks on the built code (`test/live-plan.mjs`, same setup): all pass — the gate, the card, a run = one undo
+step, a second run refused, drift refused, a failed run undone (also when its **first** step fails: the marker works),
+rehearsal, file steps last, a plan starting with `documents new` closing its document on failure. Two findings on the
+way (quirk C36): an undo sent within ~50–100 ms after a call that rendered (`imageCapture`) does nothing, and a small
+artboard render (`exportFile`, < 72 ppi) is an undo step of its own (bug #27). So a rehearsal renders inside the run's
+own call and waits 500 ms before its undo, and the undo check takes a fingerprint before undoing: if the undo didn't
+move it, it waits and undoes once more.
+
 Consequences for R3: the run's first action is the marker (create + remove a hidden path, § 3.6). A failed run then
 always has its own undo step, so one `history undo` with the run token is safe on macOS. The fingerprint check after
 the undo stays, for Windows (C31).
+
+## 8. As built (2026-11-27)
+
+| Piece | Where |
+|---|---|
+| Classifier (every tool, unit-tested) | `src/plan/classify.ts`; runtime twin `A.needsPlan` in `src/runtime/plan.jsx` (a unit test compares them) |
+| Gate | Node: `gate()` in `src/plan/plan.ts`, called from `callTool` and `tools {call}`; runtime: `A.dispatch` refuses changing commands without the run token (`settings.plan_run`) |
+| Probe, fingerprint, marker, drift | `src/runtime/plan.jsx` (`plan_probe`, `A.planFingerprint`, `A.planMarker`, `A.planDrift`, `A.closeNew`); `A.cmd.batch {plan}` checks drift before anything, makes the marker, renders for a rehearsal |
+| Store, id, card | `src/plan/card.ts` (`PlanStore`: 20 open plans, 30 min; `planId` = sha256 of canonical steps + fingerprint + files) |
+| Make / run / rehearse / files | `src/plan/plan.ts` (`makePlan`, `runPlan`, `undoRun`, `rehearse`, `makeFilesPlan`, `runFilesPlan`) |
+| Channels | panel: `PanelTransport.card()` + `op: "card"` / `decide` / `showPlan` in `src/cep/panel-core.js`, card UI in `panel.js` / `index.html`; elicitation: `ctx.elicit` in `src/server.ts`; chat: soft, logged |
+| Settings | `configure {approve}`, `CHANDELIER_APPROVE=plan` (locks), `CHANDELIER_APPROVE_CHANNEL=panel\|elicitation\|chat` |
+| Tests | `test/unit/plan.test.ts` (22), `test/live-plan.mjs`, `bench/plan-bench.mjs` ([benchmarks § 2k](benchmarks.md#2k-plan-then-run-overhead--2026-11-27)) |
+
+Exit criteria (§ 5): gate over every tool class ✅ (unit + live, `run_script` included; `scene build` / `data_merge`
+refused); one undo step and a failed plan back to its start on macOS ✅ (Windows ⏳); drift, expiry, second run refused ✅;
+card for a 2-step recolour + text job ≤ 15 lines ✅ (unit); panel card ✅ in unit tests (the UI needs an owner look in
+Illustrator ⏳); elicitation ✅ through the MCP SDK's in-memory client — in real clients ⏳; mode off: all unit (343) and
+live suites green, tool list 60.4 KB < 61 KB ✅.
+
+Still open:
+- Windows VM: `test/live-plan.mjs` (C31: two calls merged into one undo step — the after-undo fingerprint check catches it).
+- Elicitation in Claude Code, Claude Desktop and Cursor: does the dialog show the card, what does a decline return.
+- The panel card in Illustrator (owner look: layout, Show selects the planned items).
+- `scene build` and `data_merge` in approval mode (refused for now).
+- Fingerprint cost on large selections (1.1 s at 5 000 items): hash fewer properties, or only counts beyond 1 000.

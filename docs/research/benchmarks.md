@@ -893,6 +893,21 @@ build without `drop in`). (6) A wrong guide costs most: 09 v3 (248 k) followed t
 shapes". (7) Small slips add a round each (`content_box` read as corners, a session in pt, font trial and error,
 guessed argument names). Improvements: [roadmap 0.6, token use](../roadmap.md).
 
+## 2k. Plan-then-run overhead — 2026-11-27
+
+`node bench/plan-bench.mjs` (macOS 27.2.1, Illustrator 29.1, Node 22.23, branch `future/plan-then-run`): one
+`modify_items {refs: "layer:Items", opacity}` step on a scratch document with N rectangles; plain batch vs making the plan
+(probe + fingerprint, chat channel) vs running it (fingerprint again + marker + the batch).
+
+| Items | Plain batch | Make the plan | Run the plan | Card |
+|------:|------------:|--------------:|-------------:|-----:|
+| 100 | 85 ms | 23 ms | 37 ms | 245 chars |
+| 5 000 | 435 ms | 1 244 ms | 1 070 ms | 272 chars |
+
+The fingerprint (uuid, bounds, name and fill of every item a plan names) is most of the cost on big selections. Tool
+list: 60 421 chars of schemas (+485 over 0.6.0's 59 936: `batch` `plan` / `plan_id`, `configure` `approve`), ≈ 17.8 k tokens per request; the server instructions grow
+only while the mode is on.
+
 ## 3. Targets
 
 | Metric | Target | Status |

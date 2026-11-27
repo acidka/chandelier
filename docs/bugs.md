@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-27 (bugs #1–#26 fixed or closed; none open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-27 (bugs #1–#26 fixed or closed; #27 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -9,10 +9,11 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 
 ## Open
 
-Illustrator-side issues seen on Windows are quirks C30, C31. No open bugs.
+Illustrator-side issues seen on Windows are quirks C30, C31.
 
 | # | Sev. | Found | Where | Bug | Workaround | Fix idea |
 |---|---|---|---|---|---|---|
+| 27 | 🟡 | 2026-11-27 (plan-then-run live test) | `preview` of an artboard below 72 ppi (`exportFile` path, e.g. `max_px` 200–300 on a 400 pt page) | The render is an undo step of its own (quirk C36), so `history undo` right after it takes back the render, not the agent's last change: the "one step = one call" rule breaks | `history undo` again, or preview at ≥ 72 ppi (`max_px` ≥ the page's size in pt) | Skip `setActiveArtboardIndex` when the artboard is already active, or render through `imageCapture` and downscale in Node; check live which part makes the step |
 
 ## To verify
 

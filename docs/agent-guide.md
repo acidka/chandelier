@@ -207,6 +207,21 @@ swatch match by the swatch's colour and stay tints. Gradients are recoloured onc
 `export`, `find_items`, `get_items` and `tools` are listed. `tools {}` lists the rest, `tools {query}` searches,
 `tools {name}` returns a schema, `tools {call, args}` runs one; step tools also work inside `batch`.
 
+## Approval mode (plan-then-run)
+
+Only when changing calls are refused with "needs an approved plan" (the designer or a team turned on `configure
+{approve: "plan"}` / `CHANDELIER_APPROVE=plan`). Every change needs a plan the designer approves, new documents too.
+- **One plan per job:** `batch {steps: [...all changes...], plan: true}`. Save / close / export steps go **last** in the
+  same list. Nothing changes; the reply is a card (what changes on which layer, text before → after, files written and
+  whether they overwrite, opaque `run_script` / `menu_command` steps first) and a `plan_id`.
+- **Approval:** in the panel or a client dialog the call waits for the designer's answer. In chat, show the card as it
+  is and wait for their reply; never approve your own plan.
+- **Run:** `batch {plan_id}` (nothing else): one undo step; a failed step is undone, the document is back to the
+  approved start. A plan runs once, expires after 30 min, and is refused if the document changed since (make a new one).
+- `plan: "rehearse"` also runs the steps, renders and undoes them: the card gets a picture. Reading tools (`preview`,
+  `find_items`, `get_items`, `preflight` …) need no plan; `run_script` does, even read-only, so read with the typed tools.
+- `scene build` and `data_merge` can't run in this mode; build the same with `create_path` / batch steps.
+
 ## Working from the Chandelier panel (0.5, experimental)
 
 Only when the `events` tool is listed (server started with `CHANDELIER_TRANSPORT=panel`; the designer opened Window >

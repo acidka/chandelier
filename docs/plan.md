@@ -259,6 +259,25 @@ they check every key.
 brief `build` reply leaves out `anchors`, `bytes`, `calls`, `ms`. Its inner `batch` calls always run `full`, since the
 build records every created uuid (a brief create step lists 20). Sizes: [benchmarks § Reply size](research/benchmarks.md#reply-size).
 
+### D17 — Plan-then-run approval mode ✅ decided (2026-11-27, owner)
+
+Opt-in (`configure {approve: "plan"}`, or `CHANDELIER_APPROVE=plan`, which locks it on): every change needs a plan the
+designer approves once; then it runs at full speed as one undo step. Proposal: [research/plan-then-run.md](research/plan-then-run.md),
+implementation: [research/plan-then-run-plan.md](research/plan-then-run-plan.md).
+
+| Option | Pros | Cons |
+|--------|------|------|
+| No approval (default) | Fastest; nothing to click | The agent can change any open document |
+| Approve each change (Adobe's Illustrator beta MCP) | Fine-grained | A click per change, out of context; slow |
+| **Approve a plan once** (chosen) | One click per job; counts, text before → after and files on the card; drift check; whole job in one undo step; enforced by the server (Node) and the runtime | A second code path (probe) that can mis-count (the run reports differences); `run_script` steps are opaque; +~0.5 KB of tool list |
+
+Owner choices: tool list budget 61 KB (P-A); **every** change needs a plan, the agent's own documents too (P-B); saves,
+closes and exports are ordinary steps that run last (P-F); rehearsal in place + undo (P-C). Channels: the panel card
+(Approve / Reject / Show), MCP elicitation, or chat (soft, logged as such). Undo safety rests on quirks C35 (a call that
+changes nothing is no undo step: each run makes a marker) and C36 (an undo right after a render does nothing: wait,
+retry); after an undo the fingerprint must match the plan's, else it is redone and reported. `scene build` and
+`data_merge` are refused in this mode.
+
 ## 6. Tool catalogue
 
 Every mutating tool can also be a `batch` step: `{"tool": "create_shape", "args": {...}}`.
@@ -269,9 +288,9 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | # | Tool | Actions / what it does | Phase |
 |---|------|------------------------|-------|
 | 1 | `status` | Bridge + Illustrator state, version, open docs, settings, latency; `launch: true`; `restart: true` (quit + relaunch + reopen, refused while any document is unsaved) | 1 |
-| 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate; one server is shared by every agent in a session, so positional results say a pinned frame (`frame: artboard 2, mm …`, 0.5.2); `reply: "brief"` (default) `\| "full"` (D16) | 1 |
+| 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate; one server is shared by every agent in a session, so positional results say a pinned frame (`frame: artboard 2, mm …`, 0.5.2); `reply: "brief"` (default) `\| "full"` (D16); `approve: "plan"` = approval mode (D17) | 1 |
 | 3 | `run_script` | Run ExtendScript `code` or a `.jsx` `file` with `args`; helpers available as `AIA.*` (`recipe: "help"` lists them with their options, 2026-11-27) (`AIA.at(k, fn)` = coordinates from artboard k); returns JSON; `recipe`: ready builders shipped in `src/recipes/` (calendar-month, labels-sheet, business-card, style-guide, color-chips; `recipe: "list"`; 0.2.1) | 1 |
-| 4 | `batch` | Many tool steps in one call; `@n` refs; per-step `artboard` (coordinates from that artboard); `stop_on_error`; `rollback` of created items; `files` (0.3): the steps over many files — open → steps → save a copy into `out_dir` (or `in_place` / `none`) → `export` (`{name}` = file stem) → close; files already open are skipped; `dry_run` | 1 |
+| 4 | `batch` | Many tool steps in one call; `@n` refs; per-step `artboard` (coordinates from that artboard); `stop_on_error`; `rollback` of created items; `files` (0.3): the steps over many files — open → steps → save a copy into `out_dir` (or `in_place` / `none`) → `export` (`{name}` = file stem) → close; files already open are skipped; `dry_run`; approval mode (D17): `plan: true` → card + `plan_id`, nothing changes (`"rehearse"`: run, render, undo), `{plan_id}` runs it once as one undo step (drift check, a failed step undone, save / close / export steps last) | 1 |
 | 5 | `documents` | `list`, `new` (preset, size, colour mode, **bleed**, artboard grid; `spacing` = gap between trim edges), `open`, `activate`, `save`, `save_as` (ai/pdf/svg/eps; `export: [...]` + `close: true` finish a build in one call), `close`; `new {units}` sets the session units | 1 |
 | 6 | `document_info` | Compact summary: size, colour mode, artboards, layers, counts by type, swatches, fonts, selection; by default a short head (name, colour space, units, bleed, counts, issues), `fields` adds sections (D16) | 1 |
 | 7 | `find_items` | Query by type, name (pattern), layer, artboard, text, font, size range, fill/stroke colour, bounds, state; `fields`, `limit` | 1 |
