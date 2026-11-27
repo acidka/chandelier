@@ -659,7 +659,8 @@ $.global.AIA = (function () {
       } catch (e) {}
     }
   };
-  var READ_ONLY = { ping: 1, status: 1, document_info: 1, find_items: 1, get_items: 1, get_tree: 1, preflight: 1, fonts: 1, export_prep: 1, items_at: 1 };
+  var READ_ONLY = { ping: 1, status: 1, document_info: 1, find_items: 1, get_items: 1, get_tree: 1, preflight: 1, fonts: 1, export_prep: 1, items_at: 1, plan_probe: 1 };
+  A.READ_ONLY = READ_ONLY;
   // req = {cmd, args, settings}
   A.dispatch = function (req) {
     var env, lvl = null;
@@ -671,6 +672,10 @@ $.global.AIA = (function () {
     try { lvl = app.userInteractionLevel; app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS; } catch (e) {}
     try {
       setSettings(req.settings);
+      // plan-then-run: while configure {approve: "plan"} is on, changing commands run only inside an approved plan
+      if (A.S.approve === 'plan' && !A.S.plan_run && A.needsPlan(req.cmd, req.args || {})) {
+        throw new Error('Needs an approved plan (approval mode is on): send the whole job as batch {steps, plan: true}, show the designer the card, then batch {plan_id}.');
+      }
       var data;
       var c = A.cmd[req.cmd];
       if (!c) throw new Error('Unknown runtime command "' + req.cmd + '".');
@@ -713,8 +718,14 @@ $.global.AIA = (function () {
     return n;
   };
   A.cmd.batch = function (a) {
-    var steps = a.steps || [], out = [], failed = -1, base = A.S, i;
+    var steps = a.steps || [], out = [], failed = -1, base = A.S, i, marker;
     A.steps = [];
+    // an approved plan: the document must still be the one it was made on, checked before anything changes
+    if (a.plan) {
+      var fp = A.planFingerprint(steps);
+      if (fp.h !== a.plan.h) throw new Error('DRIFT: the document changed since the plan was made (' + A.planDrift(a.plan.fp, fp) + '). Nothing was run; make a new plan.');
+      marker = A.planMarker();
+    }
     for (i = 0; i < steps.length; i++) {
       var s = steps[i];
       try {
@@ -740,9 +751,11 @@ $.global.AIA = (function () {
       if (failed >= 0 && a.stop_on_error !== false) break;
     }
     var res = { total: steps.length, completed: out.length, results: out };
+    if (a.plan) res.marker = marker;
     if (failed >= 0) {
       res.failed_step = failed;
       if (a.rollback) { res.rolled_back = A.rollback(); A.closeEmptyNew(); }
+      if (a.plan) res.closed_new = A.closeNew();
     }
     return res;
   };

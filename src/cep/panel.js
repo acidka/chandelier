@@ -71,6 +71,18 @@
     }
     clients = info.clients;
     updateSend();
+    // plan-then-run: the plan card waiting for the designer
+    var c = info.card;
+    $('card').className = c ? 'on' : '';
+    if (c && $('card-text').getAttribute('data-plan') !== c.plan) {
+      $('card-text').setAttribute('data-plan', c.plan);
+      $('card-text').textContent = c.text;
+      $('card-note').value = '';
+      $('card-show').disabled = !c.count;
+      $('card-show').textContent = c.count ? 'Show ' + c.count + (c.count === 1 ? ' item' : ' items') : 'Show';
+      show('chat');
+    }
+    if (!c) $('card-text').removeAttribute('data-plan');
     // the "thinking" line under the chat
     var act = { working: 'Agent is working in Illustrator…', thinking: 'Agent is thinking…', unread: 'Sent · waiting for the agent to pick it up' }[info.activity] || '';
     $('activity').className = act ? 'on' + (info.activity === 'unread' ? '' : ' busy') : '';
@@ -107,5 +119,8 @@
     if (ev.key === 'Enter' && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); sendMessage(); }
   });
   $('send').addEventListener('click', sendMessage);
+  $('card-approve').addEventListener('click', function () { panel.decide('approve', $('card-note').value); });
+  $('card-reject').addEventListener('click', function () { panel.decide('reject', $('card-note').value); });
+  $('card-show').addEventListener('click', function () { panel.showPlan(); });
   window.addEventListener('beforeunload', function () { panel.stop(); });
 })();

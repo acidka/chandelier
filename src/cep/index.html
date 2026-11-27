@@ -47,6 +47,17 @@
   #events li { padding: 4px 0; border-bottom: 1px solid #3c3c3c; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   #events li b { font-weight: 600; color: #fff; }
   code { font: 11px ui-monospace, Menlo, Consolas, monospace; color: #bbb; }
+  /* Plan card (plan-then-run) */
+  #card { display: none; flex: none; margin-bottom: 8px; padding: 6px 8px; border: 1px solid #c79a2b; border-radius: 4px; background: #3a3424; }
+  #card.on { display: block; }
+  #card h4 { margin: 0 0 4px; font-size: 11px; color: #f0c860; font-weight: 600; }
+  #card-text { max-height: 220px; overflow: auto; margin: 0 0 6px; font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; color: #eee; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #card-note { width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 3px 6px; font: inherit; color: #eee; background: #262626; border: 1px solid #555; border-radius: 3px; }
+  #card .btns { display: flex; gap: 6px; }
+  #card button { padding: 4px 10px; font: inherit; border: 0; border-radius: 3px; cursor: pointer; color: #fff; background: #555; }
+  #card #card-approve { background: #2f8a55; }
+  #card #card-reject { background: #a8413c; }
+  #card button:disabled { opacity: .5; cursor: default; }
 </style>
 </head>
 <body>
@@ -57,6 +68,12 @@
 
   <section class="page active" id="page-chat">
     <div id="chat-doc"></div>
+    <div id="card">
+      <h4>The agent asks to run this plan</h4>
+      <pre id="card-text"></pre>
+      <input id="card-note" type="text" placeholder="Note for the agent (optional)">
+      <div class="btns"><button id="card-approve">Approve</button><button id="card-reject">Reject</button><button id="card-show">Show</button></div>
+    </div>
     <ol id="log"><li class="empty">Write to the agent below. With something selected, "this" means the selection.</li></ol>
     <div id="activity"><span class="dots"><i></i><i></i><i></i></span><span id="activity-text"></span></div>
     <div id="compose">

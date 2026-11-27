@@ -14,6 +14,13 @@ export interface Ctx {
   settings: Settings;
   /** all tools by name (batch looks steps up here) */
   tools: Map<string, ToolDef>;
+  /** plan-then-run: plans made in this session (src/plan) */
+  plans?: import('../plan/card.js').PlanStore;
+  /** true while an approved plan runs: other changing calls wait (they would share its token) */
+  planRunning?: boolean;
+  /** MCP elicitation: does the client support it, and ask the person (null = can't, "timeout" = no answer) */
+  canElicit?: () => boolean;
+  elicit?: (card: string, timeoutMs: number) => Promise<{ decision: 'approve' | 'reject'; note?: string } | null | 'timeout'>;
 }
 
 /** A tool step as the runtime runs it (alone, or inside batch). */

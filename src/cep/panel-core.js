@@ -88,7 +88,9 @@ function createPanel(opts) {
   let unread = false, lastJobEnd = 0, holdTimer = null;
   const activity = () => (busy || Date.now() - lastJobEnd < WORKING_HOLD_MS) && clients.size ? 'working'
     : (thinking.size ? 'thinking' : (unread && clients.size ? 'unread' : ''));
-  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), doc: doc.name, chat: chatOf(doc.key).slice(), activity: activity() });
+  // plan-then-run: the plan card waiting for the designer ({plan, text, uuids, t}), answered with Approve / Reject
+  let card = null;
+  const info = () => ({ port, clients: clients.size, sharing, state: last, recent: recent.slice(-30), doc: doc.name, chat: chatOf(doc.key).slice(), activity: activity(), card: card && { plan: card.plan, text: card.text, count: card.uuids.length } });
   const remember = (e) => { recent.push(e); if (recent.length > 50) recent.shift(); };
   const talk = (key, name, e) => {
     const c = chats[key] || (chats[key] = { name, t: 0, items: [] });
@@ -194,6 +196,11 @@ function createPanel(opts) {
           thinking.delete(sock); // an answer ends "thinking"
           changed();
           send(sock, { id: m.id, ok: true, result: 'shown' });
+        } else if (m.op === 'card') {
+          // a plan for the designer to approve (plan-then-run): replaces any card still open
+          card = { plan: String(m.plan || ''), text: String(m.text || '').slice(0, 8000), uuids: Array.isArray(m.uuids) ? m.uuids.slice(0, 500).map(String) : [], t: Date.now() };
+          changed();
+          send(sock, { id: m.id, ok: true, result: 'shown' });
         } else if (m.op === 'activity') {
           if (m.state === 'thinking') { thinking.add(sock); unread = false; } else thinking.delete(sock);
           changed();
@@ -246,6 +253,24 @@ function createPanel(opts) {
       broadcast({ event: e });
       changed();
       return true;
+    },
+    /** The designer answered the open plan card: "approve" | "reject" (with an optional note for the agent). */
+    decide(decision, note) {
+      if (!card) return false;
+      const e = { type: 'plan', plan: card.plan, decision: decision === 'approve' ? 'approve' : 'reject', t: Date.now() };
+      note = String(note || '').trim().slice(0, MAX_TEXT);
+      if (note) e.note = note;
+      card = null;
+      remember(e);
+      broadcast({ event: e });
+      changed();
+      return true;
+    },
+    /** Select the items the open plan card touches (the Show button), so the designer sees them on the artboard. */
+    showPlan() {
+      if (!card || !card.uuids.length) return Promise.resolve(0);
+      const code = '(function(){var d=app.activeDocument,u=' + JSON.stringify(card.uuids) + ',s=[],i;for(i=0;i<u.length;i++){try{s.push(d.getPageItemFromUuid(u[i]));}catch(e){}}d.selection=null;d.selection=s;return s.length;})()';
+      return evalScript(code).then((r) => +r || 0);
     },
     /** Something happened in Illustrator (a CSXS event): look now instead of at the next tick. */
     poke() { setTimeout(() => poll(true), 30); },

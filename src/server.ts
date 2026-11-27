@@ -1,7 +1,8 @@
 // Builds the MCP server: one McpServer, tools from src/tools, a shared context (transport + runtime).
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { mkdtempSync, appendFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { log, logOn } from './log.js';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { Transport } from './transport/transport.js';
@@ -15,6 +16,8 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { VERSION } from './version.js';
 import { defaultSettings } from './settings.js';
 import { profile, toolsTool } from './tools/tools_meta.js';
+import { gate } from './plan/plan.js';
+import { PlanStore } from './plan/card.js';
 
 export const INSTRUCTIONS = `chandelier drives Adobe Illustrator on this Mac (~5 ms per call).
 Conventions: coordinates [x, y, w, h] from the top-left of the active artboard, y down, in points (configure: units mm/in/px, origin, artboard). Colours "cmyk(100,85,30,25)", "gray(60)", "#1e2a44", "swatch:Name", "swatch:Name@50", "gradient:Name@45", "none". Refs (one or a list): uuid, "selection", "name:Glob*", "layer:Name", "artboard:N", "@n" (an earlier batch step). Uuids change when a document is reopened.
@@ -36,7 +39,7 @@ export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<Call
   // when it isn't the default one
   const note = !r.isError && POSITIONAL.has(tool.name) && !(tool.name === 'preview' && args?.image) ? frameNote(ctx.settings, callFrames(tool.name, args)) ?? `units: ${ctx.settings.units}` : null;
   if (note) r.content.push({ type: 'text', text: note });
-  if (LOG) {
+  if (logOn()) {
     // reply size: what the agent re-reads on every later request (text chars; images counted, not sized)
     const chars = r.content.reduce((n, c) => n + (c.type === 'text' ? c.text.length : 0), 0), images = r.content.filter((c) => c.type === 'image').length;
     log({ tool: tool.name, ...(typeof args?.action === 'string' ? { action: args.action } : {}), ms: Math.round((performance.now() - t) * 10) / 10, ok: !r.isError, chars, ...(images ? { images } : {}), reply: ctx.settings.reply, error: r.isError ? firstText(r).slice(0, 300) : undefined });
@@ -108,6 +111,8 @@ async function callToolInner(tool: ToolDef, args: any, ctx: Ctx): Promise<CallTo
   try {
     const bad = tool.name === 'tools' ? null : unknownArgs(tool, args);
     if (bad) return fail(bad);
+    const blocked = gate(tool, args, ctx);
+    if (blocked) return fail(blocked);
     if (tool.run) return await tool.run(args, ctx);
     if (!tool.step) return fail(`tool ${tool.name} has no implementation`);
     return respond(await runStep(tool, args, ctx));
@@ -116,17 +121,7 @@ async function callToolInner(tool: ToolDef, args: any, ctx: Ctx): Promise<CallTo
   }
 }
 
-// Debug log (phase 5): CHANDELIER_LOG=debug writes one JSON line per tool call to stderr (MCP clients keep the
-// server's stderr in their logs); CHANDELIER_LOG_FILE=<path> appends the lines to that file instead.
-const LOG = process.env.CHANDELIER_LOG === 'debug' || !!process.env.CHANDELIER_LOG_FILE;
 const firstText = (r: CallToolResult): string => String((r.content?.find((c) => c.type === 'text') as { text?: string } | undefined)?.text ?? '');
-function log(entry: Record<string, unknown>): void {
-  const line = JSON.stringify({ t: new Date().toISOString(), ...entry }) + '\n';
-  try {
-    if (process.env.CHANDELIER_LOG_FILE) appendFileSync(process.env.CHANDELIER_LOG_FILE, line);
-    else process.stderr.write(line);
-  } catch { /* logging never breaks a call */ }
-}
 
 /**
  * Every request of an agent re-reads the tool list, so trim what the SDK adds to each tool and nobody reads:
@@ -180,6 +175,9 @@ export function makeTransport(kind = process.env.CHANDELIER_TRANSPORT): Transpor
   return kind === 'panel' ? new PanelTransport() : new Transport();
 }
 
+const APPROVE_NOTE = `
+Approval mode is on: every change (new documents too) needs a plan the designer approves. Send the whole job as ONE batch {steps, plan: true} (save/close/export steps last), show the card, then batch {plan_id} runs it as one undo step. Reading tools need no plan.`;
+
 const CHANNEL_NOTE = `
 The designer writes to you from the Chandelier panel in Illustrator: messages arrive as <channel source="…" doc="…" selection="…">text</channel>. Treat each as their request; "this"/"it" = the selection in the tag (uuids usable as refs). Do it, check briefly, then answer in the panel with events {say: "…"} (short: what you changed, or a question).`;
 
@@ -199,7 +197,7 @@ export function createServer(opts: { transport?: Transport; tmp?: string; tools?
   const T = opts.transport ?? makeTransport();
   const settings = defaultSettings();
   if (process.env.CHANDELIER_REPLY === 'full' || process.env.CHANDELIER_REPLY === 'brief') settings.reply = process.env.CHANDELIER_REPLY;
-  const ctx: Ctx = { T, rt: new Runtime(T, settings), tmp: opts.tmp ?? mkdtempSync(join(tmpdir(), 'aia-')), created: new Set(), settings, tools: new Map(TOOLS.map((t) => [t.name, t])) };
+  const ctx: Ctx = { T, rt: new Runtime(T, settings), tmp: opts.tmp ?? mkdtempSync(join(tmpdir(), 'aia-')), created: new Set(), settings, tools: new Map(TOOLS.map((t) => [t.name, t])), plans: new PlanStore() };
   // tool profile (0.3): CHANDELIER_TOOLS=lean or a list of names; the rest behind the "tools" tool
   const shown = profile(opts.tools ?? process.env.CHANDELIER_TOOLS, TOOLS.map((t) => t.name));
   let exposed = TOOLS;
@@ -212,7 +210,7 @@ export function createServer(opts: { transport?: Transport; tmp?: string; tools?
   if (T instanceof PanelTransport) { ctx.tools.set(events.name, events); exposed = [...exposed, events]; }
   // channel mode (Claude Code channels, research preview): panel messages are pushed into the session, waking it
   const channel = T instanceof PanelTransport && (opts.channel ?? process.env.CHANDELIER_CHANNEL === '1');
-  const instructions = (shown ? INSTRUCTIONS + LEAN_NOTE : INSTRUCTIONS) + (channel ? CHANNEL_NOTE : '');
+  const instructions = (shown ? INSTRUCTIONS + LEAN_NOTE : INSTRUCTIONS) + (channel ? CHANNEL_NOTE : '') + (settings.approve === 'plan' ? APPROVE_NOTE : '');
   const server = new McpServer({ name: 'chandelier', version: VERSION },
     { instructions, ...(channel ? { capabilities: { experimental: { 'claude/channel': {} } } } : {}) });
   if (channel) {
@@ -222,6 +220,24 @@ export function createServer(opts: { transport?: Transport; tmp?: string; tools?
       void server.server.notification({ method: 'notifications/claude/channel', params: { content: m.text, meta: selectionText(P.state) } } as never).catch(() => {});
     };
   }
+  // plan approval through MCP elicitation, when the client supports it (plan-then-run § 3.4)
+  ctx.canElicit = () => !!server.server.getClientCapabilities()?.elicitation;
+  ctx.elicit = async (card, timeoutMs) => {
+    if (!ctx.canElicit!()) return null;
+    try {
+      const r = await server.server.elicitInput({
+        message: card,
+        requestedSchema: { type: 'object', properties: {
+          decision: { type: 'string', title: 'Decision', enum: ['approve', 'reject'], enumNames: ['Approve', 'Reject'] },
+          note: { type: 'string', title: 'Note for the agent (optional)' },
+        }, required: ['decision'] },
+      } as never, { timeout: timeoutMs });
+      if (r.action === 'accept') return { decision: (r.content as any)?.decision === 'approve' ? 'approve' : 'reject', note: (r.content as any)?.note || undefined };
+      return { decision: 'reject', note: r.action === 'decline' ? 'declined in the dialog' : 'dialog cancelled' };
+    } catch (e) {
+      return /timed out|timeout/i.test(String((e as Error).message)) ? 'timeout' : null;
+    }
+  };
   for (const tool of exposed) {
     // passthrough: unknown keys reach callTool, which refuses them with a hint (the SDK would drop them silently, and a
     // guessed name — transform_items {move} — then did nothing and cost a round to notice)

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ToolDef, Ctx } from './types.js';
 import { text, fail, J, ArgError } from './types.js';
 import { respond, runStep } from './respond.js';
+import { gate } from '../plan/plan.js';
 
 // Tool profiles (0.3). Every agent request re-reads the tool list; clients that load every schema (no deferred tool
 // loading) pay for all of it. CHANDELIER_TOOLS=lean exposes the tools a usual build calls plus this "tools" tool:
@@ -38,6 +39,8 @@ export function toolsTool(hidden: string[]): ToolDef {
         if (!t || t.name === 'tools') return fail(`unknown tool "${a.call}"; tools {} lists them`);
         const r = z.object(t.shape).strict().safeParse(a.args ?? {});
         if (!r.success) return fail(`${t.name}: ` + r.error.issues.map((x) => `${x.path.join('.') || 'args'}: ${x.message}`).join('; ') + ` (tools {name: "${t.name}"} shows the schema)`);
+        const blocked = gate(t, r.data, ctx);
+        if (blocked) return fail(blocked);
         try {
           if (t.run) return await t.run(r.data, ctx);
           return respond(await runStep(t, r.data, ctx));

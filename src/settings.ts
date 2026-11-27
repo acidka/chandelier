@@ -15,6 +15,14 @@ export interface Settings {
   activate: boolean;
   /** "brief": replies keep only the fields the next step usually needs (src/tools/brief.ts); Node-side only */
   reply: 'full' | 'brief';
+  /** "plan": every change needs an approved plan (plan-then-run, docs/research/plan-then-run-plan.md); the runtime
+   *  refuses changing commands too */
+  approve: 'off' | 'plan';
+  /** set by Node only while an approved plan runs: the runtime lets changing commands through */
+  plan_run?: string;
 }
 
-export const defaultSettings = (os: OS = osOf()): Settings => ({ units: 'pt', origin: 'artboard', artboard: null, timeout: 300, activate: os === 'mac', reply: 'brief' });
+/** CHANDELIER_APPROVE=plan turns the mode on and locks it (configure cannot turn it off). */
+export const approveLocked = (): boolean => process.env.CHANDELIER_APPROVE === 'plan';
+
+export const defaultSettings = (os: OS = osOf()): Settings => ({ units: 'pt', origin: 'artboard', artboard: null, timeout: 300, activate: os === 'mac', reply: 'brief', approve: approveLocked() ? 'plan' : 'off' });

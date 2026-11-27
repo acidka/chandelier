@@ -14,7 +14,7 @@ export const status: ToolDef = {
   shape: { launch: z.boolean().optional(), restart: z.boolean().optional() },
   async run(a, ctx) {
     const { T, rt, settings, created } = ctx;
-    if (a.restart) return restart(ctx);
+    if (a.restart) { ctx.plans?.expireAll(); return restart(ctx); } // uuids change on reopen: open plans can't run
     let run = await T.call('running');
     if (!run.ok) return fail(run.error ?? 'bridge error');
     if (run.result !== 'yes') {

@@ -9,6 +9,7 @@ import { scriptPaths } from '../platform.js';
 import { documents } from './documents.js';
 import { export_tool } from './export.js';
 import { fillPattern } from '../data.js';
+import { makePlan, runPlan } from '../plan/plan.js';
 
 interface StepResult { ok: boolean; data?: unknown; error?: string; line?: number; where?: string }
 interface BatchData { completed: number; total: number; failed_step?: number; rolled_back?: number; results: StepResult[] }
@@ -19,7 +20,8 @@ export const batch: ToolDef = {
 "@n" = the items of step n (0-based) wherever a ref is accepted, e.g. {tool:"selection", args:{action:"set", refs:"@0"}}.
 stop_on_error (default true). rollback: on a failure delete what the batch created (not raw run_script API items) and close an empty new document.
 results: "all" (default) | "errors" (failures + counts). steps_file: a JSON file with the steps instead.
-files: run the steps on each file (paths, folders, globs "jobs/*.ai"): open → steps → save → export → close; save "copy" (default, into out_dir) | "in_place" | "none"; export [{format, path with {name}, …}]; open files are skipped; dry_run:true → report only.`,
+files: run the steps on each file (paths, folders, globs "jobs/*.ai"): open → steps → save → export → close; save "copy" (default, into out_dir) | "in_place" | "none"; export [{format, path with {name}, …}]; open files are skipped; dry_run:true → report only.
+Approval mode (configure approve): plan:true → a card for the designer + plan_id, nothing changes ("rehearse": also runs, renders, undoes); then {plan_id} runs it as one undo step. Save/close/export steps go last.`,
   shape: {
     steps: z.array(z.object({ tool: z.string(), args: z.record(z.string(), z.any()).optional(), artboard: z.number().min(0).optional() })).min(1).max(1000).optional(),
     steps_file: z.string().optional(),
@@ -32,9 +34,16 @@ files: run the steps on each file (paths, folders, globs "jobs/*.ai"): open → 
     save: z.enum(['copy', 'in_place', 'none']).optional(),
     export: z.array(z.record(z.string(), z.any())).max(10).optional(),
     dry_run: z.boolean().optional(),
+    plan: z.union([z.literal(true), z.literal('rehearse')]).optional(),
+    plan_id: z.string().optional(),
   },
   async run(a, ctx) {
     const { T, rt, tools } = ctx;
+    if (a.plan_id !== undefined) {
+      const extra = Object.keys(a).filter((k) => a[k] !== undefined && !['plan_id', 'timeout', 'results'].includes(k));
+      if (extra.length) return fail(`batch {plan_id} runs the approved steps as they are: ${extra.join(', ')} can't be given with it (make a new plan instead)`);
+      return runPlan(a, ctx);
+    }
     if (a.steps_file) {
       let parsed: any;
       try { parsed = JSON.parse(readFileSync(resolve(a.steps_file), 'utf8')); } catch (e) { return fail(`steps_file: ${(e as Error).message}`); }
@@ -43,26 +52,10 @@ files: run the steps on each file (paths, folders, globs "jobs/*.ai"): open → 
       if (a.steps.length > 1000) return fail('steps_file: at most 1000 steps');
     }
     if (!a.steps?.length) return fail('give steps or steps_file');
-    const steps: Step[] = [];
-    const parsed: unknown[] = [];
-    for (let i = 0; i < a.steps.length; i++) {
-      const s = a.steps[i];
-      const tool = tools.get(s.tool);
-      if (!tool) return fail(`step ${i}: unknown tool "${s.tool}"`);
-      if (!tool.step || tool.name === 'batch') return fail(`step ${i}: ${s.tool} cannot be a batch step`);
-      if (s.artboard !== undefined && !(Number.isInteger(s.artboard) && s.artboard >= 0)) return fail(`step ${i}: artboard must be an artboard index (0, 1, …)`);
-      const r = z.object(tool.shape).strict().safeParse(s.args ?? {});
-      if (!r.success) return fail(`step ${i} (${s.tool}): ` + r.error.issues.map((x) => `${x.path.join('.') || 'args'}: ${x.message}`).join('; '));
-      try {
-        const st = await tool.step(r.data, ctx);
-        if (s.artboard !== undefined) st.settings = { ...st.settings, artboard: s.artboard };
-        steps.push(st);
-      } catch (e) {
-        if (e instanceof ArgError) return fail(`step ${i} (${s.tool}): ${e.message}`);
-        throw e;
-      }
-      parsed.push(r.data);
-    }
+    if (a.plan) return makePlan(a, ctx);
+    const ps = await parseSteps(a.steps, ctx);
+    if (typeof ps === 'string') return fail(ps);
+    const { steps, parsed } = ps;
     if (a.files) return eachFile(a, ctx, steps, parsed);
     if (a.out_dir || a.save || a.export || a.dry_run) return fail('out_dir, save, export and dry_run go with files');
     if (steps.some((s) => s.activate)) await T.call('activate');
@@ -80,6 +73,30 @@ files: run the steps on each file (paths, folders, globs "jobs/*.ai"): open → 
     return { content, isError: d.failed_step !== undefined };
   },
 };
+
+/** Validate steps and turn them into runtime steps (shared by batch, plans and plan runs). A string = the error. */
+export async function parseSteps(specs: { tool: string; args?: Record<string, unknown>; artboard?: number }[], ctx: Ctx, opts: { from?: number } = {}): Promise<{ steps: Step[]; parsed: unknown[] } | string> {
+  const steps: Step[] = [], parsed: unknown[] = [], off = opts.from ?? 0;
+  for (let j = 0; j < specs.length; j++) {
+    const s = specs[j], i = j + off;
+    const tool = ctx.tools.get(s.tool);
+    if (!tool) return `step ${i}: unknown tool "${s.tool}"`;
+    if (!tool.step || tool.name === 'batch') return `step ${i}: ${s.tool} cannot be a batch step`;
+    if (s.artboard !== undefined && !(Number.isInteger(s.artboard) && s.artboard >= 0)) return `step ${i}: artboard must be an artboard index (0, 1, …)`;
+    const r = z.object(tool.shape).strict().safeParse(s.args ?? {});
+    if (!r.success) return `step ${i} (${s.tool}): ` + r.error.issues.map((x) => `${x.path.join('.') || 'args'}: ${x.message}`).join('; ');
+    try {
+      const st = await tool.step(r.data, ctx);
+      if (s.artboard !== undefined) st.settings = { ...st.settings, artboard: s.artboard };
+      steps.push(st);
+    } catch (e) {
+      if (e instanceof ArgError) return `step ${i} (${s.tool}): ${e.message}`;
+      throw e;
+    }
+    parsed.push(r.data);
+  }
+  return { steps, parsed };
+}
 
 const DOC_EXT = /\.(ai|pdf|eps|svg)$/i;
 
@@ -104,7 +121,7 @@ export function expandFiles(list: string[]): string[] {
 
 interface FileResult { file: string; ok: boolean; skipped?: string; steps?: string; saved?: string; exported?: string[]; error?: unknown }
 
-async function eachFile(a: any, ctx: Ctx, steps: Step[], parsed: unknown[]) {
+export async function eachFile(a: any, ctx: Ctx, steps: Step[], parsed: unknown[], skip?: (file: string) => string | undefined) {
   const { rt, tools } = ctx;
   let files: string[];
   try { files = expandFiles(a.files); } catch (e) { return fail((e as Error).message); }
@@ -125,6 +142,8 @@ async function eachFile(a: any, ctx: Ctx, steps: Step[], parsed: unknown[]) {
   for (const file of files) {
     const res: FileResult = { file, ok: false };
     results.push(res);
+    const why = skip?.(file);
+    if (why) { res.skipped = why; continue; }
     const o = await runStep(documents, { action: 'open', path: file }, ctx);
     if (!o.ok) { res.error = 'open: ' + o.error; continue; }
     if ((o.data as any).already_open) { res.skipped = 'already open in Illustrator: close it first'; continue; }

@@ -187,6 +187,11 @@ export class PanelTransport extends Transport {
     return this.panelOp({ op: 'say', text }); // plain UTF-8: shown, not run as a script (no ascii escaping)
   }
 
+  /** Show a plan card with Approve / Reject / Show (plan-then-run); the answer comes back as a "plan" event. */
+  card(c: { plan: string; text: string; uuids: string[] }): Promise<boolean> {
+    return this.panelOp({ op: 'card', ...c });
+  }
+
   /** Tell the panel what the agent is doing, for its "thinking" line: it read a message, or it waits for the next. */
   activity(state: 'thinking' | 'listening'): Promise<boolean> {
     return this.panelOp({ op: 'activity', state });
