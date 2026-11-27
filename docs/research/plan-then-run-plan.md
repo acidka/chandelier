@@ -152,9 +152,9 @@ Picked per plan, strongest available first:
 them:
 
 - **A failed call that changed nothing is not an undo step**: undo would then take back the designer's previous
-  action. Fix: the run's first action in the document is a marker change that always makes an undo step (candidate: set
-  and then clear a note on a hidden path, or toggle a document XMP field; R0 picks one that Illustrator records). After
-  the undo, the runtime checks that the marker state is back and the fingerprint matches the plan's; if not, the error
+  action. Fix: the run's first action in the document is a marker change that always makes an undo step (R0:
+  create and remove a hidden 1 × 1 path in the same call, which Illustrator records, § 7). After
+  the undo, the runtime checks that the fingerprint matches the plan's; if not, the error
   says exactly that and does not undo again.
 - **Windows merges two calls under load (C31)**: one undo might also take back the call before. The fingerprint check
   after the undo catches it ("undo went further than the plan"); then `history redo 1` and a clear error. R0 measures
@@ -220,4 +220,18 @@ Total ≈ 7 days; R0 decides whether § 3.6 holds as designed.
 
 ## 7. Spike results (R0)
 
-_(to fill)_
+2026-11-27, Illustrator 29.1 (ru_RU), macOS 27.2, Node 22.23, through the Chandelier MCP server 0.6.0 on a scratch
+document (closed without saving afterwards). Quirk C35.
+
+| Check | Result |
+|---|---|
+| (a) A batch edits text, recolours and moves a rect, deletes an ellipse, adds swatch S2, changes swatch S1's colour, adds a layer and a rect, then fails on step 7 (`name:Nope`) → `history undo 1` | ✅ Everything back: text, fill, position, the deleted ellipse, S1's colour (0,50,0,0 → 0,100,100,0), no S2, no layer, no new rect. Two read-only `run_script` calls between the batch and the undo were not undo steps |
+| uuids after undo / redo | ✅ Unchanged (680–682) |
+| (b) A batch that fails on step 0 (changes nothing) → `history undo 1` | ❌ Not an undo step: the undo took back the **previous** call (the setup batch); `history redo 1` brought it back. Confirms the § 3.6 risk |
+| (c) Marker: create a hidden 1 × 1 path and remove it in the same call, then fail → `history undo 1` | ✅ The call was an undo step: the undo took back only it and the setup stayed. A second undo then removed the setup (stack as expected) |
+| (d) C31 on Windows with the marker | ⏳ Not run yet (needs the VM) |
+| (e) Elicitation in Claude Code, Claude Desktop, Cursor | ⏳ Not run yet (needs a small test server added to each client) |
+
+Consequences for R3: the run's first action is the marker (create + remove a hidden path, § 3.6). A failed run then
+always has its own undo step, so one `history undo` with the run token is safe on macOS. The fingerprint check after
+the undo stays, for Windows (C31).
