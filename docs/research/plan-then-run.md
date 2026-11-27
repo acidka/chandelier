@@ -13,7 +13,7 @@ today's default (no approval) and Adobe's Illustrator (Beta) MCP (every change m
 For: designers who let an agent work in files they care about (client files, a brand master); teams that need a record
 of what was approved and what ran; multi-file jobs, where a wrong step repeats across a folder.
 Not for: building a new document from scratch — the agent only touches a file it created, so such documents skip
-approval by default.
+approval by default. **Owner, 2026-11-27: approve everything, the agent's own documents too** ([plan § 0a](plan-then-run-plan.md#0a-decisions-taken)).
 
 ## Flow
 

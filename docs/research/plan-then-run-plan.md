@@ -21,7 +21,13 @@ Proposed defaults are marked ▶. Work uses them until the owner says otherwise.
 
 ### 0a. Decisions taken
 
-_(none yet)_
+| # | Choice (owner, 2026-11-27) | Effect on the plan |
+|---|---|---|
+| P-A | Raise the budget test to 61 KB | `plan`, `plan_id`, `approve` added as options; the test comment records it |
+| P-B | **Approve everything**, the agent's own documents too | No own-document exception: no `approve_own`, no own-document list in the runtime gate. A job that starts from scratch plans `documents new` + the build as one plan (§ 3.3: a plan may start without a target document) |
+| P-C | Rehearsal later (R7), in place + undo | As proposed |
+| P-F | Saves and exports are ordinary plan steps, run last | No `finish` key |
+| P-D, P-E, P-G | Not asked: the ▶ defaults stand until the owner says otherwise | — |
 
 ## 1. What exists to reuse
 
@@ -34,7 +40,6 @@ _(none yet)_
 | Ref resolution | `A.refs` (uuid, selection, `name:`, `layer:`, `artboard:`, `@n`), `A.layerOf`, `A.vb` | Needs a "resolve only" pass for counting, with `@n` reported as "items of step n" |
 | Read-only command list | `READ_ONLY` in `A.dispatch` | Becomes the runtime gate's allow-list |
 | Last call record | `A.last` (`status.last_call`): call, cmd, finished, created uuids | The plan run also records its `plan_id` |
-| Agent's documents | `ctx.created` (names of documents this server created) | Name-based; reopened or renamed documents lose it (risk § 6) |
 | Multi-file dry run | `batch {files, dry_run}` → `eachFile` | Becomes the plan for multi-file jobs (R6) |
 | Debug log | `CHANDELIER_LOG` / `_FILE` in `server.ts` `log()` | Plan, decision and run entries |
 | Panel | `PanelTransport` (`say`, events, `message`), `src/cep/panel-core.js` | Needs a "card" message with Approve / Reject / Show |
@@ -56,7 +61,6 @@ plan_id: z.string().optional(),
 - `batch {steps, plan: true}` → the plan card (text) + `plan_id`. Nothing changes in the document. In elicitation or panel
   mode the call returns only after the designer answered (or after a timeout, as "no answer").
 - `batch {plan_id}` → runs that plan. Any other key except `timeout` and `results` is refused: the steps are frozen.
-- `approve_own` is not a schema key (P-B default: on); `CHANDELIER_APPROVE_OWN=0` turns it off.
 - Server instructions grow only when the mode is on (an `APPROVE_NOTE` like `LEAN_NOTE`): "Changes need an approved
   plan: send the whole job as one `batch {steps, plan: true}`, show the card, then `batch {plan_id}`. One plan per job."
   So the default context doesn't grow.
@@ -69,9 +73,9 @@ plan_id: z.string().optional(),
 |---|---|---|
 | Read | `status` (not `launch`/`restart`), `configure`, `document_info`, `find_items`, `get_items`, `get_tree`, `fonts`, `preflight`, `preview`, `history undo` (P-G), `swatches list`, `styles list`, `layers list`, `artboards list`, `symbols list`, `documents list`, `scene analyze/edit` (Node only) | Always allowed |
 | Session state | `selection`, `documents activate`, `layers activate`, `artboards activate` | Allowed (the user's view, not content) |
-| Opens or makes a document | `documents new`, `documents open` | Allowed; `new` adds to `ctx.created` |
-| Changes a document | every create, modify, transform, arrange, align, path_ops, edit_text, delete, effects, place, symbols, swatches/styles/layers/artboards writes, `scene build/refine`, `menu_command`, `run_script`, `history redo`, `data_merge`, `documents close` with `discard` of unsaved changes | Needs an approved plan unless the target document is the agent's own (P-B) |
-| Writes files | `documents save/save_as`, `export`, `batch {files}` | Needs a plan; own documents too when the path already exists (an overwrite) |
+| Opens a document | `documents open` | Allowed (opening changes nothing) |
+| Changes a document | `documents new` (P-B), every create, modify, transform, arrange, align, path_ops, edit_text, delete, effects, place, symbols, swatches/styles/layers/artboards writes, `scene build/refine`, `menu_command`, `run_script`, `history redo`, `data_merge`, `documents close` with `discard` of unsaved changes | Needs an approved plan (P-B: the agent's own documents too) |
+| Writes files | `documents save/save_as`, `export`, `batch {files}` | Needs a plan; the card says whether a path already exists (an overwrite) |
 | Restarts | `status {restart}` | Already refused while anything is unsaved; allowed |
 
 The table lives in one module (`src/plan/classify.ts`), with a unit test that every tool in `TOOLS` is classified, so a
@@ -80,10 +84,9 @@ new tool can't slip past the gate.
 ### 3.2 The gate (enforced twice)
 
 1. **Node** (`callTool` in `server.ts`, before `run`/`step`): a tool or action of class "changes" or "writes" without
-   a valid plan run is refused before anything reaches Illustrator, with how to plan it. Exception: own document
-   (needs the active document's name, so Node asks the runtime → done in 2).
-2. **Runtime** (`A.dispatch`): `req.settings.approve = {mode, own: [names], plan: token|null}`. A command not in
-   `READ_ONLY` ∪ session-state, on a document not in `own`, without the token of the plan being run, throws
+   a valid plan run is refused before anything reaches Illustrator, with how to plan it.
+2. **Runtime** (`A.dispatch`): `req.settings.approve = {mode, plan: token|null}`. A command not in
+   `READ_ONLY` ∪ session-state, without the token of the plan being run, throws
    `Needs an approved plan (configure approve: "plan")`. This also covers `run_script` and `scene build`, which reach
    the runtime through their own paths. The token is a random per-run value Node passes only in the `batch {plan_id}`
    call and its undo call; the agent never sees it.
@@ -99,6 +102,9 @@ new tool can't slip past the gate.
      menu_command)}`;
    - fingerprint of the document: `{name, path, saved, items: pageItems.length, layers: names, artboards: count,
      refs: [[uuid, bounds rounded to 0.1 pt]]}` (only the resolved items, capped at 5 000 → a hash beyond).
+   A plan whose first step is `documents new` has no document yet: the fingerprint is the list of open documents, the
+   card says "new document W × H, n artboards", and later steps are counted from their arguments (their refs can only
+   point at items the plan creates, `@n`).
    Effect counting per tool is a function next to each runtime command (`A.probe.<cmd>`), so the counts come from the
    same resolver as the run (spec risk "second code path"). A command without a probe is shown as opaque.
 3. Node: file steps → `{path, format, exists}` (fs.stat). An existing path is an overwrite, said in the card.
@@ -154,6 +160,9 @@ them:
   after the undo catches it ("undo went further than the plan"); then `history redo 1` and a clear error. R0 measures
   how often on the VM.
 
+A plan that starts with `documents new` (P-B) doesn't undo on failure: the document it made is closed without saving
+(as `closeEmptyNew` does today, but also when it has items), so nothing of the plan stays open.
+
 Without these guarantees, R3 falls back to: rollback of created items + a list of what stayed changed, and the docs say
 "all or nothing" only on macOS.
 
@@ -175,27 +184,27 @@ Each phase ends with unit tests green, `npm run lint:jsx`, docs updated (roadmap
 | Phase | What | Tests | Est. |
 |---|---|---|---|
 | **R0 Spike** (live, macOS + Windows VM) | `test/live-plan-spike.mjs` on its own document: (a) a batch that edits text, recolours, deletes and adds a swatch, then fails at the last step → `history undo 1` → all back? (b) a failed call that changed nothing → does undo take back the call before it? (c) marker candidates: which one Illustrator always records as a step; (d) C31 rate on Windows with the marker; (e) elicitation in Claude Code, Claude Desktop and Cursor (a tiny test server: does a form with an enum and a string show, what does decline return) | Spike results go to § 7 and `illustrator-quirks.md` | 0.5 d |
-| **R1 Gate** | `configure {approve}`, `CHANDELIER_APPROVE`(+ lock), `CHANDELIER_APPROVE_OWN`; `src/plan/classify.ts` + "every tool classified" test; Node gate in `callTool`; runtime gate in `A.dispatch` (settings `approve`); `APPROVE_NOTE` in instructions | Unit: refusals per class, own-document pass, lock; live: a changing call on a non-own document refused, read calls pass | 0.5 d |
+| **R1 Gate** | `configure {approve}`, `CHANDELIER_APPROVE` (+ lock); `src/plan/classify.ts` + "every tool classified" test; Node gate in `callTool`; runtime gate in `A.dispatch` (settings `approve`); `APPROVE_NOTE` in instructions | Unit: refusals per class (`documents new` too), lock; live: a changing call refused, read calls pass | 0.5 d |
 | **R2 Plan** | `parseSteps()` extracted from `batch`; `plan_probe` + `A.probe.*` for every changing command (create_*, modify, transform, duplicate, arrange, align, path_ops, edit_text, delete, effects, swatches, styles, layers, artboards, symbols, place; opaque: run_script, menu_command); fingerprint; plan store; card renderer; chat channel | Unit: card text from fixtures, plan_id stable across key order, expiry, store cap; ES3 lint; live: card counts on a known document (`test/live-plan.mjs`) | 1.5 d |
 | **R3 Run** | `batch {plan_id}`; drift check in the same call; marker + undo on failure with the after-check; file steps last; actual-vs-planned report; one run per plan | Unit (fake runtime): every refusal path; live: approved run = one undo step, drift refused (an item moved between plan and run), failed step → document back (fingerprint equal), overwrite said in card | 1 d |
 | **R4 Elicitation** | channel selection, `elicitInput` with the card, timeout → "no answer"; forced channel env | Unit with an in-memory MCP client that answers approve / decline / cancel; manual check in the clients R0 found working | 0.5 d |
 | **R5 Panel** | `card` message in `PanelTransport` + panel UI (Approve, Reject with note, Show = select planned uuids); `plan` event; works while the agent waits | Unit (panel protocol); live through the panel (`CHANDELIER_TRANSPORT=panel`); owner check of the UI | 1 d |
 | **R6 Files** | `batch {files, plan: true}` = dry run + mtimes; per-file drift on run | Live with temp files (as `live-production.mjs`) | 0.5 d |
 | **R7 Rehearse** (after P-C) | `plan: "rehearse"`: run in place, render a preview, undo (marker-checked); card gets the image | Live: document identical after a rehearsal (fingerprint + item count) | 1 d |
-| **R8 Ship** | Docs (plan.md decision D17 + tool table, agent-guide section, skill, README "Approval mode" + numbers), benchmark: plan overhead (ms per probe on 100 / 5 000 items) and tokens (M2 C2 run with the mode on own document = no change; a recolour job on a non-own document: card size, calls), `scripts/schema-size.mjs` within P-A | Full unit + live suites, `claude plugin validate plugin` | 0.5 d |
+| **R8 Ship** | Docs (plan.md decision D17 + tool table, agent-guide section, skill, README "Approval mode" + numbers), benchmark: plan overhead (ms per probe on 100 / 5 000 items) and tokens (M2 C2 run with the mode on: one plan for the whole build, extra calls and tokens; a recolour job on an existing file: card size, calls), `scripts/schema-size.mjs` within P-A | Full unit + live suites, `claude plugin validate plugin` | 0.5 d |
 
 Total ≈ 7 days; R0 decides whether § 3.6 holds as designed.
 
 ## 5. Exit criteria
 
-- With `approve: "plan"`, no tool can change a document the agent didn't create without an approved plan: checked by a
+- With `approve: "plan"`, no tool can change any document (or make a new one) without an approved plan: checked by a
   unit test over every tool/action class and a live test of each class (including `run_script` and `scene build`).
 - An approved plan on a 2-step recolour + text job runs as **one** undo step; a plan whose step fails leaves the
   document equal to its approved start (fingerprint), on macOS; Windows result recorded (C31).
 - Drift (an item moved, deleted or added between plan and run), expiry and a second run are refused.
 - Card for that job ≤ 15 lines and says every file written and whether it overwrites.
 - Elicitation works in at least Claude Code; the panel card works on macOS.
-- Mode off: tool list grows by ≤ 0.7 KB, instructions unchanged, all existing suites green, no extra calls.
+- Mode off: tool list ≤ 61 KB (P-A), instructions unchanged, all existing suites green, no extra calls.
 
 ## 6. Risks
 
@@ -204,7 +213,6 @@ Total ≈ 7 days; R0 decides whether § 3.6 holds as designed.
 | Undo after a failed call isn't reliable (§ 3.6) | "All or nothing" can't be promised | R0 first; marker + fingerprint check after undo; fall back to rollback + honest report |
 | Probe counts differ from the run (e.g. `name:` glob matching items a previous step created) | Card under-states | Probe works step by step with `@n` as "from step n"; run report shows actual vs planned and flags differences |
 | Fingerprint on huge documents is slow | Plan and run each pay it | Only resolved refs' uuids/bounds + counts; hash beyond 5 000; measured in R8 |
-| `ctx.created` is name-based | A reopened own document needs approval; a new `Untitled-1` after closing the old one passes | Acceptable: errs toward asking; documented |
 | Agents plan in small pieces | Back to many approvals | `APPROVE_NOTE` asks for one plan per job; the card shows "plan n of this session" |
 | Chat approval can be faked | Soft guarantee | Labelled soft in card and log; `CHANDELIER_APPROVE_CHANNEL` can demand a hard channel |
 | A client times out the waiting call (elicitation / panel) | The plan looks lost | The plan stays pending; `batch {plan_id}` after a later approval still works; reply says so |
