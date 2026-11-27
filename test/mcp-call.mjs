@@ -2,14 +2,14 @@
 // Dev tool: call MCP tools of the built server in one session and print the results.
 //   node test/mcp-call.mjs '[["status"], ["find_items", {"type": "text"}]]'  [--full]
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const full = process.argv.includes('--full');
 const c = new Client({ name: 'mcp-call', version: '0' });
-await c.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
+await c.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full' } }));
 for (const [name, args] of JSON.parse(process.argv[2])) {
   const t = performance.now();
   const r = await c.callTool({ name, arguments: args ?? {} });

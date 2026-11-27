@@ -538,13 +538,15 @@ History of the full list: 61.6 KB before phase 4 slimming, 48.9 KB after it (202
 that defer tool loading (Claude Code, Claude Desktop) pay only for the names of tools they don't load.
 
 2026-11-27, Node 22.23, `future/mcp-tokens` vs `main` 0.5.3: `reply` and `fields` (plan D16) add 334 chars to the full
-list (55 790 → 56 124 chars, 16.5 k → 16.6 k tokens per request) and 77 to lean (15 334 → 15 411, ~5.0 k).
+list (55 790 → 56 124 chars, 16.5 k → 16.6 k tokens per request) and 77 to lean (15 334 → 15 411, ~5.0 k). Brief by
+default (same day: descriptions name the default keys) brings it to 56 295 (+505 over 0.5.3) and lean to 15 499 (+165).
 
 ## Reply size
 
 Every tool result stays in the conversation and is re-read on each later request. `node scripts/reply-size.mjs`
 (after `npm run build`; tokens ≈ characters / 3.5), 2026-11-27, Node 22.23. Fixtures are shaped like the runtime's replies
-(5-digit uuids, boxes to 3 decimals, empty optionals omitted); "brief" = `configure {reply: "brief"}` (plan D16).
+(5-digit uuids, boxes to 3 decimals, empty optionals omitted); "brief" is the default, "full" = `configure {reply: "full"}`
+(plan D16).
 Not a model tokenizer, and not an agent run.
 
 | Reply | Full: chars / tokens | Brief: chars / tokens | Left |
@@ -553,7 +555,7 @@ Not a model tokenizer, and not an agent run.
 | `get_items`, 10 text frames, 2 runs each | 4 114 / 1 175 | 992 / 283 | 24 % |
 | `get_items`, 1 path, `points`, 80 anchors | 3 100 / 886 | 110 / 31 | 4 % |
 | `get_items`, 1 path, `points`, 500 anchors (the cap) | 19 141 / 5 469 | 110 / 31 | 1 % |
-| `document_info`, calendar-shaped (12 artboards, 5 swatches, 13 styles) | 1 636 / 467 | 146 / 42 | 9 % |
+| `document_info`, calendar-shaped (12 artboards, 5 swatches, 13 styles) | 1 636 / 467 | 225 / 64 (with `bleed`) | 14 % |
 | A create step, 100 of 1 468 items listed (`outList`) | 7 624 / 2 178 | 950 / 271 | 12 % |
 | `batch` of 4 such steps (30 605 chars raw) | 20 055 / 5 730, clipped: not valid JSON | 3 909 / 1 117, whole | 19 % |
 
@@ -565,14 +567,14 @@ colour is what the next step uses), `preflight` (5 × 4 items: 1 873 chars; `max
 17 requests, 1.05 M input) with four 100-item create replies on requests 8–11: ~74 k tokens of input with `full`,
 ~9 k with `brief` (~6 % of the run); one `document_info` on request 12 −2.6 k; one 80-anchor `get_items` on request 13
 −4.3 k. M2 (`documents`, `run_script`, `preview`, save) does not change. The tool-list cost above (~95 tokens per
-request, ~1.6 k over 17 requests) is paid by every job; the savings only by jobs that opt in.
+request, ~1.6 k over 17 requests) is paid by every job; the savings go to jobs that inspect or create item by item.
 
 **Live, the same calls on a real calendar** (C2rb-1's `calendar-2027.ai` below: 12 artboards, 1 468 texts), two servers
 side by side (`CHANDELIER_REPLY=full` / `brief`), 2026-11-27, Illustrator 29.1.0 ru_RU, macOS 27.2, Node 22.23, Apple M1:
 
 | Call | Full: chars / tokens | Brief: chars / tokens |
 |------|---------------------:|----------------------:|
-| `document_info {}` | 1 859 / 531 | 147 / 42 |
+| `document_info {}` | 1 859 / 531 | 147 / 42 (218 / 62 with `bleed`, the head since brief became the default) |
 | `get_items`, 1 text frame | 380 / 109 | 114 / 33 |
 | `get_items`, 10 text frames | 3 585 / 1 024 | 970 / 277 |
 | `get_items`, 1 path, `points` (2 anchors) | 323 / 92 | 156 / 45 |

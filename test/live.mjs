@@ -15,7 +15,7 @@ const dir = mkdtempSync(join(tmpdir(), 'aia-live-'));
 const client = new Client({ name: 'aia-live', version: '0' });
 await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit',
   // CHANDELIER_TRANSPORT=panel npm run test:live runs the same checks through the Chandelier panel (docs/panel-plan.md)
-  env: { ...getDefaultEnvironment(), ...(process.env.CHANDELIER_TRANSPORT ? { CHANDELIER_TRANSPORT: process.env.CHANDELIER_TRANSPORT } : {}) } }));
+  env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full', ...(process.env.CHANDELIER_TRANSPORT ? { CHANDELIER_TRANSPORT: process.env.CHANDELIER_TRANSPORT } : {}) } }));
 guard(client); // abort if another document becomes active mid-run
 
 let failures = 0;

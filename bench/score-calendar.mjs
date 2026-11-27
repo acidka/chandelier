@@ -4,7 +4,7 @@
 //   npm run build && node bench/score-calendar.mjs <run folder>   (e.g. bench/results/calendar/C1-1)
 // Opens the run's calendar-2027.ai, never saves it, closes it again.
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeFileSync } from 'node:fs';
@@ -13,7 +13,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const run = resolve(process.argv[2]);
 const MONTHS = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
 const c = new Client({ name: 'score', version: '0' });
-await c.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
+await c.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full' } }));
 const call = async (name, args) => { const r = await c.callTool({ name, arguments: args }); const t = r.content.find((x) => x.type === 'text')?.text ?? ''; if (r.isError) throw new Error(`${name}: ${t}`); try { return JSON.parse(t); } catch { return t; } };
 
 const opened = await call('documents', { action: 'open', path: join(run, 'calendar-2027.ai') });

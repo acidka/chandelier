@@ -1,6 +1,6 @@
 // Shared helpers for the live suites: one MCP session to the built server, checked calls, a summary.
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -42,7 +42,7 @@ export function guard(client) {
 
 export async function connect(name) {
   const client = new Client({ name, version: '0' });
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full' } }));
   guard(client);
   let failures = 0;
   /** call a tool; check(value, raw) may throw or return false. Errors are expected only with expectError.

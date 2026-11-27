@@ -4,7 +4,7 @@ import { text } from './types.js';
 
 export const configure: ToolDef = {
   name: 'configure',
-  description: 'Session settings used by every tool (and by AIA.* helpers in run_script). units: "pt" (default) | "mm" | "in" | "px" for positions and sizes (type sizes and stroke width stay pt). origin: "artboard" (default: top-left of the reference artboard, y grows down) | "document" (y up). artboard: index of the reference artboard (null = the active one). timeout: seconds per call (default 300). activate: front Illustrator before save/export (default true; Windows false). reply: "full" (default) | "brief" (smaller replies; fields widens). Returns the settings.',
+  description: 'Session settings used by every tool (and by AIA.* helpers in run_script). units: "pt" (default) | "mm" | "in" | "px" for positions and sizes (type sizes and stroke width stay pt). origin: "artboard" (default: top-left of the reference artboard, y grows down) | "document" (y up). artboard: index of the reference artboard (null = the active one). timeout: seconds per call (default 300). activate: front Illustrator before save/export (default true; Windows false). reply: "brief" (default: short replies, fields widens) | "full" (every key). Returns the settings.',
   shape: {
     units: z.enum(['pt', 'mm', 'in', 'px']).optional(),
     origin: z.enum(['artboard', 'document']).optional(),

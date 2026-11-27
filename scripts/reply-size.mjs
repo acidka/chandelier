@@ -53,7 +53,7 @@ const cases = [
   { label: 'get_items, 10 text frames, 2 runs each', tool: 'get_items', data: { count: 10, items: cells }, keys: ['uuid', 'type', 'name', 'box', 'geo'] },
   { label: 'get_items, 1 path, 80 anchors (points)', tool: 'get_items', data: { count: 1, items: [pathOf(80)] }, keys: ['uuid', 'type', 'name', 'box', 'geo'] },
   { label: 'get_items, 1 path, 500 anchors (points cap)', tool: 'get_items', data: { count: 1, items: [pathOf(500)] }, keys: ['uuid', 'type', 'name', 'box', 'geo'] },
-  { label: 'document_info, calendar-shaped', tool: 'document_info', data: doc, keys: ['name', 'colorSpace', 'units', 'artboardCount', 'counts', 'issues'] },
+  { label: 'document_info, calendar-shaped', tool: 'document_info', data: doc, keys: ['name', 'colorSpace', 'units', 'bleed', 'artboardCount', 'counts', 'issues'] },
   { label: 'create step, 100 of 1 468 listed (outList)', tool: 'create_shape', data: made(1468), keys: ['uuid', 'box'] },
 ];
 

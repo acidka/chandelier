@@ -108,7 +108,7 @@ function registerPrompts(server: McpServer): void {
     argsSchema: { output: z.string().describe('path of the PDF'), bleed: z.string().optional().describe('e.g. "3 mm" or "0.125 in"; default: the document bleed') },
   }, ({ output, bleed }) => ({ messages: [{ role: 'user', content: { type: 'text', text:
 `Get the active Illustrator document ready for print and export it to ${output}.
-1. document_info: note the colour space, artboards and bleed.
+1. document_info {fields: ["artboards"]}: note the colour space, artboards and bleed.
 2. preflight. Fix every error (missing fonts, RGB images, overset text, white overprint) or explain why it can't be fixed; mention warnings worth a look (low-res images, hairlines, art at the edge without bleed).
 3. export {format: "pdf", artboards: "all", path: "${output}"${bleed ? ', bleed: <' + bleed + ' in session units>' : ''}}: PDF/X-4, trim and bleed boxes set.
 4. Report the file, its pages and boxes (from the export result) and what preflight found.` } }] }));
@@ -140,7 +140,7 @@ function selectionText(state: unknown): { doc?: string; selection: string; selec
 export function createServer(opts: { transport?: Transport; tmp?: string; tools?: string; channel?: boolean } = {}) {
   const T = opts.transport ?? makeTransport();
   const settings = defaultSettings();
-  if (process.env.CHANDELIER_REPLY === 'brief') settings.reply = 'brief';
+  if (process.env.CHANDELIER_REPLY === 'full' || process.env.CHANDELIER_REPLY === 'brief') settings.reply = process.env.CHANDELIER_REPLY;
   const ctx: Ctx = { T, rt: new Runtime(T, settings), tmp: opts.tmp ?? mkdtempSync(join(tmpdir(), 'aia-')), created: new Set(), settings, tools: new Map(TOOLS.map((t) => [t.name, t])) };
   // tool profile (0.3): CHANDELIER_TOOLS=lean or a list of names; the rest behind the "tools" tool
   const shown = profile(opts.tools ?? process.env.CHANDELIER_TOOLS, TOOLS.map((t) => t.name));

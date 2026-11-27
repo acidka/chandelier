@@ -1,5 +1,6 @@
 // Field projection (configure {reply: "brief"} and per-call fields): replies keep only what the next step needs,
-// because every result is re-read on each later agent request. reply "full" without fields leaves data untouched.
+// because every result is re-read on each later agent request. Brief is the default; reply "full" without fields
+// leaves data untouched.
 import { ArgError } from './types.js';
 import type { Settings } from '../settings.js';
 
@@ -20,7 +21,7 @@ export const DOC_SECTIONS: Record<string, string[]> = {
   fonts: ['fonts'],
   issues: ['issues'],
 };
-export const DOC_BRIEF = ['name', 'colorSpace', 'units', 'artboardCount', 'counts', 'issues'];
+export const DOC_BRIEF = ['name', 'colorSpace', 'units', 'bleed', 'artboardCount', 'counts', 'issues'];
 
 /** created / changed items (A.outList); reads and the agent's own scripts keep their lists */
 export const LIST_MAX = 20;

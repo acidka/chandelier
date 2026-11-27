@@ -1,4 +1,4 @@
-// configure {reply: "brief"} and per-call fields: MCP client → server → a stub bridge that answers like the runtime.
+// reply "brief" (default) / configure {reply: "full"} and per-call fields: MCP client → server → a stub bridge that answers like the runtime.
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -42,7 +42,7 @@ const call = async (name: string, args: object = {}) => {
   let json: any; try { json = JSON.parse(t); } catch { json = t; }
   return { isError: !!r.isError, json, text: t };
 };
-const brief = async (fn: () => Promise<void>) => { await call('configure', { reply: 'brief' }); try { await fn(); } finally { await call('configure', { reply: 'full' }); } };
+const full = (fn: () => Promise<void>) => async () => { await call('configure', { reply: 'full' }); try { await fn(); } finally { await call('configure', { reply: 'brief' }); } };
 
 beforeAll(async () => {
   const { server } = createServer({ transport: new Stub() });
@@ -53,23 +53,23 @@ beforeAll(async () => {
 });
 afterAll(async () => { await client.close(); });
 
-describe('reply "full" (default)', () => {
-  it('sends today\'s reply unchanged', async () => {
+describe('reply "full"', () => {
+  it('sends the runtime\'s reply unchanged', full(async () => {
     expect((await call('create_shape', { x: 0, y: 0, w: 1, h: 1, items: Array.from({ length: 150 }, () => ({})) })).text).toBe(JSON.stringify(outList(150)));
     expect((await call('get_items', { refs: '7' })).text).toBe(JSON.stringify({ count: 1, items: [item({})] }));
     expect((await call('document_info', {})).text).toBe(JSON.stringify(DOC));
     const d = outList(150);
-    expect(project('create_shape', structuredClone(d), {}, defaultSettings('mac'))).toEqual(d);
-  });
+    expect(project('create_shape', structuredClone(d), {}, { ...defaultSettings('mac'), reply: 'full' })).toEqual(d);
+  }));
 
-  it('get_items fields: only those keys, runs and anchors only when named', async () => {
+  it('get_items fields: only those keys, runs and anchors only when named', full(async () => {
     const r = await call('get_items', { refs: '7', fields: ['uuid', 'contents'] });
     expect(Object.keys(r.json.items[0])).toEqual(['uuid', 'contents']);
     expect(sent.at(-1)!.args).toMatchObject({ runs: false, points: false });
     expect(sent.at(-1)!.args.fields).toBeUndefined();
     const p = await call('get_items', { refs: '7', fields: ['uuid', 'path'] });
     expect(p.json.items[0]).toEqual({ uuid: '7', path: [[0, 0]], path_truncated: 3 });
-  });
+  }));
 
   it('unknown fields fail before Illustrator runs anything', async () => {
     const n = sent.length;
@@ -79,52 +79,52 @@ describe('reply "full" (default)', () => {
     expect(sent.length).toBe(n);
   });
 
-  it('document_info fields: the head plus the named sections', async () => {
+  it('document_info fields: the head plus the named sections', full(async () => {
     const r = await call('document_info', { fields: ['styles', 'artboards'] });
-    expect(Object.keys(r.json)).toEqual(['name', 'colorSpace', 'units', 'artboardCount', 'counts', 'issues', 'paragraphStyles', 'characterStyles', 'activeArtboard', 'artboards']);
+    expect(Object.keys(r.json)).toEqual(['name', 'colorSpace', 'units', 'bleed', 'artboardCount', 'counts', 'issues', 'paragraphStyles', 'characterStyles', 'activeArtboard', 'artboards']);
     expect(r.json.artboardCount).toBe(2);
-  });
+  }));
 });
 
-describe('reply "brief"', () => {
-  it('created items: the first 20 {uuid, box}, count and more kept', () => brief(async () => {
+describe('reply "brief" (default)', () => {
+  it('created items: the first 20 {uuid, box}, count and more kept', async () => {
     const r = await call('create_shape', { x: 0, y: 0, w: 1, h: 1, items: Array.from({ length: 150 }, () => ({})) });
     expect(r.json.count).toBe(150);
     expect(r.json.items).toHaveLength(LIST_MAX);
     expect(Object.keys(r.json.items[0])).toEqual(['uuid', 'box']);
     expect(r.json.more).toBe('130 more not listed');
-  }));
+  });
 
-  it('get_items and document_info heads; runs and anchors not computed', () => brief(async () => {
+  it('get_items and document_info heads; runs and anchors not computed', async () => {
     expect(Object.keys((await call('get_items', { refs: '7' })).json.items[0])).toEqual(['uuid', 'type', 'name', 'box', 'geo']);
     expect(sent.at(-1)!.args).toMatchObject({ runs: false, points: false });
     expect(Object.keys((await call('get_items', { refs: '7', points: true })).json.items[0])).toEqual(['uuid', 'type', 'name', 'box', 'geo', 'path', 'path_truncated']);
-    expect(Object.keys((await call('document_info', {})).json)).toEqual(['name', 'colorSpace', 'units', 'artboardCount', 'counts', 'issues']);
-  }));
+    expect(Object.keys((await call('document_info', {})).json)).toEqual(['name', 'colorSpace', 'units', 'bleed', 'artboardCount', 'counts', 'issues']);
+  });
 
-  it('batch: each step projected; 4 big create steps stay under the clip', () => brief(async () => {
+  it('batch: each step projected; 4 big create steps stay under the clip', async () => {
     const steps = Array.from({ length: 4 }, () => ({ tool: 'create_shape', args: { x: 0, y: 0, w: 1, h: 1, items: Array.from({ length: 367 }, () => ({})) } }));
     const r = await call('batch', { steps });
     expect(r.isError, r.text).toBe(false);
     expect(r.text.length).toBeLessThan(BUDGET);
     expect(r.json.results.every((s: any) => s.data.items.length === LIST_MAX && s.data.count === 367)).toBe(true);
-  }));
-
-  it('the agent\'s own run_script results keep their lists', () => brief(async () => {
-    const r = await call('batch', { steps: [{ tool: 'run_script', args: { code: 'return 1;' } }] });
-    expect(r.json.results[0].data.items).toHaveLength(30);
-  }));
-
-  it('CHANDELIER_REPLY=brief starts the session brief', () => {
-    process.env.CHANDELIER_REPLY = 'brief';
-    try { expect(createServer({ transport: new Stub() }).ctx.settings.reply).toBe('brief'); }
-    finally { delete process.env.CHANDELIER_REPLY; }
-    expect(createServer({ transport: new Stub() }).ctx.settings.reply).toBe('full');
   });
 
-  it('reply stays in Node: the runtime never sees it', () => brief(async () => {
+  it('the agent\'s own run_script results keep their lists', async () => {
+    const r = await call('batch', { steps: [{ tool: 'run_script', args: { code: 'return 1;' } }] });
+    expect(r.json.results[0].data.items).toHaveLength(30);
+  });
+
+  it('CHANDELIER_REPLY=full starts the session full', () => {
+    process.env.CHANDELIER_REPLY = 'full';
+    try { expect(createServer({ transport: new Stub() }).ctx.settings.reply).toBe('full'); }
+    finally { delete process.env.CHANDELIER_REPLY; }
+    expect(createServer({ transport: new Stub() }).ctx.settings.reply).toBe('brief');
+  });
+
+  it('reply stays in Node: the runtime never sees it', async () => {
     await call('get_items', { refs: '7' });
     expect(sent.at(-1)!.settings.reply).toBeUndefined();
     expect(sent.at(-1)!.settings.units).toBe('pt');
-  }));
+  });
 });

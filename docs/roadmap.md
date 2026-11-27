@@ -456,8 +456,11 @@ Carried over from 0.5.2 when it was released.
   - [x] ✅ Measure: calendar macro `brief` vs `full`, one Cursor subagent run each (2026-11-27): both pass K1/K2/K9/K10.
     Neither used a tool that `brief` changes (one `run_script` builder), so there was no `brief` effect to measure
     ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [ ] Decide whether the guide and skill should tell agents to switch it on: measure a job that inspects or creates
-    with the granular tools (e.g. a recreate case) first
+  - [x] ✅ Brief by default (owner, 2026-11-27): the `get_items` / `document_info` descriptions name the default keys and
+    `fields`; the `document_info` head gains `bleed`; `configure {reply: "full"}` / `CHANDELIER_REPLY=full` (the live
+    tests and scorers use it)
+  - [ ] Measure a job that inspects or creates with the granular tools (e.g. a recreate case): extra calls for missing
+    fields vs tokens saved
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -639,3 +642,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | **0.5.3 released**: recreate tools (`preview {image, profile}`, `create_path {fit, shade, map, extend, clip_to}`), the general recreate guide, bugs #13–#15 |
 | 2026-11-27 | Smaller replies (plan D16, TOON considered and dropped): `configure {reply: "brief"}`, `fields` on `get_items` / `document_info`; reply sizes in benchmarks § Reply size (a create list 2 178 → 271 tokens, a 4-step create batch no longer clipped); tool list 55.8 → 56.1 KB, budget 56.5 KB |
 | 2026-11-27 | Smaller replies, measured live: `brief` `document_info` 531 → 42 tokens and 10 `get_items` 1 024 → 277 on a real calendar. Calendar macro `full` vs `brief` (one Cursor subagent run each, shell wrapper): both pass, 7.0 k vs 3.5 k reply tokens. The gap came from what each agent chose to do, not from `brief`: neither called a tool that `brief` changes |
+| 2026-11-27 | Replies brief by default (owner; plan D16): `configure {reply: "full"}` / `CHANDELIER_REPLY=full` for every key, used by the live tests and scorers; the `get_items` / `document_info` descriptions name the default keys; the `document_info` head gains `bleed`. Tool list 56.1 → 56.3 KB (+505 chars over 0.5.3), lean 15.5 KB; live suites pass |

@@ -17,4 +17,4 @@ export interface Settings {
   reply: 'full' | 'brief';
 }
 
-export const defaultSettings = (os: OS = osOf()): Settings => ({ units: 'pt', origin: 'artboard', artboard: null, timeout: 300, activate: os === 'mac', reply: 'full' });
+export const defaultSettings = (os: OS = osOf()): Settings => ({ units: 'pt', origin: 'artboard', artboard: null, timeout: 300, activate: os === 'mac', reply: 'brief' });
