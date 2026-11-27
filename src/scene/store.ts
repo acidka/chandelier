@@ -41,14 +41,14 @@ export async function load(file: string, tmpPng: string): Promise<Scene> {
   const bytes = readFileSync(j.source.path);
   if (j.source.sha1 && createHash('sha1').update(bytes).digest('hex') !== j.source.sha1) throw new Error(`scene source image changed since analyze: ${j.source.path} (analyze again)`);
   const src = await readImage(j.source.path, tmpPng);
-  const { work, toSource, lab, quant, photo } = prepare(src, j.params);
+  const { work, toSource, lab, quant, photo, inner } = prepare(src, j.params);
   const lbl = decodePng(readFileSync(join(dirname(file), 'labels.png')));
   if (lbl.w !== work.w || lbl.h !== work.h) throw new Error(`${file}: labels don't match the image`);
   const map = new Int32Array(work.w * work.h);
   for (let i = 0; i < map.length; i++) map[i] = ((lbl.rgb[i * 3] << 16) | (lbl.rgb[i * 3 + 1] << 8) | lbl.rgb[i * 3 + 2]) - 2;
   const seg = { w: work.w, h: work.h, map, regions: regionStats(map, work.w, work.h, j.regionCount, lab, quant.labels) };
   const s: Scene = {
-    id: j.id, dir: dirname(dirname(file)), params: j.params, source: j.source, work, toSource, lab, photo: j.photo ?? photo, rampGroups: j.rampGroups ?? [], quant, seg,
+    id: j.id, dir: dirname(dirname(file)), params: j.params, source: j.source, work, ...(inner ? { inner } : {}), toSource, lab, photo: j.photo ?? photo, rampGroups: j.rampGroups ?? [], quant, seg,
     colours: j.colours, meta: j.meta, zMoves: j.zMoves, tile: j.tile, tol: j.tol, edgeTol: j.edgeTol, edits: j.edits, textBoxes: j.textBoxes ?? [], built: j.built,
     pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], fillers: new Map(), render: work, iou: [], estRmse: 0, ms: 0,
   };

@@ -27,6 +27,8 @@ export interface Params {
   photo?: boolean;
   /** regions far from their ink get one near their own colour (default on) */
   ownInks?: boolean;
+  /** a crop is read with this margin around it (fraction of its longer side, default 0.2; 0 = off) */
+  margin?: number;
 }
 
 /** an ink: one global swatch at build */
@@ -41,6 +43,8 @@ export interface Scene {
   params: Params;
   source: { path: string; sha1: string; w: number; h: number };
   work: Img;
+  /** a crop read with a margin: the crop in working px [x, y, w, h]; build places this part on the rect */
+  inner?: number[];
   toSource: (x: number, y: number) => [number, number];
   lab: Lab;
   /** looks like a photo (noise): ramps are lighting and get flattened */

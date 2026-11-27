@@ -72,7 +72,9 @@ describe('scene analyze options (F28, F37)', () => {
     const im = paint(120, 80, [rect(10, 10, 50, 50, BLUE)], { bg: BG, noise: 6 });
     expect(analyze(im, { ...P, photo: false }, { dir: '/tmp', path: 'x' }).photo).toBe(false);
     expect(analyze(im, { ...P, photo: true }, { dir: '/tmp', path: 'x' }).photo).toBe(true);
-    expect(analyze(im, { ...P, crop: [0, 0, 60, 40] }, { dir: '/tmp', path: 'x' }).work.w).toBe(60);
-    expect(analyze(im, { ...P, crop: [0, 0, 60, 40], maxPx: 240, upscale: true }, { dir: '/tmp', path: 'x' }).work.w).toBe(240);
+    // the crop's own px (inner); the working image adds a margin (F25)
+    expect(analyze(im, { ...P, crop: [0, 0, 60, 40] }, { dir: '/tmp', path: 'x' }).inner![2]).toBe(60);
+    expect(analyze(im, { ...P, crop: [0, 0, 60, 40], maxPx: 240, upscale: true }, { dir: '/tmp', path: 'x' }).inner![2]).toBe(240);
+    expect(analyze(im, { ...P, crop: [0, 0, 60, 40], margin: 0 }, { dir: '/tmp', path: 'x' }).work.w).toBe(60);
   });
 });

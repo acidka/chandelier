@@ -1,7 +1,7 @@
 // scene analyze: the whole pixel pipeline in one call — rectify, Lab, smooth, quantize, regions, planar map, fits,
 // z order, own render and error. recompute() redoes the geometry after edits.
 import { createHash } from 'node:crypto';
-import { fitLongest, type Img } from '../image.js';
+import { fitLongest, crop, type Img } from '../image.js';
 import { rgbToLab, labToRgb, de76, type Lab } from './color.js';
 import { planeStats, findRamps, rampOf } from './ramps.js';
 import { rectify } from './rectify.js';
@@ -32,24 +32,74 @@ function sortInks(q: Quant): Quant {
 /** the deterministic part before regions: working image, Lab, inks (a saved scene reloads through this) */
 export function prepare(src: Img, p: Params) {
   const d = DETAIL[p.detail];
-  const r = rectify(src, { crop: p.crop, map: p.map, bilinear: p.bilinear, size: p.size, maxPx: p.maxPx, upscale: p.upscale });
+  // a crop is read with a margin around it (F25, F51): a shape that crosses the crop edge and ends near it is kept whole
+  const c = p.crop && !p.map && !p.size ? p.crop : null, mf = p.margin ?? 0.2;
+  let crop = p.crop, maxPx = p.maxPx, ext: number[] | null = null;
+  if (c && mf > 0) {
+    const m = Math.round(mf * Math.max(c[2], c[3]));
+    const x0 = Math.max(0, Math.round(c[0]) - m), y0 = Math.max(0, Math.round(c[1]) - m);
+    const x1 = Math.min(src.w, Math.round(c[0] + c[2]) + m), y1 = Math.min(src.h, Math.round(c[1] + c[3]) + m);
+    if (x0 < c[0] || y0 < c[1] || x1 > c[0] + c[2] || y1 > c[1] + c[3]) {
+      ext = [x0, y0, x1 - x0, y1 - y0]; crop = ext;
+      maxPx = p.maxPx * Math.max(ext[2], ext[3]) / Math.max(c[2], c[3]); // the crop itself keeps its resolution
+    }
+  }
+  const r = rectify(src, { crop, map: p.map, bilinear: p.bilinear, size: p.size, maxPx, upscale: p.upscale });
   const work = r.img, raw = rgbToLab(work), lab = bilateral(raw, { passes: d.passes });
   const skip = work.a ? work.a.map((v) => (v < 128 ? 1 : 0)) : undefined;
   const quant = sortInks(quantize(lab, { colors: p.colors, minDe: p.minDe, skip }));
   // noise measured at ≤ 600 px: a full-resolution JPEG of flat art has pixel noise too, a photo keeps its grain
   const small = fitLongest(work, 600), sl = rgbToLab(small);
-  return { work, toSource: r.toSource, lab, quant, photo: p.photo ?? isPhoto(sl, bilateral(sl)) };
+  // the crop in working px (when read with a margin)
+  let inner: number[] | undefined;
+  if (ext && c) {
+    const sx = work.w / ext[2], sy = work.h / ext[3];
+    const ix = Math.round((c[0] - ext[0]) * sx), iy = Math.round((c[1] - ext[1]) * sy);
+    inner = [ix, iy, Math.min(work.w - ix, Math.round(c[2] * sx)), Math.min(work.h - iy, Math.round(c[3] * sy))];
+  }
+  return { work, toSource: r.toSource, lab, quant, photo: p.photo ?? isPhoto(sl, bilateral(sl)), inner };
+}
+
+/** a crop read with a margin: what lies outside the crop goes, except the pieces of a region that cross the crop edge
+ * and end within the margin (a swoosh's tip, a strand of hair): those are kept whole. A piece that runs on to the
+ * margin's outer edge (a background, a long line) is cut at the crop as before. Pieces are 4-connected per region. */
+export function cutToCrop(map: Int32Array, w: number, h: number, inner: number[]): void {
+  const [ix, iy, iw, ih] = inner, n = w * h;
+  const isIn = (x: number, y: number) => x >= ix && x < ix + iw && y >= iy && y < iy + ih;
+  const outerEdge = (x: number, y: number) => (x === 0 && ix > 0) || (y === 0 && iy > 0) || (x === w - 1 && ix + iw < w) || (y === h - 1 && iy + ih < h);
+  const seen = new Uint8Array(n), stack: number[] = [], piece: number[] = [];
+  for (let s0 = 0; s0 < n; s0++) {
+    const r = map[s0];
+    if (r < 0 || seen[s0] || isIn(s0 % w, (s0 / w) | 0)) continue;
+    let touchesCrop = false, reachesEdge = false;
+    piece.length = 0; seen[s0] = 1; stack.push(s0);
+    while (stack.length) {
+      const i = stack.pop()!, x = i % w, y = (i / w) | 0;
+      piece.push(i);
+      if (outerEdge(x, y)) reachesEdge = true;
+      for (const [xx, yy] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) {
+        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+        const j = yy * w + xx;
+        if (map[j] !== r) continue;
+        if (isIn(xx, yy)) { touchesCrop = true; continue; }
+        if (!seen[j]) { seen[j] = 1; stack.push(j); }
+      }
+    }
+    if (!touchesCrop || reachesEdge) for (const i of piece) map[i] = -1;
+  }
 }
 
 export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path: string; bytes?: Buffer }): Scene {
   const t0 = performance.now(), d = DETAIL[p.detail];
-  const { work, toSource, lab, quant, photo } = prepare(src, p);
+  const { work, toSource, lab, quant, photo, inner } = prepare(src, p);
   const r = { toSource };
-  const minArea = Math.max(4, Math.round(Math.max(12, work.w * work.h * 5e-5) * d.area));
+  const area = inner ? inner[2] * inner[3] : work.w * work.h;
+  const minArea = Math.max(4, Math.round(Math.max(12, area * 5e-5) * d.area));
   const seg = segment(lab, quant.labels, { minDe: p.minDe, minArea, centres: quant.centres });
+  if (inner) { cutToCrop(seg.map, work.w, work.h, inner); seg.regions = regionStats(seg.map, work.w, work.h, seg.regions.length, lab, quant.labels); }
   // ramps: bands of one gradient. A photo's are lighting: merged into one flat region; artwork's: a hint
   const st = planeStats(seg.map, work.w, work.h, lab, seg.regions.length);
-  const rampGroups = findRamps(seg.regions, st, p.minDe, Math.max(minArea, work.w * work.h * 5e-4)).map((ids) => {
+  const rampGroups = findRamps(seg.regions, st, p.minDe, Math.max(minArea, area * 5e-4)).map((ids) => {
     const L = ids.map((i) => seg.regions[i].L);
     return { ids, dL: Math.round(Math.max(...L) - Math.min(...L)), merged: photo };
   });
@@ -62,7 +112,7 @@ export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path
   const s: Scene = {
     id: o.id ?? nextId(), dir: o.dir, params: p,
     source: { path: o.path, sha1: o.bytes ? createHash('sha1').update(o.bytes).digest('hex') : '', w: src.w, h: src.h },
-    work, toSource: r.toSource, lab, photo, rampGroups, quant, seg, colours,
+    work, toSource: r.toSource, lab, photo, rampGroups, quant, seg, colours, ...(inner ? { inner } : {}),
     meta: seg.regions.map((g) => ({ colour: Math.max(0, g.group) })),
     zMoves: [], tile: false, tol: d.tol, edits: [], textBoxes: [], fillers: new Map(),
     pm: null as never, fits: [], z: [], prims: [], ramps: [], shapes: [], render: work, iou: [], estRmse: 0, ms: 0,
@@ -193,7 +243,7 @@ export function recompute(s: Scene): void {
   }), w, h, { ids: true, bg: [255, 255, 255] });
   s.render = out.img;
   s.drawn = out.ids;
-  s.estRmse = Math.round(rmse(s.work, out.img) * 1000) / 1000;
+  s.estRmse = Math.round((s.inner ? rmse(crop(s.work, ...(s.inner as [number, number, number, number])), crop(out.img, ...(s.inner as [number, number, number, number]))) : rmse(s.work, out.img)) * 1000) / 1000;
   // IoU of each region's visible pixels in the render vs its labels
   const inter = new Float64Array(s.seg.regions.length), uni = new Float64Array(s.seg.regions.length);
   for (let i = 0; i < w * h; i++) {

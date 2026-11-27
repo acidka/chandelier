@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { analyze } from '../../src/scene/analyze.js';
+import { analyze, cutToCrop } from '../../src/scene/analyze.js';
 import { summary } from '../../src/scene/summary.js';
 import { overlay } from '../../src/scene/overlay.js';
 import { paint, rect, ellipse, below, type RGB } from './scene-fixtures.js';
@@ -61,4 +61,18 @@ describe('analyze', () => {
     expect(off.colours[off.meta[off.seg.map[159 * 400 + 130]].colour].a).toBeLessThan(35);
     expect(s.estRmse).toBeLessThan(off.estRmse);
   });
+
+  it('cutToCrop: a piece that ends in the margin stays whole, one that runs to the margin edge is cut, one only in the margin goes', () => {
+    const w = 10, h = 6, map = new Int32Array(w * h).fill(0);
+    const set = (x0: number, x1: number, y: number, r: number) => { for (let x = x0; x <= x1; x++) map[y * w + x] = r; };
+    set(1, 6, 1, 1); // crosses the crop's left edge (x 3), ends at x 1: whole
+    set(0, 9, 3, 2); // runs from edge to edge: cut to x 3..6
+    set(0, 1, 5, 3); // only in the margin: gone
+    cutToCrop(map, w, h, [3, 0, 4, 6]); // crop x 3..6, full height
+    const row = (y: number) => Array.from(map.subarray(y * w, y * w + w));
+    expect(row(1)).toEqual([-1, 1, 1, 1, 1, 1, 1, -1, -1, -1]);
+    expect(row(3)).toEqual([-1, -1, -1, 2, 2, 2, 2, -1, -1, -1]);
+    expect(row(5)).toEqual([-1, -1, -1, 0, 0, 0, 0, -1, -1, -1]);
+  });
 });
+

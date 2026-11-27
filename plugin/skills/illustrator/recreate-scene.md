@@ -67,8 +67,9 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
    scene, or keep that work beside the scene, not over it.
 5. **Parts.** A part that needs more detail or a cleaner build (a globe, a mark inside a badge, a detailed tree in a
    logo): analyze a `crop` of just that part (with `detail: "high"` for fine detail) and build it with `rect` (where it
-   goes, session units) and its own `layer`. The crop cuts every shape crossing its edge square: make it reach past
-   every free end of the part (tips, tails, swooshes), or put its edge where the part really ends. Frame lines of
+   goes, the crop's place) and its own `layer`. Analyze reads a margin around the crop (`crop_at` = the crop in the
+   analyzed px): a shape crossing the crop edge that ends in the margin stays whole (tips, tails, swooshes); one that
+   runs on further (a background, a line) is cut square at the crop. Frame lines of
    other parts that run through the crop: drop them in the scene and draw them by hand (§ 4); a leaf or tip that
    touches such a line is in the line's region — `split r5 in x y w h` makes the part in the box its own region
    first, so it stays when the line is dropped.

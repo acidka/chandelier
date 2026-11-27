@@ -35,7 +35,7 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   const usedColours = [...new Set(drawnRegs.map((r) => s.meta[r.id].colour))].sort((a, b) => a - b);
   // what the build writes: the drawn shapes' segments (a shared edge counts in each shape that uses it)
   const anchors = s.shapes.reduce((a, sh) => a + sh.loops.reduce((x, l) => x + l.length, 0), 0);
-  const head = { id: s.id, file: o.file, px: [w, h], ...(s.photo ? { photo: true } : {}), regions: regs.length, drawn: drawnRegs.length, colours: usedColours.length, edges: s.pm.edges.length, anchors, est_rmse: s.estRmse, ms: s.ms };
+  const head = { id: s.id, file: o.file, px: [w, h], ...(s.inner ? { crop_at: s.inner } : {}), ...(s.photo ? { photo: true } : {}), regions: regs.length, drawn: drawnRegs.length, colours: usedColours.length, edges: s.pm.edges.length, anchors, est_rmse: s.estRmse, ms: s.ms };
   const lines = [JSON.stringify(head)];
   const limit = o.limit ?? 40;
   let rows = regs.slice(0, limit);

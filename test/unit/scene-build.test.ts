@@ -136,4 +136,31 @@ describe('buildSteps layer handling', () => {
     const r = s.seg.regions[dot], [cx, cy] = r.pole.map(Math.round), i = (cy * s.work.w + cx) * 3;
     expect(Array.from(s.render.rgb.slice(i, i + 3))).toEqual([255, 255, 255]);
   });
+
+  it('a crop is read with a margin (F25): build places the crop on rect, the margin around it; shapes ending in the margin stay whole', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'scene-crop-')), png = join(dir, 'in.png');
+    // a bar from x 40 to 140 (ends in the margin of the crop 50..150), a band across the whole image (cut at the crop)
+    writeFileSync(png, encodePng(paint(300, 200, [rect(40, 90, 100, 20, ORANGE), rect(0, 120, 300, 15, DARK)], { bg: BG, noise: 1 })));
+    const calls: any[] = [];
+    const ctx: any = {
+      tmp: dir, settings: { units: 'pt' },
+      rt: { cmd: async () => ({ ok: false }) },
+      tools: new Map([['batch', { run: async (a: any) => { calls.push(a); return { content: [{ type: 'text', text: JSON.stringify({ results: a.steps.map((st: any) => ({ ok: true, data: Array.isArray(st.args.items) ? { items: st.args.items.map((_: unknown, i: number) => ({ uuid: 'u' + i })) } : {} })) }) }] }; } }]]),
+    };
+    const r1 = await scene.run!({ action: 'analyze', image: png, dir, crop: [50, 50, 100, 100] }, ctx);
+    const head = JSON.parse((r1.content[1] as any).text.split('\n')[0]);
+    expect(head.crop_at).toEqual([20, 20, 100, 100]); // margin 20 % of 100 on every side
+    expect(head.px).toEqual([140, 140]);
+    const out = JSON.parse(((await scene.run!({ action: 'build', id: head.id, rect: [0, 0, 200, 200] }, ctx)).content[0] as any).text);
+    expect(out.rect).toEqual([0, 0, 200, 200]); // the reply names the rect given
+    const shapes = calls[0].steps.filter((x: any) => x.tool === 'create_shape').flatMap((x: any) => x.args.items);
+    // working px → rect: × 2, origin moved by the margin (20 px); paper and band cut at the crop, the bar whole
+    const near = (v: number[], e: number[]) => v.every((x, i) => Math.abs(x - e[i]) < 1.5);
+    const box = (x: any) => [x.x, x.y, x.w, x.h];
+    expect(shapes.some((x: any) => near(box(x), [-20, 80, 200, 40]))).toBe(true); // bar: starts 10 px left of the crop
+    expect(shapes.some((x: any) => near([x.x, x.y, x.w], [0, 140, 200]))).toBe(true); // band: cut at the crop's sides
+    // paths are placed by offset and scale: the working image's origin is the margin's corner
+    expect(calls[0].steps.find((x: any) => x.tool === 'create_path').args).toMatchObject({ x: -40, y: -40, scale: [2, 2] });
+  });
 });
+
