@@ -484,7 +484,7 @@ not committed).
 
 | Run | Wall | Requests | Tool calls (Chandelier) | Input | Output | Tool errors | First request | Quality | RMSE |
 |-----|-----:|---------:|------------------------:|------:|-------:|------------:|--------------:|--------:|-----:|
-| M2 C2v6-1 | 2.4 min | 18 | 23 (17) | 1.01 M | 13.3 k | 0 | 25.3 k | 10 (checklist: dates, weeks, colours, styles, live text) | 0.137 (agent's 1143 px compare); 0.186 by `compare-m2.sh` against the 72 ppi PNG |
+| M2 C2v6-1 | 2.4 min | 18 | 23 (17) | 1.01 M | 13.3 k | 0 | 25.3 k | not scored on the 10-point list; side-by-side: layout, dates, weeks, colours match | 0.137 (agent's 1143 px compare); 0.186 by `compare-m2.sh` against the 72 ppi PNG |
 | Calendar C2v6-1 | 4.8 min | 31 | 31 (19) | 2.02 M | 26.3 k | 4 (3 permission, 1 ref quoting) | 25.4 k | K1, K2, K9, K10 ✅ (13 styles, 7 global swatches, 0 unstyled) | **0.112** January (C2v2-1 0.139, C2rb-1 0.140) |
 
 - **Fixed context went down, turns went up.** The first request carries 25 k tokens (the M2 lean run on 0.4: 40.8 k,
