@@ -1,0 +1,88 @@
+{
+  "run": "bench/results/calendar/C2v6-1",
+  "K1": {
+    "cmyk": true,
+    "artboards": 12,
+    "a4_landscape": true,
+    "names_ok": true,
+    "names": [
+      "01_Січень",
+      "02_Лютий",
+      "03_Березень",
+      "04_Квітень",
+      "05_Травень",
+      "06_Червень",
+      "07_Липень",
+      "08_Серпень",
+      "09_Вересень",
+      "10_Жовтень",
+      "11_Листопад",
+      "12_Грудень"
+    ],
+    "bleed": {
+      "left": 8.5,
+      "top": 8.5,
+      "right": 8.5,
+      "bottom": 8.5,
+      "source": "xmp"
+    },
+    "pass": true
+  },
+  "K2": {
+    "raster": 0,
+    "compound_or_outlines": 0,
+    "pass": true
+  },
+  "K9": {
+    "global_swatches": 7,
+    "paragraph_styles": 13,
+    "unstyled_text": 0,
+    "layers": [
+      "Calendar",
+      "Photo area"
+    ],
+    "pass": true
+  },
+  "K10": {
+    "errors": 0,
+    "warnings": [],
+    "pass": true
+  },
+  "counts": {
+    "all": 1625,
+    "group": 48,
+    "path": 109,
+    "text": 1468
+  },
+  "fonts": {
+    "MontserratRoman-Medium": 948,
+    "MontserratRoman-SemiBold": 304,
+    "MontserratRoman-Bold": 168,
+    "MontserratRoman-ExtraBold": 48
+  },
+  "january": {
+    "rmse": 0.112,
+    "content_box": {
+      "reference": [
+        328.34,
+        38.1,
+        492.51,
+        513.73
+      ],
+      "preview": [
+        328.34,
+        32.15,
+        486.61,
+        519.68
+      ],
+      "shift": [
+        0,
+        -5.95
+      ],
+      "scale": [
+        0.99,
+        1.01
+      ]
+    }
+  }
+}

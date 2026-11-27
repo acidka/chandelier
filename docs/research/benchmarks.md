@@ -471,6 +471,41 @@ comparison; the `.ai` is not committed).
 - Re-opened file: CMYK, 1 artboard 570 × 637.5 pt (ratio 0.894), 121 live texts (Arial / Arial Bold), each with its own
   paragraph style (13), 5 global swatches, named layer and groups, no raster, preflight 0 errors / 0 warnings.
 
+### M2 and calendar on the 0.6 build — 2026-11-27 (arm C2, 1 run each; token use)
+
+The 0.6 working tree (`feature/scene` at `5957842`): 36 tools (59.96 KB of schemas), the split guide (core
+`recreate.md` 11.2 KB + one file per kind of job), brief replies, unknown arguments refused with a hint, units in every
+positional reply. Fresh headless agent (`claude -p`, Opus 5.5) with only this build's `chandelier` server
+(`--strict-mcp-config`), the skill from the working tree (`--plugin-dir`, no MCP server of its own), Read and Skill
+allowed; Claude Code's deferred tool loading on (the default). Verbatim prompts; Illustrator 29.1.0 ru_RU (not
+restarted: two scratch documents from the session's live tests were closed, none open), macOS 27.2, Apple M1, Node
+22.23. Files: `bench/results/m2/C2v6-1/`, `bench/results/calendar/C2v6-1/` (prompt, metrics, PNGs; the `.ai` files are
+not committed).
+
+| Run | Wall | Requests | Tool calls (Chandelier) | Input | Output | Tool errors | First request | Quality | RMSE |
+|-----|-----:|---------:|------------------------:|------:|-------:|------------:|--------------:|--------:|-----:|
+| M2 C2v6-1 | 2.4 min | 18 | 23 (17) | 1.01 M | 13.3 k | 0 | 25.3 k | 10 (checklist: dates, weeks, colours, styles, live text) | 0.137 (agent's 1143 px compare); 0.186 by `compare-m2.sh` against the 72 ppi PNG |
+| Calendar C2v6-1 | 4.8 min | 31 | 31 (19) | 2.02 M | 26.3 k | 4 (3 permission, 1 ref quoting) | 25.4 k | K1, K2, K9, K10 ✅ (13 styles, 7 global swatches, 0 unstyled) | **0.112** January (C2v2-1 0.139, C2rb-1 0.140) |
+
+- **Fixed context went down, turns went up.** The first request carries 25 k tokens (the M2 lean run on 0.4: 40.8 k,
+  full list ~52 k): tool schemas load on demand, and the agent read only the guide's core and `recreate-type.md`
+  (2 Reads, ~4 k tokens each instead of 13 k for the whole guide). Input still rose (M2 0.36 → 1.01 M, calendar
+  0.78 → 2.02 M) because each run made about twice the requests, and every request re-reads the growing context
+  (M2 ends at 74 k per request, the calendar at 92 k).
+- **Where the turns went — M2:** 8 `preview {image, region}` zooms to measure before building (the guide's "measure in
+  close-ups"; 0.4's run measured in 1–2), one batch build, 3 compare previews, one `transform_items` fix, save, and a
+  last look at the exported PNG. No errors. The result is clean (layout, fonts, dates and weeks right; 6 global swatches,
+  13 paragraph styles, preflight 0/0).
+- **Calendar:** 5 measuring zooms, then 3 Bash calls reading `src/runtime/core.jsx` to learn the `AIA.text` / `pstyle`
+  helpers (the run ran inside the repository) and 3 refused calls (the run's rules: `Write` of a builder file and a
+  Bash `$TMPDIR` check were not allowed, so the builder went inline into `run_script {code}`); 3 `run_script` calls
+  (build, two style fixes), 5 compare previews. The refused calls and the source reading are the run set-up, not the
+  server; without them ~22 requests. Quality is the best calendar so far (January rmse 0.112, all automatic checks).
+- **Reading:** the split guide and on-demand schemas cut what each request carries by ~40 %; what costs now is the
+  number of turns, mostly measuring before the build. Next: fewer measuring zooms (one `preview {image, region, sample}`
+  with several samples per part; the `sample` with `reference` comparison after the build), and a builder-friendly
+  helper reference in `run_script`'s help instead of reading the source.
+
 ### Metrics extractor
 
 ```sh
@@ -828,7 +863,7 @@ subagent tokens of the task notification (§ 2g–2i). Sizes: tool list from `no
 | 05 sign panel | v1 manual vs v2 scene | 175 vs 193 k | 53 vs 74 |
 
 Fixed context per request: tool list 16.2 k tokens (0.4) → 17.4 k (0.6, `scene` 3.1 KB; lean profile 4.9 k); guide
-15.5 KB ≈ 4 k tokens (2026-11-25) → 46 KB ≈ 13 k (2026-11-27). No M2 / calendar run on the 0.6 build yet.
+15.5 KB ≈ 4 k tokens (2026-11-25) → 46 KB ≈ 13 k (2026-11-27) → split 2026-11-27: core 11.2 KB + one or two topic files per job. M2 and calendar on the 0.6 build: [below](#m2-and-calendar-on-the-06-build--2026-11-27-arm-c2-1-run-each-token-use) (1.01 M and 2.02 M: smaller requests, twice the turns).
 
 **Why:** tokens ≈ turns × context, every turn re-reads everything. (1) Turns dominate: the cheapest runs have the
 fewest calls (09 v1, 04 v8), the dearest the most (09 v3: 90 calls). (2) Doing more per call saved the most (M2 back to

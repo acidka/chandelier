@@ -1,0 +1,26 @@
+{
+  "label": "calendar-C2v6-1",
+  "file": "/Users/acidka/.claude-personal/projects/-Users-acidka-PhpstormProjects-illustrator-agent/ea4b678d-e0db-47af-8773-5018e6f3d7d9.jsonl",
+  "window": {
+    "from": "2026-11-27T08:46:02.731Z",
+    "to": "2026-11-27T08:50:53.175Z"
+  },
+  "wallMinutes": 4.8,
+  "modelRequests": 31,
+  "inputTokensTotal": 2022201,
+  "inputTokens": {
+    "uncached": 70,
+    "cacheWrite": 84858,
+    "cacheRead": 1937273
+  },
+  "outputTokens": 26341,
+  "toolCalls": 31,
+  "toolCallsByFamily": {
+    "other": 12,
+    "C our MCP": 19
+  },
+  "toolErrorsByFamily": {
+    "other": 3,
+    "C our MCP": 1
+  }
+}
