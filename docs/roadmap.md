@@ -494,8 +494,8 @@ Carried over from 0.5.2 when it was released.
     `full` 3.2 min / 117 k, no extra calls from `brief`; both agents built with one steps-file `batch {results:
     "errors"}`, so create lists never reached them in either mode: −7 k chars only
     ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [ ] `document_info` issues name their items (or a ref per kind): both case-01 agents made extra `find_items`
-    calls to see whose the `unnamedText` / `unstyledText` counts were
+  - [x] ✅ `document_info` issues name their items (or a ref per kind): both case-01 agents made extra `find_items`
+    calls to see whose the `unnamedText` / `unstyledText` counts were — `issueItems` (3 per issue), bug #24, 2026-11-27
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
