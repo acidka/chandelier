@@ -90,7 +90,7 @@ function doEdit(s: Scene, a: any, ctx: Ctx): CallToolResult {
   if (!a.edits?.length) return page(s, ctx, {}, !!a.overlay);
   const r = applyEdits(s, a.edits);
   save(s);
-  return page(s, ctx, { show: r.show, showColour: r.showColour }, !!a.overlay);
+  return page(s, ctx, { show: r.show, showColour: r.showColour, notes: r.notes }, !!a.overlay);
 }
 
 async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {

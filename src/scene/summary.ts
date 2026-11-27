@@ -3,7 +3,7 @@ import { de76, labHex } from './color.js';
 import { findOverlaps } from './overlap.js';
 import type { Scene } from './types.js';
 
-export interface SummaryOpts { show?: number[]; showColour?: number; limit?: number; file?: string }
+export interface SummaryOpts { show?: number[]; showColour?: number; limit?: number; file?: string; /** from the edits just applied (dropped clusters) */ notes?: string[] }
 
 const pct = (v: number) => (v >= 1 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v.toFixed(3));
 const pad = (s: string, n: number) => (s.length >= n ? s + ' ' : s + ' '.repeat(n - s.length));
@@ -88,6 +88,7 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   near.sort((x, y) => x.de - y.de).slice(0, 3).forEach((p) => hints.push(`c${p.b} = c${p.a}? (ΔE ${p.de.toFixed(1)})`));
   regs.filter((r) => r.area > 20 && (2 * r.area) / r.perim < 2.5).slice(0, 3).forEach((r) => hints.push(`r${r.id} sliver ${((2 * r.area) / r.perim).toFixed(1)} px`));
   regs.filter((r) => !['drop', 'text', 'box'].includes(kindOf(s, r.id)) && r.area > total * 0.002 && conf(s, r.id) < 0.8).slice(0, 3).forEach((r) => hints.push(`r${r.id} conf ${conf(s, r.id).toFixed(2)} (merge? tolerance r${r.id} ${(s.tol / 2).toFixed(1)}?)`));
+  if (o.notes?.length) lines.push('dropped: ' + o.notes.join(' · '));
   if (hints.length) lines.push('hints: ' + hints.slice(0, 10).join(' · ') + (hints.length > 10 ? ` (+${hints.length - 10})` : ''));
   return lines.join('\n');
 }

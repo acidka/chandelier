@@ -479,7 +479,7 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F36 | ✅ | 06 v3 | crown leaves touching a dropped frame line belong to the line's region and go with it (no split edit) → fixed 2026-11-27: `split rN in x y w h`: the part of rN in the box becomes a new region with the same ink |
 | F37 | ✅ | 06 v3 | `max_px` doesn't upscale a small crop: `detail: high` can't add resolution → fixed 2026-11-27: `max_px` given: a smaller crop or face is upscaled to it (default unchanged: never above the source pixels, so ids stay) |
 | F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` |
-| F39 | ⏳ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) |
+| F39 | ✅ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) → fixed 2026-11-27: a size drop names the clusters it took (5+ small regions with gaps under 1 % of the image) in a `dropped:` line with their box — wide flat ones as `text x y w h`, the rest as `keep in x y w h` (09 detail high: the bracelet first, 41 regions; 06: the tree's 122 holes and both caption lines). Not spared automatically: small text is a cluster too |
 | F40 | ✅ | 09 v4 | analyze overlays of small crops too small to read: enlarged up to 4× |
 | F41 | ✅ | 09 v5 | a rebuild left items from the first build (r143–r151): the runtime lists 100 created items per step, the build recorded only those — steps now hold ≤ 100 items, leftovers found by name are cleared; live test with 170 items |
 | F42 | ✅ | 09 v5 | refine "corrected" a skin-shadow ink (ΔE 26.8) into a dark brown patch → fixed 2026-11-27: one region missing its ink by more than 2.5 × threshold (ΔE 15) is reported in `left`, not "corrected" |

@@ -147,4 +147,23 @@ describe('drop in a box', () => {
     for (const r of inside) expect(s.meta[r.id].drop).toBe(true);
     expect(s.meta[0].drop).toBeFalsy();
   });
+
+  it('drop < %: names the clusters it took (F39) — a block of detail to keep, a line of small text', () => {
+    // a 4 × 4 block of beads, a row of 8 "letters", 3 lone specks; all small
+    const beads = Array.from({ length: 16 }, (_, i) => ellipse(40 + (i % 4) * 6, 40 + Math.floor(i / 4) * 6, 2, 2, DARK));
+    const letters = Array.from({ length: 8 }, (_, i) => rect(100 + i * 7, 120, 5, 7, BLUE));
+    const specks = [rect(20, 130, 3, 3, ORANGE), rect(180, 20, 3, 3, ORANGE), rect(180, 80, 3, 3, ORANGE)];
+    const s = analyze(paint(240, 160, [...beads, ...letters, ...specks], { bg: BG, noise: 1 }), P, { dir: '/tmp/x', path: 'x.png' });
+    const r = applyEdits(s, ['drop < 0.2']);
+    expect(r.dropped).toBe(24); // the 3 × 3 specks are under the smallest region
+    expect(r.notes).toHaveLength(2);
+    expect(r.notes![0]).toMatch(/^16 at 3\d 3\d \d+ \d+ \(detail\? "keep in /);
+    expect(r.notes![1]).toMatch(/^8 at 100 120 \d+ \d+ \(text\? "text 100 120 /);
+    expect(summary(s, { notes: r.notes })).toMatch(/^dropped: 16 at /m);
+    // keep in the box brings the beads back
+    const box = r.notes![0].match(/keep in ([\d ]+)"/)![1];
+    applyEdits(s, ['keep in ' + box]);
+    expect(s.meta.filter((m, i) => !m.drop && s.seg.regions[i].area && s.seg.regions[i].area < 40)).toHaveLength(16);
+  });
 });
+

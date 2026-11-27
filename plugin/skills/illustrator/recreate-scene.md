@@ -40,7 +40,8 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
 2. **Edit, in one call.** `merge` what is one part (the first id keeps its ink), `drop` noise and photo-only things
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
    `drop < 0.05` drops every tiny region at once, e.g. small text and texture — and with it eyelashes, eyes,
-   earrings and finger detail: `keep r41 r57` them right after, or drop by `drop in x y w h` boxes instead), `text x y w h` over each text block (in the analyzed crop's pixels),
+   earrings and finger detail: the reply's `dropped:` line names each cluster it took with its box — `keep in x y w h`
+   the detail, `text x y w h` the text — or drop by `drop in x y w h` boxes instead), `text x y w h` over each text block (in the analyzed crop's pixels),
    `r8 stroke` on a thin band of one width (a frame, a ring, a line: drawn as a stroke, not a lumpy filled band),
    `split r5 in x y w h` to cut a part off a region, `r10 logo` on marks, `rN circle` / `rect` to force a primitive — only when the **whole** outline is that primitive
    (a disc with a lobe is not a circle: keep it free and fix the round stretch afterwards) —, `c0 = swatch:…` for

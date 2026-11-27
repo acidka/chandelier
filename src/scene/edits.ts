@@ -6,7 +6,7 @@ import { regionStats } from './regions.js';
 import { findOverlaps, multiplyFill } from './overlap.js';
 import type { Scene, Colour } from './types.js';
 
-export interface EditResult { changed: boolean; show?: number[]; showColour?: number; dropped?: number }
+export interface EditResult { changed: boolean; show?: number[]; showColour?: number; dropped?: number; /** what a size drop took (F39) */ notes?: string[] }
 
 const reg = /^r(\d+)$/, ink = /^c(\d+)$/;
 
@@ -22,6 +22,22 @@ function colourOf(spec: string, look: Colour): Colour {
 
 /** apply edits in order; geometry is recomputed once at the end when anything changed. `undo [n]` and `reset` go back
  * to the analyzed state and replay the earlier edits. */
+/** clusters among regions a size drop took: 5 or more small regions lying close together (gaps under 1 % of the
+ * image's longer side, ≥ 3 px). A wide flat cluster reads as a line of text, the rest as detail to keep */
+export function droppedClusters(s: Scene, ids: number[]): string[] {
+  const R = s.seg.regions, gap = Math.max(3, Math.round(0.01 * Math.max(s.work.w, s.work.h)));
+  const up = ids.map((_, i) => i), find = (i: number): number => (up[i] === i ? i : (up[i] = find(up[i])));
+  const near = (a: number[], b: number[]) => a[0] - gap <= b[2] && b[0] - gap <= a[2] && a[1] - gap <= b[3] && b[1] - gap <= a[3];
+  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) if (near(R[ids[i]].bbox, R[ids[j]].bbox)) up[find(i)] = find(j);
+  const groups = new Map<number, number[]>();
+  ids.forEach((id, i) => { const g = find(i); if (!groups.has(g)) groups.set(g, []); groups.get(g)!.push(id); });
+  return [...groups.values()].filter((g) => g.length >= 5).sort((a, b) => b.length - a.length).slice(0, 4).map((g) => {
+    const b = g.reduce((m, id) => { const x = R[id].bbox; return [Math.min(m[0], x[0]), Math.min(m[1], x[1]), Math.max(m[2], x[2]), Math.max(m[3], x[3])]; }, [Infinity, Infinity, -Infinity, -Infinity]);
+    const box = `${b[0]} ${b[1]} ${b[2] - b[0] + 1} ${b[3] - b[1] + 1}`, wide = b[2] - b[0] + 1 >= 4 * (b[3] - b[1] + 1);
+    return `${g.length} at ${box} (${wide ? `text? "text ${box}"` : `detail? "keep in ${box}"`})`;
+  });
+}
+
 export function applyEdits(s: Scene, edits: string[]): EditResult {
   // undo / reset first: they rewrite the history, the rest of this call then applies on top
   let list = edits;
@@ -144,6 +160,8 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
         if (!(pct > 0)) fail('drop < area% (e.g. drop < 0.05)');
         const total = s.work.w * s.work.h;
         ids = R.filter((r) => r.area && s.z[r.id] > 0 && (r.area / total) * 100 < pct && !s.meta[r.id].drop).map((r) => r.id);
+        // a size drop also takes small detail (a bracelet's pearls, an eye, a line of text): name its clusters (F39)
+        if (head === 'drop') res.notes = [...(res.notes ?? []), ...droppedClusters(s, ids)];
       } else {
         const f = t.indexOf('fill');
         if (f >= 0) { if (f !== t.length - 2) fail('drop rA … fill rF | fill none'); fillId = t[f + 1].toLowerCase() === 'none' ? -1 : region(t[f + 1]); }
