@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-27 (bugs #1–#26 fixed or closed; none open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-27 (bugs #1–#26 fixed or closed; #28–#30 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -9,10 +9,13 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 
 ## Open
 
-Illustrator-side issues seen on Windows are quirks C30, C31. No open bugs.
+Illustrator-side issues seen on Windows are quirks C30, C31. (#27 is on branch `future/plan-then-run`.)
 
 | # | Sev. | Found | Where | Bug | Workaround | Fix idea |
 |---|---|---|---|---|---|---|
+| 28 | 🔴 | 2026-11-27, suite 08 v4 | `preview` with several `region`s, large `max_px` and a `reference` | One reply carried > 16 MB of images; Claude Code disconnects a server that writes 16 MB without a message boundary ("wrote >16MB to stdout…"), so the server dropped mid-run: scenes in its temp folder gone, session units back to pt | Fewer regions or a smaller `max_px` per call | Cap a reply's image bytes (shrink every image of the call to fit ~4 MB in total; say so in the reply) |
+| 29 | 🟠 | 2026-11-27, suite 06 v4 (branch `feature/scene-analyze`) | `scene analyze`, own-colour inks (F52) | `colors: 2` came back with 11 inks: the own-colour pass adds inks past the `colors` cap | `cN = c0` merges in the edit | Add own inks only while the scene has fewer than `colors` inks |
+| 30 | 🟡 | 2026-11-27, suite 06 v4 (branch `feature/scene-analyze`) | `scene` part crop with margin (F25) | Frame lines crossing the crop were kept whole into the margin; dropped, their area was repainted with the background ink outside the build rect (hidden only because the background was the same navy) | `drop … fill none` | A dropped region's pieces outside the crop are left empty, not filled |
 
 ## To verify
 
