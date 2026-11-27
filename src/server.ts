@@ -140,6 +140,7 @@ function selectionText(state: unknown): { doc?: string; selection: string; selec
 export function createServer(opts: { transport?: Transport; tmp?: string; tools?: string; channel?: boolean } = {}) {
   const T = opts.transport ?? makeTransport();
   const settings = defaultSettings();
+  if (process.env.CHANDELIER_REPLY === 'brief') settings.reply = 'brief';
   const ctx: Ctx = { T, rt: new Runtime(T, settings), tmp: opts.tmp ?? mkdtempSync(join(tmpdir(), 'aia-')), created: new Set(), settings, tools: new Map(TOOLS.map((t) => [t.name, t])) };
   // tool profile (0.3): CHANDELIER_TOOLS=lean or a list of names; the rest behind the "tools" tool
   const shown = profile(opts.tools ?? process.env.CHANDELIER_TOOLS, TOOLS.map((t) => t.name));

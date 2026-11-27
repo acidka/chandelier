@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { ToolDef } from './types.js';
 
 import { one, refSchema, rect } from './common.js';
+import { getItemsArgs } from './brief.js';
 export { refSchema };
 const FIELDS = ['uuid', 'type', 'name', 'box', 'layer', 'parent', 'text', 'font', 'size', 'fill', 'stroke', 'sw', 'opacity', 'hidden', 'locked', 'selected', 'artboard'] as const;
 const TYPES = ['path', 'text', 'group', 'compound', 'raster', 'placed', 'symbol', 'plugin', 'mesh', 'graph'] as const;
@@ -27,13 +28,14 @@ Returns {total, by_type, items:[…fields], more?}. fields default ["uuid","type
 
 export const get_items: ToolDef = {
   name: 'get_items',
-  description: 'Full detail of items by refs: box (visible) and geo (geometric) [x,y,w,h], layer, parent, opacity, blend, hidden/locked; paths: closed, points count, area, fill, stroke, sw, dash, cap, join, clipping (+ "path": points with in/out handles if points:true); text: kind (point/area/path), contents, anchor (baseline start of point text), lines, align, paragraph_style, runs [{text, font, size, fill, leading, tracking}] (runs:false to skip); groups: items, clipped; placed: file (missing_link); symbols: symbol. limit default 100.',
+  description: 'Full detail of items by refs: box (visible) and geo (geometric) [x,y,w,h], layer, parent, opacity, blend, hidden/locked; paths: closed, points count, area, fill, stroke, sw, dash, cap, join, clipping (+ "path": points with in/out handles if points:true); text: kind (point/area/path), contents, anchor (baseline start of point text), lines, align, paragraph_style, runs [{text, font, size, fill, leading, tracking}] (runs:false to skip); groups: items, clipped; placed: file (missing_link); symbols: symbol. limit default 100. fields: only these keys.',
   shape: {
     refs: refSchema,
     points: z.boolean().optional(), runs: z.boolean().optional(),
     limit: z.number().min(1).max(1000).optional(),
+    fields: z.array(z.string()).optional(),
   },
-  step: (a) => ({ cmd: 'get_items', args: a }),
+  step: (a, ctx) => ({ cmd: 'get_items', args: getItemsArgs(a, ctx.settings) }),
 };
 
 export const get_tree: ToolDef = {

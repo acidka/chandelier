@@ -537,6 +537,70 @@ The tool list (names, descriptions, input schemas) is re-read on every agent req
 History of the full list: 61.6 KB before phase 4 slimming, 48.9 KB after it (2026-11-22), 49.9 KB in 0.2.1. Clients
 that defer tool loading (Claude Code, Claude Desktop) pay only for the names of tools they don't load.
 
+2026-11-27, Node 22.23, `future/mcp-tokens` vs `main` 0.5.3: `reply` and `fields` (plan D16) add 334 chars to the full
+list (55 790 → 56 124 chars, 16.5 k → 16.6 k tokens per request) and 77 to lean (15 334 → 15 411, ~5.0 k).
+
+## Reply size
+
+Every tool result stays in the conversation and is re-read on each later request. `node scripts/reply-size.mjs`
+(after `npm run build`; tokens ≈ characters / 3.5), 2026-11-27, Node 22.23. Fixtures are shaped like the runtime's replies
+(5-digit uuids, boxes to 3 decimals, empty optionals omitted); "brief" = `configure {reply: "brief"}` (plan D16).
+Not a model tokenizer, and not an agent run.
+
+| Reply | Full: chars / tokens | Brief: chars / tokens | Left |
+|-------|---------------------:|----------------------:|-----:|
+| `get_items`, 1 text frame (one run) | 353 / 101 | 117 / 33 | 33 % |
+| `get_items`, 10 text frames, 2 runs each | 4 114 / 1 175 | 992 / 283 | 24 % |
+| `get_items`, 1 path, `points`, 80 anchors | 3 100 / 886 | 110 / 31 | 4 % |
+| `get_items`, 1 path, `points`, 500 anchors (the cap) | 19 141 / 5 469 | 110 / 31 | 1 % |
+| `document_info`, calendar-shaped (12 artboards, 5 swatches, 13 styles) | 1 636 / 467 | 146 / 42 | 9 % |
+| A create step, 100 of 1 468 items listed (`outList`) | 7 624 / 2 178 | 950 / 271 | 12 % |
+| `batch` of 4 such steps (30 605 chars raw) | 20 055 / 5 730, clipped: not valid JSON | 3 909 / 1 117, whole | 19 % |
+
+Unchanged on purpose: `find_items` (its default `uuid, type, name, box` page of 50 is already 31 % of an all-fields
+page: 3 887 vs 12 714 chars), `fonts` (50 faces 3 215 chars; `families_only` exists), `swatches` (40: 2 478 chars; the
+colour is what the next step uses), `preflight` (5 × 4 items: 1 873 chars; `max_items` caps it).
+
+**Re-read, an illustration (not a run):** a reply is in its own request and every later one. Calendar C2-3 (§ 2,
+17 requests, 1.05 M input) with four 100-item create replies on requests 8–11: ~74 k tokens of input with `full`,
+~9 k with `brief` (~6 % of the run); one `document_info` on request 12 −2.6 k; one 80-anchor `get_items` on request 13
+−4.3 k. M2 (`documents`, `run_script`, `preview`, save) does not change. The tool-list cost above (~95 tokens per
+request, ~1.6 k over 17 requests) is paid by every job; the savings only by jobs that opt in.
+
+**Live, the same calls on a real calendar** (C2rb-1's `calendar-2027.ai` below: 12 artboards, 1 468 texts), two servers
+side by side (`CHANDELIER_REPLY=full` / `brief`), 2026-11-27, Illustrator 29.1.0 ru_RU, macOS 27.2, Node 22.23, Apple M1:
+
+| Call | Full: chars / tokens | Brief: chars / tokens |
+|------|---------------------:|----------------------:|
+| `document_info {}` | 1 859 / 531 | 147 / 42 |
+| `get_items`, 1 text frame | 380 / 109 | 114 / 33 |
+| `get_items`, 10 text frames | 3 585 / 1 024 | 970 / 277 |
+| `get_items`, 1 path, `points` (2 anchors) | 323 / 92 | 156 / 45 |
+| `get_items`, 10 texts, `fields: [uuid, contents, paragraph_style]` | 664 / 190 | 664 / 190 |
+| `document_info {fields: [artboards]}` | 932 / 266 | 932 / 266 |
+| `find_items {type: text}` (unchanged on purpose) | 3 375 / 964 | 3 375 / 964 |
+
+With `fields` both modes reply the same, as designed (D16).
+
+**Agent runs: the calendar macro, `full` vs `brief`** — 2026-11-27, same setup. One run each, arm C2 (all tools), the
+verbatim prompt, a fresh Cursor subagent (Claude Opus 5.5, Cursor's quota) per run, one at a time. The subagent reached
+Chandelier through a shell wrapper (`tmp/bench-reply/call.mjs`: one server session per invocation, reply mode fixed
+by the run, each reply's size logged), not as MCP tools. So the per-request tool list and model token totals are not
+measured, and these numbers don't compare with the Claude Code runs in § 2.
+
+| Run | Reply | Wall | Tool calls (errors) | Reply text: chars / tokens | Largest reply | K1 / K2 / K9 / K10 | RMSE (January) |
+|-----|-------|-----:|--------------------:|---------------------------:|--------------:|-------------------|---------------:|
+| C2rf-1 | full | 3.7 min | 25 (2) | 24 611 / 7 032 | 6 776 (`fonts`) | ✅ ✅ ✅ ✅ | 0.138 |
+| C2rb-1 | brief | 4.1 min | 18 (2) | 12 394 / 3 541 | 1 552 | ✅ ✅ ✅ ✅ | 0.140 |
+
+Both runs built the whole calendar with one `run_script {file}` builder (1 589 items, 1 468 live texts), then compared
+previews and saved. **Neither called a tool that `brief` changes** (no `get_items`, `document_info` or create lists;
+`run_script` lists are kept). The halving comes from what each agent chose to do: C2rf-1 made 2 broad `fonts` calls
+(8 447 chars) and 2 more previews. It is not a `brief` effect. Both runs' 2 errors were the sandbox blocking Illustrator
+on the first call. `preview` was half or more of the reply text in both runs (13 images each, not counted in chars).
+**Result: on the calendar as agents build it now, `brief` saves nothing measurable.** It pays off on jobs that
+inspect (`get_items`, `document_info`) or create many items with the granular tools (table above, § Reply size).
+
 ## 2e. Production automation (0.3) — 2026-11-24
 
 One run of `test/live-production.mjs` on the owner's Mac (Apple M1, macOS 27.2.1, Illustrator 29.1 ru_RU, Node 22.23),

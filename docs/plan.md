@@ -217,6 +217,24 @@ The tool list is re-read on every agent request. With the 0.3 tools it is 53.6 K
 The `effects` tool knows 11 types plus raw `{xml}`. Lengths are session units, colours the usual specs (CMYK, RGB,
 gray or a swatch of one).
 
+### D16 — Smaller replies: field projection, opt-in ✅ decided (2026-11-27)
+
+Every tool result stays in the conversation and is re-read on each later request, so a reply's size is paid once per
+remaining turn. Sizes: [benchmarks § Reply size](research/benchmarks.md#reply-size).
+
+| Option | Pros | Cons |
+|--------|------|------|
+| Another encoding (TOON: field names once per array) | Lossless; ~25–35 % off uniform lists vs minified JSON | Can be larger than minified JSON on nested replies; a format note in every request; hosts and tests parse JSON (owner: dropped) |
+| Smaller defaults for everyone | Every job saves | A missing field costs a turn, which is dearer than the bytes |
+| **Opt-in projection** (chosen): `configure {reply: "brief"}` and `fields` on `get_items` / `document_info` | Drops data, not punctuation: created lists 2 178 → 271 tokens, a 500-anchor read 5 469 → 31, a 4-step create batch stops being clipped; runs and anchors aren't computed; `full` is byte-identical | Saves only when a job opts in; +334 chars of tool list (~95 tokens per request) |
+
+Brief shapes (`src/tools/brief.ts`): created/changed items → the first 20 `{uuid, box}` + `count` + `more` (`@n` still sees
+every item); `get_items` → `uuid, type, name, box, geo` (+ `path` with `points`, `runs` with `runs: true`);
+`document_info` → `name, colorSpace, units, artboardCount, counts, issues` (+ the `fields` sections). `find_items`,
+`selection`, `get_tree`, `run_script`, `fonts`, `swatches` and `preflight` keep their replies (already capped, or the next
+step needs the values). `reply` stays in Node; the runtime never sees it. `CHANDELIER_REPLY=brief` starts a server's
+sessions brief (benchmarks and clients that want it always on).
+
 ## 6. Tool catalogue
 
 Every mutating tool can also be a `batch` step: `{"tool": "create_shape", "args": {...}}`.
@@ -227,13 +245,13 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | # | Tool | Actions / what it does | Phase |
 |---|------|------------------------|-------|
 | 1 | `status` | Bridge + Illustrator state, version, open docs, settings, latency; `launch: true`; `restart: true` (quit + relaunch + reopen, refused while any document is unsaved) | 1 |
-| 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate; one server is shared by every agent in a session, so positional results say a pinned frame (`frame: artboard 2, mm …`, 0.5.2) | 1 |
+| 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate; one server is shared by every agent in a session, so positional results say a pinned frame (`frame: artboard 2, mm …`, 0.5.2); `reply: "full" \| "brief"` (D16) | 1 |
 | 3 | `run_script` | Run ExtendScript `code` or a `.jsx` `file` with `args`; helpers available as `AIA.*` (`AIA.at(k, fn)` = coordinates from artboard k); returns JSON; `recipe`: ready builders shipped in `src/recipes/` (calendar-month, labels-sheet, business-card, style-guide, color-chips; `recipe: "list"`; 0.2.1) | 1 |
 | 4 | `batch` | Many tool steps in one call; `@n` refs; per-step `artboard` (coordinates from that artboard); `stop_on_error`; `rollback` of created items; `files` (0.3): the steps over many files — open → steps → save a copy into `out_dir` (or `in_place` / `none`) → `export` (`{name}` = file stem) → close; files already open are skipped; `dry_run` | 1 |
 | 5 | `documents` | `list`, `new` (preset, size, colour mode, **bleed**, artboard grid; `spacing` = gap between trim edges), `open`, `activate`, `save`, `save_as` (ai/pdf/svg/eps; `export: [...]` + `close: true` finish a build in one call), `close`; `new {units}` sets the session units | 1 |
-| 6 | `document_info` | Compact summary: size, colour mode, artboards, layers, counts by type, swatches, fonts, selection | 1 |
+| 6 | `document_info` | Compact summary: size, colour mode, artboards, layers, counts by type, swatches, fonts, selection; `fields` (sections) → a short head + those (D16) | 1 |
 | 7 | `find_items` | Query by type, name (pattern), layer, artboard, text, font, size range, fill/stroke colour, bounds, state; `fields`, `limit` | 1 |
-| 8 | `get_items` | Full detail by refs: geometry, appearance, text runs and styles, path points (opt-in) | 1 |
+| 8 | `get_items` | Full detail by refs: geometry, appearance, text runs and styles, path points (opt-in); `fields` = only those keys (D16) | 1 |
 | 9 | `get_tree` | Layers → groups → items outline with depth/limit | 1 |
 | 10 | `selection` | `get`, `set`, `add`, `clear`, `all` (optionally per artboard/layer) | 1 |
 | 11 | `preview` | PNG of an artboard, items or region returned as an image (what prints: non-printing layers hidden); `max_px`, background; `reference` comparison (also for a region or items: the same part of the reference, 0.5.2) (`save_to` = the render, `<name>.compare.png` = the comparison; `content_box` against each image's own background, a `note` when the boxes differ in shape) with `differences` (0.4: blobs classified shifted — with the measured shift — / missing / extra / changed, and the items in each); one check call: `more` (other artboards), `preflight: true`, `info: true`; `image` (0.5.2): look at a file instead — PNG/JPEG (pure JS, no Illustrator needed) or a .pdf/.ai/.eps/.svg page (rendered by Illustrator, opened and closed unsaved): px, ppi, content box, background; `region` crops and zooms (≤ 8×), `grid` labelled lines, `sample` colours (hex, RGB, naive CMYK); `profile` (0.5.3): edge tracks from tone profiles (points, tone step, colours either side; run on to the sides, broken at sharp turns, short side tracks kept) drawn on the image | 1 |

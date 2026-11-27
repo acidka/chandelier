@@ -448,6 +448,16 @@ Carried over from 0.5.2 when it was released.
   (01, 02, 04 perfect; 03 waits for a better reference, [benchmarks § 2h](research/benchmarks.md)); owner adds logo,
   illustration, poster, label
 - [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
+- [ ] **Smaller replies** (branch `future/mcp-tokens`, plan D16): only the fields a call needs
+  - [x] ✅ `configure {reply: "full" | "brief"}` (Node only) and `fields` on `get_items` / `document_info`; brief: created
+    items as the first 20 `{uuid, box}`, `get_items` head (runs and anchors not computed), `document_info` head;
+    `full` byte-identical; `scripts/reply-size.mjs` ([benchmarks § Reply size](research/benchmarks.md#reply-size))
+  - [x] ✅ Live check of `get_items` / `document_info` `fields` and `brief` on a real 12-artboard calendar (2026-11-27)
+  - [x] ✅ Measure: calendar macro `brief` vs `full`, one Cursor subagent run each (2026-11-27): both pass K1/K2/K9/K10.
+    Neither used a tool that `brief` changes (one `run_script` builder), so there was no `brief` effect to measure
+    ([benchmarks § Reply size](research/benchmarks.md#reply-size))
+  - [ ] Decide whether the guide and skill should tell agents to switch it on: measure a job that inspects or creates
+    with the granular tools (e.g. a recreate case) first
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -627,3 +637,5 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-25 | Bugs #13–#15 from recreate suite run 1 fixed: creating with a locked active layer (quirk C32, all create tools), gradient on live text refused with a hint instead of rendering black (quirk C33), `preview {image}` samples read the whole image, also outside `region`; live-release and unit checks |
 | 2026-11-25 | Owner on suite run 1: 01, 02, 04 (v8) perfect; 03 on hold until a better reference photo replaces the current one (benchmarks § 2h) |
 | 2026-11-25 | **0.5.3 released**: recreate tools (`preview {image, profile}`, `create_path {fit, shade, map, extend, clip_to}`), the general recreate guide, bugs #13–#15 |
+| 2026-11-27 | Smaller replies (plan D16, TOON considered and dropped): `configure {reply: "brief"}`, `fields` on `get_items` / `document_info`; reply sizes in benchmarks § Reply size (a create list 2 178 → 271 tokens, a 4-step create batch no longer clipped); tool list 55.8 → 56.1 KB, budget 56.5 KB |
+| 2026-11-27 | Smaller replies, measured live: `brief` `document_info` 531 → 42 tokens and 10 `get_items` 1 024 → 277 on a real calendar. Calendar macro `full` vs `brief` (one Cursor subagent run each, shell wrapper): both pass, 7.0 k vs 3.5 k reply tokens. The gap came from what each agent chose to do, not from `brief`: neither called a tool that `brief` changes |

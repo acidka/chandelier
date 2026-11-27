@@ -4,6 +4,7 @@ import { resolve, dirname, basename, extname, join } from 'node:path';
 import type { ToolDef, Step, Ctx } from './types.js';
 import { fail, J, ArgError } from './types.js';
 import { clip, errorText, runStep } from './respond.js';
+import { project } from './brief.js';
 import { scriptPaths } from '../platform.js';
 import { documents } from './documents.js';
 import { export_tool } from './export.js';
@@ -71,7 +72,7 @@ files: run the steps on each file (paths, folders, globs "jobs/*.ai"): open → 
     }, { timeout: a.timeout });
     if (!env.ok) return { content: [{ type: 'text', text: errorText(env) }], isError: true };
     const d = env.data!;
-    d.results.forEach((r, i) => { if (r.ok) tools.get(a.steps[i].tool)?.after?.(r.data, parsed[i], ctx); });
+    d.results.forEach((r, i) => { if (r.ok) { tools.get(a.steps[i].tool)?.after?.(r.data, parsed[i], ctx); r.data = project(a.steps[i].tool, r.data, parsed[i], ctx.settings); } });
     let out: unknown = d;
     if (a.results === 'errors') out = { ...d, results: d.results.map((r, i) => (r.ok ? null : { step: i, ...r })).filter(Boolean) };
     const content: { type: 'text'; text: string }[] = [{ type: 'text', text: clip(J(out)) }];

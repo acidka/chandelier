@@ -33,6 +33,7 @@ node test/live-w1-activate.mjs    # Windows, desktop session: save/export with I
 scripts/windows/run-interactive.ps1  # over SSH: run a command in the VM's desktop session (live tests need it)
 claude plugin validate plugin     # Claude Code plugin (plugin/: manifest, skill, commands); marketplace in .claude-plugin/
 node scripts/schema-size.mjs      # size of the tool list agents re-read on every request (budget: unit test)
+node scripts/reply-size.mjs       # reply sizes, configure reply "full" vs "brief" (after npm run build; exit 1 if a brief shape drifts)
 node scripts/cep/install.mjs --link  # dev-install the Chandelier panel (CEP) into Illustrator; --debug (DevTools :8098), --uninstall (docs/panel-plan.md)
 CHANDELIER_TRANSPORT=panel npm run test:live  # the live suite through the panel (open Window > Extensions > Chandelier first)
 claude --dangerously-load-development-channels server:<name>  # with CHANDELIER_CHANNEL=1 on that server: panel chat wakes the session (docs/panel-plan.md)
