@@ -48,6 +48,10 @@ claude --dangerously-load-development-channels server:<name>  # with CHANDELIER_
 - **Docs are always current.** Any change to design, tools or process updates the docs in the same commit
   (tick or remove the roadmap item, add a row at the end of the development log in `CHANGELOG.md`, keep tool tables
   in `docs/plan.md` true). A release adds a row to the releases table in `CHANGELOG.md` and in the README's status.
+- **Release order.** Bump every manifest (package.json, `src/version.ts`, plugin.json, marketplace.json, server.json,
+  the panel manifest) and the exact version in `plugin/launch.mjs` (unit test `release-meta`); the owner publishes to
+  npm **before** `main` is pushed, since the plugin on `main` starts that exact version; then tag, GitHub release
+  with the `.mcpb`, and `mcp-publisher publish`.
 - **The README is the project's face.** When status, numbers, tools or install steps change, update it too; every
   number in it comes from `docs/research/benchmarks.md`.
 - **Client files never enter git.** Real jobs, their reference images and outputs live in the git-ignored `tmp/`;

@@ -15,6 +15,14 @@ describe('release metadata', () => {
     expect(json('plugin/.claude-plugin/plugin.json').version).toBe(pkg.version);
     expect(json('.claude-plugin/marketplace.json').plugins[0].version).toBe(pkg.version);
   });
+  it('the plugin launcher pins this exact npm version (Claude directory: no ranges)', () => {
+    const launcher = readFileSync(new URL('../../plugin/launch.mjs', import.meta.url), 'utf8');
+    expect(launcher).toContain(`'chandelier-mcp@${pkg.version}'`);
+  });
+  it('the plugin folder has a README for its directory listing', () => {
+    const readme = readFileSync(new URL('../../plugin/README.md', import.meta.url), 'utf8');
+    expect(readme.split(/\s+/).length).toBeGreaterThanOrEqual(40);
+  });
   it('a dev install\'s panel .debug file (DevTools port) never ships', () => {
     expect(pkg.files).toContain('!dist/cep/.debug');
     expect(readFileSync(new URL('../../scripts/build-mcpb.mjs', import.meta.url), 'utf8')).toMatch(/endsWith\('\.debug'\)/);

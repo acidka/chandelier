@@ -3,13 +3,15 @@
 // Why a launcher: Windows has no `npx` executable, only `npx.cmd`, which needs a shell, and a plugin's mcpServers
 // entry can't differ per OS. `node` is required on both, so the plugin runs `node launch.mjs` and this file runs npx.
 // --prefix keeps npx from resolving this repository's own package when Claude Code runs inside it (quirk C25).
+// The package version is pinned exactly (Claude directory rule; a unit test keeps it equal to package.json), so npm must
+// have that version before the plugin that names it is pushed.
 // CHANDELIER_MCP_SPEC overrides the package spec (tests: a packed .tgz).
 import { spawn } from 'node:child_process';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const spec = process.env.CHANDELIER_MCP_SPEC || 'chandelier-mcp@^0.6.1';
+const spec = process.env.CHANDELIER_MCP_SPEC || 'chandelier-mcp@0.6.2';
 // --package + the bin name: works for a registry range and for a .tgz path alike
 const args = ['-y', '--prefix', root, '--package', spec, 'chandelier-mcp'];
 // Windows: npx.cmd runs through cmd, as ONE command line (separate args with shell:true are deprecated, DEP0190).
