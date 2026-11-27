@@ -65,7 +65,7 @@ export const create_text: ToolDef = {
   description: `Create text frames. Atomic: if styling fails the frame is removed.
 point (x, y; y = first BASELINE unless y_ref:"top"; align left|center|right anchors at x) · area (x, y, w, h; reports overset) · path (on_path = a path ref; keep_path copies it). kind defaults from the props given.
 Character: font (fuzzy), size, fill/color, stroke, leading, tracking, baseline_shift, underline, strikethrough, caps, horizontal_scale, character_style. Paragraph: align, paragraph_style, space_before/after, indents, hyphenation (sizes in pt).
-Placement: layer or parent. Many at once: items:[{text, x, y, …}] with shared props at the top level, or grid {x, y, cols, dx, dy, cells, col_props} for tables and calendars (x, y = first cell; align applies per cell; name "Day {row}-{col}" or "{n}" names each cell).
+Placement: layer or parent. Many at once: items:[{text, x, y, …}] with shared props at the top level, or grid {x, y, cols, dx, dy, cells, col_props} for tables and calendars (x, y = first cell; align applies per cell; name with {row} {col} {n}: one per cell).
 Returns {count, items:[{uuid, name, type, box}], overset?}.`,
   shape: { ...textProps, ...placeShape, items: itemsSchema(5000), grid: gridShape.optional() },
   step: (a) => {

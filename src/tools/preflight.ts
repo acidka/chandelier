@@ -16,7 +16,7 @@ export const preflight: ToolDef = {
 errors: missing_font, broken_link, rgb_in_cmyk (paths, text, images), overset_text, white_overprint ·
 warnings: registration_color, low_res (< min_dpi 300), empty_text, default_text (unnamed 12 pt Myriad), off_artboard, small_text (< min_text_pt 5), hairline (< hairline_pt 0.25), no_bleed (art at the edge, no bleed), low_contrast (WCAG AA; RGB documents or contrast:true), off_token (outside tokens {colors, fonts, sizes}) ·
 info: spot_color (real spots only), overprint, transparency, live_text, empty_group.
-Also inks (plates, spots) and the bleed. ignore: categories; max_items per category (20); artboard (index) or refs: check only those items.`,
+Also inks (plates, spots) and the bleed. ignore: categories; max_items per category (20); artboard or refs: only those items.`,
   shape: {
     ignore: z.array(z.enum(CATS)).optional(),
     artboard: z.number().min(0).optional(),

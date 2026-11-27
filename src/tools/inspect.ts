@@ -28,7 +28,7 @@ Returns {total, by_type, items:[…fields], more?}. fields default ["uuid","type
 
 export const get_items: ToolDef = {
   name: 'get_items',
-  description: 'Full detail of items by refs: box (visible) and geo (geometric) [x,y,w,h], layer, parent, opacity, blend, hidden/locked; paths: closed, points count, area, fill, stroke, sw, dash, cap, join, clipping (+ "path": points with in/out handles if points:true; compound: "subpaths" [{closed, path}]); text: kind (point/area/path), contents, anchor (baseline start of point text), lines, align, paragraph_style, runs [{text, font, size, fill, leading, tracking}] (runs:false to skip); groups: items, clipped; placed: file (missing_link); symbols: symbol. limit default 100. Default reply: uuid, type, name, box, geo (+ path with points, runs with runs:true); fields: exactly these keys.',
+  description: 'Full detail of items by refs: box (visible) and geo (geometric) [x,y,w,h], layer, parent, opacity, blend, hidden/locked; paths: closed, points count, area, fill, stroke, sw, dash, cap, join, clipping (+ "path": points with in/out handles if points:true; compound: "subpaths"); text: kind (point/area/path), contents, anchor (baseline start of point text), lines, align, paragraph_style, runs [{text, font, size, fill, leading, tracking}] (runs:false to skip); groups: items, clipped; placed: file (missing_link); symbols: symbol. limit default 100. Default reply: uuid, type, name, box, geo (+ path with points, runs with runs:true); fields: exactly these keys.',
   shape: {
     refs: refSchema,
     points: z.boolean().optional(), runs: z.boolean().optional(),

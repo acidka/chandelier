@@ -34,11 +34,12 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   let rows = regs.slice(0, limit);
   if (o.show?.length) rows = o.show.map((id) => s.seg.regions[id]).filter((r) => r && r.area > 0);
   if (o.showColour !== undefined) rows = regs.filter((r) => s.meta[r.id].colour === o.showColour);
-  lines.push('id    colour   area%   kind      z    next              conf c    name');
+  // where (F49): the region's box in the analyzed image's px, so ids can be picked without reading the overlay
+  lines.push('id    colour   area%   kind      z    where           next              conf c    name');
   for (const r of rows) {
     const c = s.colours[s.meta[r.id].colour];
     const next = [...r.nbrs.entries()].filter(([n]) => s.seg.regions[n].area > 0).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([n]) => 'r' + n).join(' ');
-    lines.push(pad('r' + r.id, 6) + pad(labHex(c.L, c.a, c.b), 9) + pad(pct((r.area / total) * 100), 8) + pad(kindOf(s, r.id), 10) + pad(String(s.z[r.id]), 5) + pad(next || '-', 18) + pad(conf(s, r.id).toFixed(2).replace(/^0/, ''), 5) + pad('c' + s.meta[r.id].colour, 5) + (s.meta[r.id].name ?? ''));
+    lines.push(pad('r' + r.id, 6) + pad(labHex(c.L, c.a, c.b), 9) + pad(pct((r.area / total) * 100), 8) + pad(kindOf(s, r.id), 10) + pad(String(s.z[r.id]), 5) + pad(`${r.bbox[0]},${r.bbox[1]} ${r.bbox[2] - r.bbox[0] + 1}x${r.bbox[3] - r.bbox[1] + 1}`, 16) + pad(next || '-', 18) + pad(conf(s, r.id).toFixed(2).replace(/^0/, ''), 5) + pad('c' + s.meta[r.id].colour, 5) + (s.meta[r.id].name ?? ''));
   }
   if (!o.show && o.showColour === undefined && regs.length > limit) {
     const rest = regs.slice(limit), max = (rest[0].area / total) * 100;

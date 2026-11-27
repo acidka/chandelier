@@ -461,7 +461,7 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F17 | ⏳ | 08 v2 | refine's tightened tolerances (0.4) follow JPEG noise; its rmse never moved in run 2 |
 | F18 | ⏳ | 08 v1, v2 | thin constant-width outlines come out as lumpy filled bands (both runs redrew them as stroked centrelines) |
 | F19 | ⏳ | 08 v2 | forcing `circle` on a disc whose outline is only partly round throws the fit 5 mm off |
-| F20 | ⏳ | 04 v10 | `create_path {map}` is projective, the scene maps bilinear: hand-built parts sat ~40 px off until the agent wrote its own map |
+| F20 | ✅ | 04 v10 | `create_path {map}` is projective, the scene maps bilinear: hand-built parts sat ~40 px off until the agent wrote its own map → fixed 2026-11-27: `create_path {map: {from, to, bilinear: true}}` maps like the scene (inverse bilinear); guide § 1 says when |
 | F21 | ✅ | 04 v9, v10 | first build to a new layer warned "Nothing found for layer:…": a new layer gets no delete step |
 | F22 | ⏳ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show |
 | F23 | ⏳ | 08 v2 | `scene` used far more calls than the baseline on flat art (16 scene + 34 other vs 19 in total) |
@@ -489,13 +489,13 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F46 | ✅ | 05 v1, v2 | `get_items {points}` on a compound path fails with MRAP (twice in both runs) → fixed 2026-11-27: not reproduced (no MRAP in 3 live tries); the real gap: `points` gave no points for compound paths — now `subpaths [{closed, path}]` |
 | F47 | ✅ | 09 v6 | `text_boxes` gave the caption's ink as `#ffffff` (the text is dark grey) → fixed 2026-11-27: the text ink is the one whose regions lie inside another ink's region (letters on the paper), else the one contrasting most with what it sits on, not the largest region |
 | F48 | ✅ | 09 v6 | `drop in x y w h` dropped nothing when the patch is part of a large region (a black blob under the brim that belongs to the sweater's r1) → fixed 2026-11-27: nothing wholly inside: the error names the regions the box cuts; `drop in x y w h fill rF` repaints their part of the box with rF |
-| F49 | ⏳ | 09 v6, v7 | the summary has no region positions: agents map overlay labels back to px to pick ramp / drop ids (a `where` box column, or ids by point) |
+| F49 | ✅ | 09 v6, v7 | the summary has no region positions: agents map overlay labels back to px to pick ramp / drop ids (a `where` box column, or ids by point) → fixed 2026-11-27: summary column `where` = region box in analyzed px; guide § 5.0 step 1 |
 | F50 | ✅ | 09 v7 | `text_boxes` `cap` equals the box height (10.16 / 24.19 mm), not a cap height (as F44) → fixed 2026-11-27: as F44 |
 | F51 | ⏳ | 09 v7 | a part scene's crop edge shows as a square seam where its hair meets the main scene's black |
 | F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
-Other tools: bugs.md #16 (`path_ops` box frame in batch steps; not reproduced), #17 (preflight lists every shade step; fixed 2026-11-27); `fonts` finds
-no family match for "Myriad Pro Bold" when only Myriad Variable Concept is installed (no suggestion).
+Other tools: bugs.md #16 (`path_ops` box frame in batch steps; not reproduced), #17 (preflight lists every shade step; fixed 2026-11-27); `fonts` found
+no family match for "Myriad Pro Bold" when only Myriad Variable Concept is installed (no suggestion) — fixed 2026-11-27: a font that is not found lists up to 6 installed faces whose family starts with the same word.
 
 ### Guide gaps (recreate.md)
 

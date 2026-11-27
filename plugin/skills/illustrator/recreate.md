@@ -61,6 +61,7 @@ Skip what already exists (a document, a reference artboard): reuse it.
     the artwork follows it. Keeping one uniform scale and letting the panel overflow (or centring it) cut a side off
     in a test run and broke the object's shape.
   - In `create_path`: `scale: [sx, sy]` scales x and y apart; `map: {from: 4 photo corners, to: 4 panel corners}`
+    (`bilinear: true` for the same map a `scene {map, bilinear}` used, so hand-drawn parts line up with the scene)
     (with `fit`) maps measured points before fitting. Shapes and text: convert positions with the same map.
   - The box holds the **whole** face and nothing else (no side faces, flaps, binding, table). It is also your
     `reference_crop`; a crop that cuts part of the face off loses that part's shape.
@@ -191,9 +192,11 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
    the artwork drawn a little off (a 620 × 617 crop for a square: fine); an image with a different shape (a margin, a
    caption strip) is cropped to the artwork first, and positions you place by hand come from the stretched image's px
    (the summary's `px`), not the source's.
-   Read the table (the 15 largest regions; `show r40-r80` lists others) and the overlay (ids on the image | flat render). `photo: true` means lighting was flattened (§ 1:
+   Read the table (the 15 largest regions; `where` = each region's box in the analyzed image's px, to pick ids for
+   `drop`, `ramp`, `text` without reading labels off the overlay; `show r40-r80` lists others) and the overlay (ids on the image | flat render). `photo: true` means lighting was flattened (§ 1:
    light is not artwork); a softly shaded **artwork** detected as a photo (petals, skin) → analyze with `photo: false`
-   to keep its shading as ramp hints. Choose crop, map and `max_px` once: analyzing again with other values gives new region ids.
+   to keep its shading as ramp hints. **One analyze per job** (and one per part crop): choose crop, map, `max_px` and `photo` once — analyzing again
+   with other values gives new region ids, and the edits made so far no longer apply.
    **Flat inks rendered with a material** (gold foil, emboss, print on textured paper, a mockup's lighting): give
    `colors` = the number of flat inks in the artwork (`colors: 2` for one foil ink on paper). The default splits the
    material's shading into a dozen inks and hundreds of specks.

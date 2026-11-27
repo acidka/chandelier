@@ -479,7 +479,7 @@ $.global.AIA = (function () {
     if (!f) {
       // exact "Family Style" or PostScript name -> family name alone = its regular style -> PostScript prefix
       var norm = function (s) { return String(s).toLowerCase().replace(/[\s\-_]+/g, ''); };
-      var want = norm(name), famRegular = null, famRank = -1, prefix = null;
+      var want = norm(name), famRegular = null, famRank = -1, prefix = null, close = [], first = norm(String(name).split(/[\s\-_]+/)[0]);
       for (var i = 0; i < app.textFonts.length; i++) {
         var tf = app.textFonts[i], st = String(tf.style), fam = norm(tf.family);
         if (norm(tf.family + st) === want || norm(tf.name) === want) { f = tf; break; }
@@ -488,10 +488,12 @@ $.global.AIA = (function () {
           if (famRegular === null || rank > famRank) { famRegular = tf; famRank = rank; }
         }
         if (prefix === null && norm(tf.name).indexOf(want) === 0) prefix = tf;
+        // same first word of the family (Myriad Pro Bold -> Myriad Variable Concept): named in the error
+        if (first.length >= 3 && close.length < 6 && fam.indexOf(first) === 0) close.push(tf.name);
       }
       if (!f) f = famRegular !== null ? famRegular : prefix;
     }
-    if (!f) throw new Error('Font not found: "' + name + '". Try the PostScript name, e.g. "Arial-BoldMT".');
+    if (!f) throw new Error('Font not found: "' + name + '".' + (close.length ? ' Installed with that name: ' + close.join(', ') + '.' : '') + ' Try the PostScript name, e.g. "Arial-BoldMT", or fonts {query}.');
     fontCache[name] = f;
     return f;
   };

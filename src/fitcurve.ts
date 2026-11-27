@@ -309,3 +309,24 @@ export function shadeToD(parts: number[][][], o: ShadeOpts): { ds: string[]; opa
   }
   return { ds, opacity: Math.round(a * 10000) / 100 };
 }
+
+/** Bilinear map between two quadrilaterals (TL, TR, BR, BL), the scene's `bilinear` rectify (tapered faces): a point
+ * in `from` → its (u, v) by Newton on the bilinear equation → the same (u, v) in `to` (F20: create_path {map} was
+ * projective only, so parts drawn by hand sat ~40 px off a bilinear scene). */
+export function bilinearMap(from: number[][], to: number[][]): (p: number[]) => number[] {
+  const [A, B, C, D] = from, at = (q: number[][], u: number, v: number) => [0, 1].map((k) => (1 - v) * ((1 - u) * q[0][k] + u * q[1][k]) + v * ((1 - u) * q[3][k] + u * q[2][k]));
+  return (p) => {
+    let u = 0.5, v = 0.5;
+    for (let it = 0; it < 30; it++) {
+      const f = at(from, u, v), ex = f[0] - p[0], ey = f[1] - p[1];
+      // partial derivatives of the bilinear map
+      const du = [0, 1].map((k) => (1 - v) * (B[k] - A[k]) + v * (C[k] - D[k])), dv = [0, 1].map((k) => (1 - u) * (D[k] - A[k]) + u * (C[k] - B[k]));
+      const det = du[0] * dv[1] - du[1] * dv[0];
+      if (Math.abs(det) < 1e-12) break;
+      const su = (ex * dv[1] - ey * dv[0]) / det, sv = (du[0] * ey - du[1] * ex) / det;
+      u -= su; v -= sv;
+      if (Math.abs(su) + Math.abs(sv) < 1e-10) break;
+    }
+    return at(to, u, v);
+  };
+}

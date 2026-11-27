@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { ToolDef } from './types.js';
 import { ArgError } from './types.js';
-import { fitToD, shadeToD, projective } from '../fitcurve.js';
+import { fitToD, shadeToD, projective, bilinearMap } from '../fitcurve.js';
 import { styleShape, placeShape, STYLE_HELP, itemsSchema } from './common.js';
 
 const xy = z.array(z.number()).length(2);
@@ -13,7 +13,7 @@ const pathProps = {
   fit: z.array(z.any()).optional().describe('measured points [[x,y],…] or several lists (joined by lines) → smooth curve, anchors at extremes'),
   tolerance: z.number().positive().optional().describe('fit: max miss (default 1)'),
   extend: z.union([z.number(), z.array(z.number()).length(2)]).optional().describe('fit: run on past the ends ([start, end])'),
-  map: z.object({ from: z.array(xy).length(4), to: z.array(xy).length(4) }).optional().describe('fit: 4-point map applied first'),
+  map: z.object({ from: z.array(xy).length(4), to: z.array(xy).length(4), bilinear: z.boolean().optional() }).optional().describe('fit: 4-point map applied first (bilinear: as scene)'),
   shade: z.object({ to: z.union([z.number(), z.array(z.array(z.number()))]), steps: z.number().int().min(2).max(60).optional(), taper: z.number().min(0).optional() }).optional()
     .describe('fit = edge: multiply fade (opacity, fill) to none at to (distance or next edge points); taper ends'),
   clip_to: z.union([z.string(), z.number()]).optional().describe('path ref: the new paths go in a clip group masked by a copy'),
@@ -51,7 +51,7 @@ function withFit(a: Record<string, any>): Record<string, any> {
     const rest = Object.fromEntries(Object.entries(o).filter(([k]) => !FIT.includes(k)));
     const shade = o.shade;
     try {
-      const m = g('map') ? projective(g('map').from, g('map').to) : null;
+      const mp = g('map'), m = mp ? (mp.bilinear ? bilinearMap : projective)(mp.from, mp.to) : null;
       if (m) parts = parts.map((l: number[][]) => l.map(m));
       const fo = { tolerance: g('tolerance'), extend: g('extend') };
       if (!shade) return [{ ...rest, d: fitToD(parts, o.closed ?? shared.closed ?? false, fo).d }];
