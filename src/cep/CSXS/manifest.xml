@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Chandelier panel (CEP). Illustrator 2021 (25) and later; CEP 9+ (CSXS 9.0). Unsigned: needs PlayerDebugMode
      (scripts/cep/install.mjs sets it). Window > Extensions > Chandelier opens it. -->
-<ExtensionManifest Version="7.0" ExtensionBundleId="io.github.acidka.chandelier" ExtensionBundleVersion="0.5.3"
+<ExtensionManifest Version="7.0" ExtensionBundleId="io.github.acidka.chandelier" ExtensionBundleVersion="0.6.0"
   ExtensionBundleName="Chandelier" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <ExtensionList>
-    <Extension Id="io.github.acidka.chandelier.panel" Version="0.5.3" />
+    <Extension Id="io.github.acidka.chandelier.panel" Version="0.6.0" />
   </ExtensionList>
   <ExecutionEnvironment>
     <HostList>

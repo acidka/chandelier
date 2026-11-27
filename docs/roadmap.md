@@ -411,7 +411,7 @@ a file, and the skill said "measure in pixels" without a way to.
 - [x] ✅ Bugs fixed (2026-11-25, [bugs.md](bugs.md)): gradient angles (#1), `preview {reference}` with region/refs (#2), any zoom in `preview {image}` (#3), restart past the links dialog (#4), tool-list headroom 54.1 KB (#6); PDF pages in `preview {image}` verified live (V1); live-release covers them. #7–#12 fixed the same day; #5 reproduced and found to be Illustrator's own (quirk C30, [windows-plan § 16](windows-plan.md))
 - [x] ✅ Release 0.5.2 (2026-11-25): npm, GitHub release with the .mcpb, MCP Registry (0.5.2 latest, checked through its API); faster free-form recreation and the fresh-agent trial carry over to the next milestone
 
-## Milestone 🎯 0.6 — faster free-form recreation ⏳
+## Milestone 🎯 0.6 — faster free-form recreation ✅ released 2026-11-27 (0.6.0)
 
 Carried over from 0.5.2 when it was released.
 
@@ -427,7 +427,7 @@ Carried over from 0.5.2 when it was released.
   - [x] ✅ S2 (2026-11-26): primitive recognition, tone ramps, translucent overlaps (multiply)
   - [x] ✅ S3 (2026-11-26): `refine` loop (render-based ink fix, re-fit missing edges, undo when worse)
   - [x] ✅ S4 (2026-11-26/27): text boxes, logo groups, placeholders; recreate.md § 5.0 with the purpose (organic, irregular artwork; owner-delegated 2026-11-27); plan.md tool table; flag lifted, budget 59.5 KB (2026-11-27)
-  - [ ] Suite pairs on the release build: 09 v5, 05 and 07 (manual + scene), 01 and 02 (scene listed) — 2026-11-27
+  - [ ] Suite pairs on the release build: 09 v5, 05 and 07 (manual + scene), 01 and 02 (scene listed) — 2026-11-27; owner: released first, the pairs run on 0.6.0
 - [ ] **Faster free-form recreation.** The subagent test (2026-11-25) took ~24 min (99 tool calls, ~235 k tokens,
   ~15 s per call — model time, not Illustrator) against ~3 min for layout jobs such as the calendar. Where it went:
   writing and debugging 7 scripts for the method (profiles, anchor fit, shared curves, shading, batch generator);
@@ -732,3 +732,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-27 | Token use: `recreate.md` split (core 11.2 KB + type / marks / scene / free-form / shading files); unknown arguments refused with a hint; `units:` in every positional reply; `box_format` next to `content_box`; suite records carry tokens and flag runs over 1.3× the case's best; M2 and calendar measured on the 0.6 build (first request 25 k tokens, was 40.8 k; 18 / 31 requests → 1.01 / 2.02 M input; calendar January rmse 0.112, best so far) |
 | 2026-11-27 | Fewer turns and leftovers: `preview {region: [list]}` (up to 6 zooms per call), `run_script {recipe: "help"}` (generated helper reference), `create_path {fit: [list, {onto}]}` (a list's end lands on another curve), `CHANDELIER_APP` on Windows (versioned ProgID; VM: 31.0.0 attached, wrong path refused, default unchanged). The unknown-argument check found 3 test bugs that had passed silently (`get_items {props}`, `find_items {refs}` ×3): fixed. Unit + all macOS live suites pass; tool list 59.92 KB after trimming `scene` / `preview` / `create_text` descriptions |
 | 2026-11-27 | M2 and calendar re-run after the fewer-turns changes (one run each, [benchmarks](research/benchmarks.md#m2-and-calendar-on-the-06-build--2026-11-27-arm-c2-1-run-each-token-use)): M2 1.01 → 0.84 M, 18 → 15 requests; calendar 2.02 → 1.10 M, 31 → 18 requests, 4.8 → 3.4 min, quality kept (January rmse 0.115, K1/K2/K9/K10 ✅). `preview {region: [list], reference}` now allowed (each region compared with its part of the reference) |
+| 2026-11-27 | **Release 0.6.0**: scene tool, smaller replies, fewer turns, curve fitting, bugs #16–#26, `CHANDELIER_APP`, split recreate guide. Checks: unit 321 (macOS) / 327 (Windows VM), every macOS live suite; Windows live, live-release, live-layout, live-look, live-scene, live-bugs-1127 pass, live-edit fails on its undo check (quirk C31: Illustrator merged two calls into one undo step; the same probe on 0.5.3 does it too, 3/5 vs 1/5 — not a regression) |
