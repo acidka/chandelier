@@ -56,8 +56,9 @@ top-left as their frame.
 
 ## 4. Recreating a design from an image
 
-The full method, including smooth free-form shapes and the compare loop, is in
-[plugin/skills/illustrator/recreate.md](../plugin/skills/illustrator/recreate.md). The short version:
+The full method, including smooth free-form shapes and the compare loop, starts in
+[plugin/skills/illustrator/recreate.md](../plugin/skills/illustrator/recreate.md) (the core every job reads), whose table
+names the one or two `recreate-*.md` files a design needs (type, marks, scene, free-form, shading). The short version:
 
 1. Read the image; note the page's pixel box (exclude any background around a photographed page).
 2. Page format from the aspect ratio: 1.414 A-series (landscape if wider), 1.294 US Letter, 1.25 8×10 in, 1.0 square.

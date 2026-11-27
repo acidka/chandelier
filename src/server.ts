@@ -32,7 +32,9 @@ Only touch documents you created or were asked to change. Leave a finished docum
 export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {
   const t = performance.now();
   const r = await callToolInner(tool, args, ctx);
-  const note = !r.isError && POSITIONAL.has(tool.name) ? frameNote(ctx.settings, callFrames(tool.name, args)) : null;
+  // every positional reply says its units (a session left in pt while the agent thought mm cost a round), and the frame
+  // when it isn't the default one
+  const note = !r.isError && POSITIONAL.has(tool.name) && !(tool.name === 'preview' && args?.image) ? frameNote(ctx.settings, callFrames(tool.name, args)) ?? `units: ${ctx.settings.units}` : null;
   if (note) r.content.push({ type: 'text', text: note });
   if (LOG) {
     // reply size: what the agent re-reads on every later request (text chars; images counted, not sized)
@@ -78,8 +80,34 @@ export function frameNote(s: Ctx['settings'], own: [number, number][] = []): str
   return `frame (${s.units}): ${parts.join('; ')}; other steps: ${pinned ? `artboard ${s.artboard} ${shared}` : 'the active artboard'}`;
 }
 
+/** Arguments agents guess (seen in suite runs) → the real ones. */
+// keys lower case without _ and -: fontSize, font_size and fontsize are one guess
+const ALIASES: Record<string, string> = { move: 'dx, dy', offset: 'dx, dy', translate: 'dx, dy', angle: 'rotate', rotation: 'rotate', degrees: 'rotate', ref: 'refs', itemsref: 'refs', id: 'refs', uuid: 'refs', uuids: 'refs', items: 'refs', color: 'fill', colour: 'fill', fillcolor: 'fill', text: 'contents', fontsize: 'size', fontfamily: 'font', strokecolor: 'stroke', strokewidth: 'stroke_width', width: 'w', height: 'h', artboardindex: 'artboard', mode: 'action', op: 'action' };
+
+/** keys a tool doesn't take → an error naming the closest ones (null when all are known) */
+export function unknownArgs(tool: ToolDef, args: Record<string, unknown>): string | null {
+  const known = Object.keys(tool.shape);
+  const bad = Object.keys(args ?? {}).filter((k) => !known.includes(k));
+  if (!bad.length) return null;
+  const dist = (a: string, b: string) => {
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+    for (let j = 1; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return d[a.length][b.length];
+  };
+  const hint = (k: string) => {
+    const al = ALIASES[k.toLowerCase().replace(/[_-]/g, '')];
+    if (al && al.split(', ').every((x) => known.includes(x))) return al;
+    const near = known.map((x) => [x, dist(k.toLowerCase(), x)] as const).filter(([x, d]) => d <= Math.max(2, Math.floor(x.length / 3))).sort((a, b) => a[1] - b[1]);
+    return near.length ? near[0][0] : null;
+  };
+  return bad.map((k) => { const h = hint(k); return `unknown argument "${k}"${h ? ` (did you mean ${h}?)` : ''}`; }).join('; ') + `. ${tool.name} takes: ${known.join(', ')}.`;
+}
+
 async function callToolInner(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {
   try {
+    const bad = tool.name === 'tools' ? null : unknownArgs(tool, args);
+    if (bad) return fail(bad);
     if (tool.run) return await tool.run(args, ctx);
     if (!tool.step) return fail(`tool ${tool.name} has no implementation`);
     return respond(await runStep(tool, args, ctx));
@@ -111,7 +139,7 @@ function slimToolList(server: McpServer): void {
   handlers.set('tools/list', async (req, extra) => {
     const res = await original(req, extra);
     for (const t of res?.tools ?? []) {
-      if (t.inputSchema) delete t.inputSchema.$schema;
+      if (t.inputSchema) { delete t.inputSchema.$schema; delete t.inputSchema.additionalProperties; }
       delete t.execution;
     }
     return res;
@@ -195,7 +223,9 @@ export function createServer(opts: { transport?: Transport; tmp?: string; tools?
     };
   }
   for (const tool of exposed) {
-    server.registerTool(tool.name, { description: tool.description, inputSchema: tool.shape }, (args: unknown) => {
+    // passthrough: unknown keys reach callTool, which refuses them with a hint (the SDK would drop them silently, and a
+    // guessed name — transform_items {move} — then did nothing and cost a round to notice)
+    server.registerTool(tool.name, { description: tool.description, inputSchema: z.object(tool.shape).passthrough() }, (args: unknown) => {
       if (T instanceof PanelTransport) T.noteAgentCall();
       return callTool(tool, args ?? {}, ctx);
     });

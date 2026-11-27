@@ -15,6 +15,8 @@ import { pdfInfo } from '../pdf.js';
 import { edgeTracks } from '../edges.js';
 
 let n = 0;
+/** said next to every content_box: agents read its [x, y, w, h] as two corners and lost a round (token use, 2026-11-27) */
+const BOX_FORMAT = '[x, y, w, h]';
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 /** run a tool with its run() or its step (preflight has run(), document_info only a step) */
@@ -142,6 +144,7 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   if (c.ink) {
     const R = toRect(c.ink.reference), P = toRect(c.ink.preview);
     stats.content_box = contentBoxStats(R, P);
+    stats.box_format = BOX_FORMAT;
   }
   if (a.sample?.length) {
     // the same points in both images (roadmap: every recreate run wrote its own sampling script): session units, ΔE76
@@ -213,7 +216,7 @@ async function imagePreview(a: any, { rt, tmp, settings }: Ctx): Promise<CallToo
   const v = view(frame, { grid: a.grid, sample: a.sample, max_px: max, tracks, sampleFrame: whole });
   const png = encodePng(v.img);
   const { img: _i, ...stats } = v;
-  const res: Record<string, unknown> = { ...info, ...stats, ...(tracks ? { tracks } : {}) };
+  const res: Record<string, unknown> = { ...info, ...stats, ...(stats.content_box ? { box_format: BOX_FORMAT } : {}), ...(tracks ? { tracks } : {}) };
   if (a.save_to) { const p = resolve(a.save_to); mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, png); res.saved_to = p; }
   return { content: [{ type: 'image', data: png.toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(res) }] };
 }

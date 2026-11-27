@@ -75,8 +75,9 @@ In the open document <file>, recreate the design in <reference image> onto the e
 
 ## Read first, and follow
 1. plugin/skills/illustrator/SKILL.md
-2. plugin/skills/illustrator/recreate.md — THE method; follow it step by step. Where it is unclear, incomplete or
-   wrong, note it — that is the main output of this test.
+2. plugin/skills/illustrator/recreate.md — THE method (the core), then only the recreate-*.md files its table names
+   for this design; follow them step by step. Where they are unclear, incomplete or wrong, note it — that is the main
+   output of this test.
 
 ## Tools
 - Illustrator: the mcp__chandelier__* tools. The server is SHARED: do NOT call configure on it; give artboard: <i>
@@ -115,9 +116,11 @@ In the open document <file>, recreate the design in <reference image> onto the e
 ## Record
 
 1. A row in the repeatability table in [benchmarks § 2g](research/benchmarks.md): run, guide version, time, tool
-   calls / tokens, rounds, rmse with its crop, the owner's judgement.
-2. Every guide gap the agent reported (and what made the preferred version better) → recreate.md, in the section
-   where an agent would need it; mention it in the guide's header line.
+   calls / tokens, rounds, rmse with its crop, the owner's judgement. **Tokens in every row**, from the subagent's task
+   notification (`total_tokens`); a run over **1.3× its case's best** so far gets a ⚠ and a line on why (more rounds,
+   a re-analyze, a guide gap, a tool error) — tokens ≈ turns × context, so it usually points at extra turns.
+2. Every guide gap the agent reported (and what made the preferred version better) → recreate.md or the
+   recreate-*.md file of that section, where an agent would need it; mention it in the guide's header line.
 3. Tool problems → [bugs.md](bugs.md) (mark ones not yet reproduced).
    Runs with the `scene` tool (in the tool list since 0.6; build and reconnect first when testing unreleased changes): also record the
    analyze summary's first line, the edits used, refine rounds and what was still built by hand.

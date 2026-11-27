@@ -32,6 +32,22 @@ describe('server', () => {
     expect(client.getInstructions()).toMatch(/Illustrator/);
   });
 
+  it('refuses unknown arguments with a hint instead of dropping them (token use: guessed names cost a round)', async () => {
+    const r = await call('transform_items', { refs: 'x', move: [10, 0] });
+    expect(r.isError).toBe(true);
+    expect(r.texts[0]).toMatch(/unknown argument "move" \(did you mean dx, dy\?\)/);
+    const t = await call('create_text', { text: 'a', x: 0, y: 0, fontsize: 9 });
+    expect(t.texts[0]).toMatch(/"fontsize" \(did you mean size\?\)/);
+    // the tool list carries no additionalProperties (passthrough is server-side only)
+    const tl = (await client.listTools()).tools.find((x) => x.name === 'transform_items')!;
+    expect((tl.inputSchema as any).additionalProperties).toBeUndefined();
+  });
+
+  it('positional replies say their units', async () => {
+    const r = await call('artboards', { action: 'list' });
+    expect(r.texts[r.texts.length - 1]).toBe('units: pt');
+  });
+
   it('keeps the tool list small (every agent request re-reads it)', async () => {
     const tools = (await client.listTools()).tools;
     const json = JSON.stringify(tools);

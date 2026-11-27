@@ -323,7 +323,7 @@ export interface ShadeOpts extends FitOpts {
 /** create_path {fit, shade}: shading that follows a curve. Under (or beside) the fitted edge, a fade from `opacity`
  * at the edge to nothing at `to` (a distance, or the next edge's points), built as stacked paths: each one's near
  * side is the fitted edge (crisp; or lifted outward when the stack is clipped by its shape), its far side lies
- * k/(N+1) of the way to `to`. Multiply-stacked, they give a linear fade with no gradient mesh (recreate.md § 7).
+ * k/(N+1) of the way to `to`. Multiply-stacked, they give a linear fade with no gradient mesh (recreate-shading.md § 7).
  * `parts`: the edge as one list or several (fitted one by one, as in fit). Returns path data and the opacity of each step. */
 export function shadeToD(parts: number[][][], o: ShadeOpts): { ds: string[]; opacity: number } {
   const segsOf = parts.map((pts) => fitCurve(pts, { tolerance: o.tolerance }));
@@ -348,7 +348,7 @@ export function shadeToD(parts: number[][][], o: ShadeOpts): { ds: string[]; opa
   const clamp = (u: number) => (to ? Math.max(to[0][ax], Math.min(to[to.length - 1][ax], u)) : u);
   const raw = U.map((u) => (to ? at(to, clamp(u)) - at(s, clamp(u)) : (o.to as number)));
   // window minimum, then smoothing along the edge: where the far edge jumps (a new edge appears, two merge or cross)
-  // a plain distance makes a seam (recreate.md § 7)
+  // a plain distance makes a seam (recreate-shading.md § 7)
   const win = (a: number[], r: number, fn: (v: number[]) => number) => a.map((_, i) => fn(a.slice(Math.max(0, i - r), Math.min(n, i + r) + 1)));
   const toward = (v: number[]) => v.reduce((m, x) => (Math.abs(x) < Math.abs(m) ? x : m));
   const gap = win(win(raw, 3, toward), 4, (v) => v.reduce((t, x) => t + x, 0) / v.length);
