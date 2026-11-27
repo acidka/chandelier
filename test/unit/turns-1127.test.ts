@@ -52,6 +52,6 @@ describe('preview {image, region: [list]}', () => {
     expect(texts[0]).toMatch(/^region 0 \[0, 0, 100, 100\]: .*"samples":\[\{"at":\[30,30\],"hex":"#c81e1e"/);
     expect(texts[1]).toMatch(/^region 1 \[100, 0, 100, 100\]: /);
     expect(texts[1]).not.toMatch(/samples/);
-    expect((await preview.run!({ image: f, region: [[0, 0, 10, 10]], save_to: join(dir, 'x.png') }, { tmp: dir } as any)).isError).toBe(true);
+    expect((await preview.run!({ image: f, region: [[0, 0, 10, 10]], save_to: join(dir, 'x.png') }, { tmp: dir } as any)).isError).toBe(true); // save_to: one region
   });
 });

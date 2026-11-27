@@ -501,6 +501,22 @@ not committed).
   Bash `$TMPDIR` check were not allowed, so the builder went inline into `run_script {code}`); 3 `run_script` calls
   (build, two style fixes), 5 compare previews. The refused calls and the source reading are the run set-up, not the
   server; without them ~22 requests. Quality is the best calendar so far (January rmse 0.112, all automatic checks).
+**Second run, after the fewer-turns changes** (`d9cd5c3`: `preview {region: [list]}`, `run_script {recipe: "help"}`,
+`create_path fit {onto}`), same setup, the same day:
+
+| Run | Wall | Requests | Tool calls (Chandelier) | Input | Output | Tool errors | Quality | RMSE |
+|-----|-----:|---------:|------------------------:|------:|-------:|------------:|--------:|-----:|
+| M2 C2v6-2 | 2.4 min | **15** (18) | **17 (12)** (23) | **0.84 M** (1.01) | 12.9 k | 1 (run rules: `Write`) | side-by-side matches | 0.183 by `compare-m2.sh` (72 ppi PNG) |
+| Calendar C2v6-2 | **3.4 min** (4.8) | **18** (31) | **21 (16)** (31) | **1.10 M** (2.02) | 19.7 k | 3 (2 run rules, 1 several regions + `reference`, now allowed) | K1, K2, K9, K10 ✅ | 0.115 January |
+
+- **M2:** 3 measuring calls instead of 8 (two multi-region zooms, one call with 20+ samples), a builder by
+  `run_script`, 3 compares, one fix batch.
+- **Calendar:** the helper reference replaced 3 shell reads of the runtime source; 3 measuring calls instead of 5.
+  It asked for several regions **with** `reference` in one call, which was refused: allowed since (each region is
+  compared with its own part of the reference).
+- Against 0.4: M2 0.36 M (7 requests) and calendar 0.78 M (14) remain lower — those runs measured little (1–2 zooms)
+  and quality was a little lower on the calendar (rmse 0.139 vs 0.112–0.115).
+
 - **Reading:** the split guide and on-demand schemas cut what each request carries by ~40 %; what costs now is the
   number of turns, mostly measuring before the build. Next: fewer measuring zooms (one `preview {image, region, sample}`
   with several samples per part; the `sample` with `reference` comparison after the build), and a builder-friendly

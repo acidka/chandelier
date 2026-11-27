@@ -138,6 +138,10 @@ await call('preview', { artboard: 1, region: [[0, 0, 100, 50], [100, 50, 100, 50
   assert(r.content.filter((c) => c.type === 'image').length === 2, 'two images');
   assert(/^region 1 \[100, 50, 100, 50\]: /.test(r.content.filter((c) => c.type === 'text')[1].text), 'second labelled');
 } });
+await call('preview', { artboard: 1, region: [[0, 0, 100, 50], [100, 50, 100, 50]], reference: ref, width: 200 }, { check: (v, r) => {
+  const t = r.content.filter((c) => c.type === 'text' && /^region \d/.test(c.text)).map((c) => c.text);
+  assert(t.length === 2 && t.every((x) => /"rmse":/.test(x)), 'each region compared: ' + t.map((x) => x.slice(0, 60)));
+} });
 await call('create_path', { fit: [[[0, 40], [30, 41], [60, 40], [80, 40]], { onto: [[100, 0], [101, 20], [100.5, 50], [100, 80]] }], stroke: '#000000', name: 'snapped', layer: 'Under' });
 await call('get_items', { refs: 'name:snapped', points: true }, { check: (v) => {
   const p = v.items[0].path, last = p[p.length - 1], end = Array.isArray(last) ? last : last.a;
