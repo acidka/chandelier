@@ -1,6 +1,6 @@
 # `scene` tool: implementation plan (0.6, S1–S4)
 
-Status: plan, 2026-11-26. Spec: [scene-tool.md](scene-tool.md). Roadmap: [0.6](../roadmap.md#milestone--06--faster-free-form-recreation-).
+Status: ✅ S1–S4 done, shipped in 0.6.0 and 0.6.1 (2026-11-27); written as the plan on 2026-11-26, task status and findings kept below. Spec: [scene-tool.md](scene-tool.md). Open items: [roadmap](../roadmap.md#recreation-quality-and-cost-from-milestone-06).
 Grounded in the repo at `59fc511`. Measured 2026-11-26 (macOS 27.2, Node 22): `node scripts/schema-size.mjs` →
 35 tools, 55,790 chars; the budget test (`test/unit/server.test.ts`) is `< 56_000`, so 210 bytes are free.
 

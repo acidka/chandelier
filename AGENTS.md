@@ -4,7 +4,7 @@
 **Chandelier** (люстра — Ukrainian slang for Illustrator): an MCP server that drives Adobe Illustrator fast: a persistent bridge (JXA `src/bridge/bridge-mac.js` on macOS, PowerShell/COM `src/bridge/bridge-win.ps1` on Windows, picked in `src/platform.ts`), an
 ExtendScript runtime loaded once into Illustrator (`src/runtime/core.jsx` + one module per tool family, sent as one source; `$.global.AIA`), ready builders in `src/recipes/` (`run_script {recipe}`), and a
 TypeScript MCP server (`src/`, built to `dist/`), an experimental CEP panel for events (`src/cep/`, opt-in `CHANDELIER_TRANSPORT=panel`), packaged for npm (`chandelier-mcp`), as a Claude Code plugin
-(`plugin/`) and as a Claude Desktop bundle (`scripts/build-mcpb.mjs`). Plan and decisions: `docs/plan.md`. TODO board: `docs/roadmap.md`.
+(`plugin/`) and as a Claude Desktop bundle (`scripts/build-mcpb.mjs`). Plan and decisions: `docs/plan.md`. Open work: `docs/roadmap.md`. History: `CHANGELOG.md`.
 
 ## Commands
 Use Node ≥ 22.15 (if `node` on your PATH is older, run a newer one by its full path).
@@ -45,8 +45,9 @@ claude --dangerously-load-development-channels server:<name>  # with CHANDELIER_
 ```
 
 ## Rules
-- **Docs are always current.** Any change to design, tools or process updates `docs/` in the same commit
-  (tick the roadmap item, add a change-log row, keep tool tables in `docs/plan.md` true).
+- **Docs are always current.** Any change to design, tools or process updates the docs in the same commit
+  (tick or remove the roadmap item, add a row at the end of the development log in `CHANGELOG.md`, keep tool tables
+  in `docs/plan.md` true). A release adds a row to the releases table in `CHANGELOG.md` and in the README's status.
 - **The README is the project's face.** When status, numbers, tools or install steps change, update it too; every
   number in it comes from `docs/research/benchmarks.md`.
 - **Client files never enter git.** Real jobs, their reference images and outputs live in the git-ignored `tmp/`;

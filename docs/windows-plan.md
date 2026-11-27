@@ -1,6 +1,6 @@
 # Windows version — plan
 
-Status: ✅ released as 0.2.0 (2026-11-24) ([roadmap phase 7](roadmap.md#phase-7--windows-)): W0, W2–W8 done (2026-11-24); W1 done except the modal-dialog check (needs someone at the VM). Results: § 12–14 and [benchmarks § 1b](research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24).
+Status: ✅ released as 0.2.0 (2026-11-24); every later release ships for Windows too. W0, W2–W8 done; W1 done except the modal-dialog check (needs someone at the VM, [roadmap: open](roadmap.md#platforms-and-panel)). Results: § 12–14 and [benchmarks § 1b](research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24). This page is the plan and its record as of 0.2; tool counts below are from then. Current setup notes for users: the [README](../README.md#quick-start).
 
 **Goal:** the same server, the same 32 tools and the same ExtendScript runtime on Windows 10/11 with Illustrator
 2025+ (29.x), with the same guarantees: one persistent connection (target < 10 ms per call), never launching

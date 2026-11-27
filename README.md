@@ -17,8 +17,10 @@
 **Chandelier** is an [MCP](https://modelcontextprotocol.io) server that lets AI agents — Claude Code, Claude Desktop,
 Cursor and other MCP clients — work in **Adobe Illustrator**: build print-ready documents, edit them, look at the
 result and export. It keeps **one persistent connection** to Illustrator, so a call costs **~5 ms instead of
-~330 ms**, and a whole page is built in **one call**. New in 0.5: an experimental [panel inside
-Illustrator](#chandelier-panel-experimental) where you chat with the agent about what you have selected.
+~330 ms**, and a whole page is built in **one call**. New in 0.6: `scene` turns an image into editable vector shapes
+(inks, regions, smooth shared edges) in one call, for illustrations and other free-form artwork. Also there: an
+experimental [panel inside Illustrator](#chandelier-panel-experimental) where you chat with the agent about what you
+have selected.
 
 > *Chandelier* is *люстра* in Ukrainian, and «люстра» is what Ukrainian designers call Illustrator. A project that
 > hangs over Illustrator and lights it up for AI agents.
@@ -40,7 +42,9 @@ Measured with fresh Claude agents on the same jobs (2026-11-22, Illustrator 29.1
 | **Overhead per call** | ~150 ms | ~330 ms | **~5 ms** |
 
 All Chandelier files scored 9–10 of 10 on the quality checklists, with global swatches, paragraph styles and a real
-bleed. Methods, every run and the caveats (one run per arm for the latest numbers): [benchmarks](docs/research/benchmarks.md).
+bleed. On the 0.6 build (2026-11-27, one run each) the same jobs took 2.4 min / 0.84 M tokens (design) and 3.4 min /
+1.10 M (calendar, the closest match to the reference so far): agents now measure the reference more before they build.
+Methods, every run and the caveats (one run per arm for the latest numbers): [benchmarks](docs/research/benchmarks.md).
 
 ## Quick start
 
@@ -127,6 +131,10 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
   reports how far the content is shifted or scaled and lists each difference — moved (by how much), missing, extra or
   changed — with the items there. It also looks at image and PDF files itself (size, zoom with a coordinate grid,
   colour samples), so agents don't stop to install Python imaging libraries first.
+- **Images to vectors.** `scene` reads an image (or a part of it), finds its inks and regions, fits each shared edge
+  once and builds stacked, editable shapes with global swatches in one undo step; edits (merge, recolour, drop, text,
+  gradients) and a `refine` pass that compares the build with the image. Meant for organic artwork; layouts and type
+  are still built from measurements.
 - **Print-ready.** CMYK documents with real bleed, global process and spot swatches, paragraph and character styles,
   PDF/X-4 export with exact trim and bleed boxes and output intents (FOGRA39, GRACoL…), spread traps, colour
   conversion. `preflight` checks what matters (RGB in CMYK, missing fonts, overset text, hairlines, low-res images,
@@ -165,13 +173,13 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
 
 ## Tools
 
-35 tools (36 with the panel: `events`); every tool that changes a document can also be a step inside `batch`.
+36 tools (37 with the panel: `events`); every tool that changes a document can also be a step inside `batch`.
 
 | Group | Tools |
 |-------|-------|
 | Session and documents | `status` · `configure` · `documents` · `document_info` · `history` |
 | Inspect | `find_items` · `get_items` · `get_tree` · `selection` · `fonts` |
-| Create | `create_text` · `create_shape` · `create_path` · `place` |
+| Create | `create_text` · `create_shape` · `create_path` · `place` · `scene` (image → vector shapes) |
 | Edit | `edit_text` · `modify_items` · `transform_items` · `duplicate_items` · `arrange_items` · `align_items` · `path_ops` · `delete_items` |
 | Structure, colour and effects | `layers` · `artboards` · `swatches` · `styles` · `effects` |
 | Build | `batch` (also over many files) · `run_script` · `data_merge` · `menu_command` · `symbols` |
@@ -236,17 +244,8 @@ Current release: **0.6.1** (2026-11-27) on macOS and Windows — npm, MCP Regist
 | **0.6.1** | 2026-11-27 | `scene` analyze: small parts of their own colour keep it (lips, buttons), a `crop` is read with a margin so shapes crossing its edge stay whole, a size `drop` names the detail it took, ~10 % faster on flat art; calls go to the document you work in even if another window was brought to the front; large `preview` replies no longer drop the connection; bugs #28–#30 |
 | **0.6.0** | 2026-11-27 | `scene` tool: an image turned into an editable vector scene (inks, regions, smooth shared edges, one undo step); smaller replies by default; fewer turns (several zooms per `preview`, `run_script {recipe: "help"}`, units in replies, unknown arguments refused with a hint); curve fitting with matched joints, forced anchors and ends on other curves; `preflight {artboard}`; `CHANDELIER_APP` for one of several installed Illustrators; the recreate guide split per kind of job; bugs #16–#26 |
 | **0.5.3** | 2026-11-25 | Faster recreation from photos: `preview {image, profile}` finds edges, `create_path {fit, shade, map, extend, clip_to}` turns measured points into smooth curves and curve-following shading; the recreate guide works on any kind of design (calendars, mockups, packaging, photos); fixes: creating while the active layer is locked, gradient on live text refused instead of black, colour samples outside the zoomed region |
-| **0.5.2** | 2026-11-25 | `preview {image}`: look at image and PDF files (size, crop and zoom with a grid, colour samples, PDF pages) with nothing extra to install; a recreate-from-image method in the skill; bug fixes (gradient angles, re-runnable batches, restart past the links dialog, `content_box` on photos) |
-| **0.5.1** | 2026-11-24 | `install-panel`: `--help` prints usage (instead of installing), clearer next steps (Windows command, wake-up flag, re-run after upgrades) |
-| **0.5** | 2026-11-24 | **Chandelier panel** (experimental): chat with the agent inside Illustrator, selection events, wake-up through Claude Code channels; fixes: finished documents stay open, batch `@n` sees every item, longer MRAP retry |
-| **0.4.1** | 2026-11-24 | Listed in the MCP Registry; README rewritten |
-| **0.4** | 2026-11-24 | Look and print depth: live effects, spread traps, colour conversion, PDF/X output intents, a visual diff that says what moved (and by how much), what's missing and what's extra |
-| **0.3** | 2026-11-24 | Production automation: `data_merge`, `batch {files}`, `swatches {recolor, import}`, the `lean` tool profile |
-| **0.2.1** | 2026-11-24 | Recipes, brand checks, export variants and screen assets, symbols, image trace, safe restart, debug log; fix: a tint no longer changes the swatch itself |
-| **0.2** | 2026-11-24 | **Windows**: the same tools over a PowerShell/COM bridge ([plan](docs/windows-plan.md)); all live suites pass with Illustrator 2027 on Windows 11 ARM64; design from an image in 1.5 min, 11 tool calls, 10 of 10 ([benchmarks](docs/research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24)) |
-| **0.1** | 2026-11-23 | First release on macOS: npm, Claude Code plugin, Claude Desktop bundle |
 
-Everything planned and done: [roadmap](docs/roadmap.md).
+Every release and the dated log of changes: [CHANGELOG](CHANGELOG.md). What's open and next: [roadmap](docs/roadmap.md).
 
 ## Documentation
 
@@ -254,7 +253,8 @@ Everything planned and done: [roadmap](docs/roadmap.md).
 |---|---|
 | [Agent guide](docs/agent-guide.md) | How an agent should build, check and export with Chandelier |
 | [Plan](docs/plan.md) | Goals, architecture, decisions with pros and cons, tool catalogue, risks |
-| [Roadmap](docs/roadmap.md) | Phases, milestones, what's done and what's next |
+| [Roadmap](docs/roadmap.md) | What's open and next; finished phases and milestones |
+| [Changelog](CHANGELOG.md) | Every release and the dated log of changes |
 | [Panel plan](docs/panel-plan.md) | The Chandelier panel: design, protocol, live trials, limits |
 | [Benchmarks](docs/research/benchmarks.md) | Every measurement, method and run |
 | [Illustrator quirks](docs/research/illustrator-quirks.md) | Known Illustrator failures and how Chandelier handles them |

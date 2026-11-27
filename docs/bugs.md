@@ -5,7 +5,7 @@ Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoy
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
 uuids, MRAP…) are in [research/illustrator-quirks.md](research/illustrator-quirks.md); the tools already work around
-them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roadmap.md) change-log row.
+them. When a bug is fixed: tick it here, move it to "Fixed", add a row to the [changelog](../CHANGELOG.md).
 
 ## Open
 
@@ -24,13 +24,13 @@ Illustrator-side issues seen on Windows are quirks C30, C31. No open bugs (#27 i
 
 ## Fixed
 
-Recent fixes found during work (older ones are in the roadmap change log):
+Recent fixes found during work (older ones are in the [changelog](../CHANGELOG.md)):
 
 | Fixed | Bug | Where it is recorded |
 |-------|-----|----------------------|
-| 2026-11-27 | #28 🔴 one `preview` reply (5 regions at 1400 px + a reference) passed 16 MB and Claude Code dropped the server (suite 08 v4): every reply's PNGs now fit 6 M base64 chars in total and 3.7 M each — shrunk by one factor, with a note (`fitImages` in `src/server.ts`, any tool) | roadmap change log; `test/unit/reply-images.test.ts` |
-| 2026-11-27 | #29 🟠 `scene analyze {colors: 2}` came back with 11 inks (suite 06 v4): own-colour inks (F52) are added only while the scene has fewer than `colors` | roadmap change log; scene-analyze test |
-| 2026-11-27 | #30 🟡 frame lines crossing a part crop, dropped, were repainted with the background ink outside the build rect (suite 06 v4): a dropped region's pieces outside the crop are left empty (`fill rF` still fills them) | roadmap change log; scene-analyze test |
+| 2026-11-27 | #28 🔴 one `preview` reply (5 regions at 1400 px + a reference) passed 16 MB and Claude Code dropped the server (suite 08 v4): every reply's PNGs now fit 6 M base64 chars in total and 3.7 M each — shrunk by one factor, with a note (`fitImages` in `src/server.ts`, any tool) | changelog; `test/unit/reply-images.test.ts` |
+| 2026-11-27 | #29 🟠 `scene analyze {colors: 2}` came back with 11 inks (suite 06 v4): own-colour inks (F52) are added only while the scene has fewer than `colors` | changelog; scene-analyze test |
+| 2026-11-27 | #30 🟡 frame lines crossing a part crop, dropped, were repainted with the background ink outside the build rect (suite 06 v4): a dropped region's pieces outside the crop are left empty (`fill rF` still fills them) | changelog; scene-analyze test |
 | 2026-11-27 | #16 (suite 08) `path_ops` box in a batch step with `artboard` "in the artboard-0 frame": not reproduced — the box comes back in the step's frame (checked live with a pinned `configure {artboard: 0}` as in the run); the misleading frame note (#22) is the likely cause | `test/live-bugs-1127.mjs` |
 | 2026-11-27 | #17 (suite 04) `preflight` listed every transparent item: transparency is now one line per layer + blend + opacity with a `count` (30 shade items → 1 line) | `test/live-bugs-1127.mjs` |
 | 2026-11-27 | #18 (suite 06) `layers {add/reorder, position: "below:<locked layer>"}` failed: the neighbour is unlocked (and shown) for the move, then restored | `test/live-bugs-1127.mjs` |

@@ -2,521 +2,80 @@
 
 Last updated: 2026-11-27 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
 
-Known bugs and unverified parts: [bugs.md](bugs.md).
+Current release: **0.6.1** (2026-11-27). What each release added and the dated log of every change:
+[CHANGELOG](../CHANGELOG.md). Known bugs and unverified parts: [bugs.md](bugs.md).
 
-Each phase has **exit criteria**. A phase is done only when they are met and the docs are updated.
+This page keeps what is open and what is next; finished phases and milestones are one row each below; their
+checklists are in git history (before 2026-11-27 this file held them in full) and in the changelog.
 
-## Overview
+## Open
 
-| Phase | Goal | Status | Est. effort |
-|-------|------|--------|-------------|
-| 0 | Research and transport spike | ✅ Done | — |
-| 1 | Foundation: fast bridge, runtime, batch, script, inspect, preview | ✅ Done (2026-11-22) | — |
-| 2 | Create and edit (parity with the competitor's core) | ✅ Done (2026-11-22) | — |
-| 3 | Print and prepress (bleed, preflight, export) | ✅ Done (2026-11-22) | — |
-| 4 | Agent efficiency (instructions, skill, script library, benchmarks) | ✅ Done (2026-11-22) | — |
-| 5 | Robustness (MRAP, crashes, hangs, live test suite) | 🔄 MVP part done (2026-11-22); hangs and idempotency in 0.1 | ongoing |
-| 6 | Distribution (npm, Claude Code plugin, `.mcpb`, brand) | 🔄 brand done; packaging in 0.1 | 1–2 days |
-| 7 | Windows (PowerShell/COM bridge, same runtime and tools) — [plan](windows-plan.md); after 0.1, ships as 0.2 | ✅ Released as 0.2.0 (2026-11-24): W0, W2–W8 done; W1 done except the modal-dialog check | — |
-| 8 | Future (CEP/UXP transport, events, effects, data merge) | 🧊 | — |
+### Recreation quality and cost (from milestone 0.6)
 
-Estimates are for focused agent-assisted work, live-tested on the owner's Mac.
+- [ ] 🔄 `scene` analyze, soft-shaded areas come out as a patchwork (F38): soft band borders can be told from
+  outlines, but the bands cross the petals; needs a crease-following segmentation
+  ([scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27))
+- [ ] 🔄 `scene` runs use more calls than the manual method on flat art (F23): 0.6.1 took edits the runs made by hand
+  (F52, F25, F39, hints under 0.05 %); measure in the next suite run, and whether the 2026-11-27 changes (grainy ramp
+  hints F29, short curved edges F32, curvature-matched joints) help on real jobs
+- [ ] ⏳ Suite pairs on the release build: 09, 05 and 07 (manual + scene), 01 and 02 (scene listed)
+  ([recreate-testing.md](recreate-testing.md))
+- [ ] ⏳ Recreate suite: case 03 waits for a better reference; the owner adds a logo, an illustration, a poster and a
+  label (cases live in the git-ignored `tmp/recreate-suite/`)
+- [ ] ⏳ Fresh subagent on a second free-form image; target a few minutes in 3–4 rounds (estimate until measured;
+  the ribbons job: ~12 min, 67 calls, 202 k tokens, [benchmarks § 2g](research/benchmarks.md))
+- [ ] ⏳ Fresh-agent trial on a machine without Pillow (PDF pages in `preview {image}` verified live 2026-11-25)
+- [ ] 🧊 Scene speed and quality ideas (analyze is ≤ 2.3 s of 5–11 min runs, so fewer calls first; region-step and
+  fitting ideas, ramp hints, render-and-compare) — [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)
 
-**Milestone 🎯 MVP** cuts across phases 1–5: the smallest server that rebuilds a design from an image better than
-both baselines (ExtendScript files and ie3 MCP). See [MVP](#milestone--mvp-) below. ✅ Exit met 2026-11-22 (M2: C1 10 calls / 1.5 min, C2 11 calls / 1.2 min,
-both 10/10); real job approved by the owner the same day. **MVP done.**
+### Platforms and panel
 
-**Milestone 🎯 0.1 release** ✅ (2026-11-23, released as v0.1.1) cut across phases 4–6: someone other than the owner can install Chandelier and
-use it safely. See [0.1 release](#milestone--01-release-) below. Est. effort: 2–3 days.
+- [ ] ⏳ Windows W1: what a modal dialog (e.g. from `menu_command`) does to the bridge — needs the owner at the VM
+  ([windows-plan § 12](windows-plan.md), bug list V2)
+- [ ] ⏳ Panel: a test on x64 Windows (V3), the hidden-panel check (V4, owner), a signed ZXP (needs Adobe's
+  ZXPSignCmd and a certificate) — [panel plan](panel-plan.md)
+- [ ] ⏳ `CHANDELIER_APP` on a machine with two Illustrator versions installed at once (checked against one install
+  per platform)
+- [ ] 🧊 macOS bridge: a pre-compiled AppleScript handler (~1 ms per call) — not needed while the MCP round trip is
+  ~5 ms
 
----
+### Constraints
 
-## Phase 0 — Research and spike ✅
+- ❓ **Tool-list budget:** 59.96 of 60 KB (unit test, 2026-11-27). A new tool option needs a trimmed description
+  elsewhere or an owner decision on the budget; `CHANDELIER_TOOLS=lean` stays the answer for clients that load every
+  schema.
 
-- [x] ✅ Read the competitor's architecture (`src/executor/jsx-runner.ts`): per-call osascript + 4 temp files + 1220-line helper parse
-- [x] ✅ Benchmark the competitor: `get_artboards` median **366 ms** (2026-11-22)
-- [x] ✅ Spike: persistent JXA `doJavascript` → **0.7 ms**/call; `$.global` persists between calls; `pageItem.uuid` works on 29.1
-- [x] ✅ Spike: persistent JXA + NSAppleScript with `with timeout` → **5.8 ms**/call (`src/bridge/bridge-mac.js`)
-- [x] ✅ Found and fixed: reading NSAppleScript's error via JXA `Ref()` segfaults `osascript` → errors now caught inside the AppleScript ([C1](research/illustrator-quirks.md#bridge-findings-our-spike-2026-11-22))
-- [x] ✅ Found and fixed: stale `NSRunningApplication` → false "not running"; check moved into AppleScript (C2)
-- [x] ✅ Found and fixed (phase 1): compiling a literal `tell application id "…"` **launched Illustrator** even inside `if … is running` → app id in a variable + raw event `«event miscDjxM»` (C11); per call now 2.8–5.4 ms
-- [x] ✅ Benchmark harness: `bench/micro.mjs` (A ExtendScript vs B ie3 MCP vs C ours, scratch document, auto-cleanup) and `bench/macro-metrics.mjs` (agent metrics from transcripts) → [benchmarks](research/benchmarks.md)
-- [x] ✅ First micro results: per call A 150–158 ms · B 320–333 ms · **C 5–9 ms**; 200 objects: B 66 s (200 calls) · A 0.23 s · **C 0.10 s**
-- [x] ✅ Research: Adobe official MCP (beta only), UXP for Illustrator (public beta ~Q2 2027), CEP still works
-- [x] ✅ Collected the owner's field notes (calendar benchmark, issues A1–A10, B1–B12) → [quirks](research/illustrator-quirks.md)
-- [x] ✅ Plan, roadmap, research docs (this folder)
-- [ ] ❓ Owner answers the [open questions](plan.md#9-open-questions-for-the-owner-)
+## Future 🧊
 
-## Milestone 🎯 MVP ✅
-
-**Goal:** an agent recreates a one-page design from an image (benchmark [M2](research/benchmarks.md#macro-scenario-m2--recreate-design-by-image))
-with our server only, beats both baselines on cost, and leaves a file a designer can restyle (global swatches, paragraph styles).
-
-**Exit criteria** (M2, one run per arm; baselines from 2026-11-22, medians of 3):
-
-| Metric | A ExtendScript (baseline) | B ie3 MCP (baseline) | **MVP target C2** (all tools) | **MVP target C1** (no `run_script`) |
-|--------|--------------------------:|---------------------:|------------------------------:|------------------------------------:|
-| Quality (of 10) | 10 | 10 | **10** | **10** |
-| Wall time | 2.5 min | 5.0 min | **≤ 2.5 min** | ≤ 4 min |
-| Tool calls (goal, not an exit criterion) | 16 | 103 | ≤ 12 | ≤ 30 |
-| Input tokens | 0.81 M | 3.21 M | **≤ 0.8 M** | ≤ 1.6 M |
-| Tool errors | 1 | 1 | **0** | 0 |
-| Global swatches + paragraph styles | yes | no | **yes** | **yes** |
-| Leftover documents after the run | 1 of 3 runs | 0 | **0** | **0** |
-
-The call counts are goals to aim for, not requirements (owner, 2026-11-22).
-
-**Result (2026-11-22, one run per arm on the MVP build):** C1 1.5 min / 10 calls / 0.48 M / 0 errors / 10; C2 1.2 min /
-11 calls / 0.42 M / 0 errors / 10; both with global swatches, a paragraph style on every text, no leftover documents →
-every exit criterion and both call goals met ([benchmarks](research/benchmarks.md)). MCP p50 5.7 ms ✅; live suites
-green ✅. **Real job (2026-11-22):** a client's desk-calendar page (240 × 130 mm, dark fact panel + month grid) rebuilt
-from the owner's PNG by Claude through Chandelier: one re-runnable builder (`{year, month}` args), 14 global swatches,
-16 paragraph styles, area text that re-flows to the reference's line breaks, PDF/X-4 with bleed; 16 Illustrator calls
-including one Illustrator crash and one script error (quirk C24) → ✅ file approved by the owner (2026-11-22). **MVP done.**
-
-Plus: MCP round trip p50 < 10 ms (micro S1–S3 with runner C-mcp); live test suite green; owner uses it on one real job (❓ which).
-
-**In scope** (items from the phases below; tick them there):
-- **Phase 1 — all of it:** scaffold, bridge with respawn, runtime (incl. ASCII-safe Cyrillic, which 2 of 3 A runs tripped on),
-  `status`, `configure`, `run_script`, `batch`, `documents`, `document_info`, `find_items`, `get_items`, `get_tree`, `preview`;
-  verify `uuid` stability and undo granularity (1.6)
-- **Phase 2 — the subset M2 needs:** `create_shape`, `create_text` (atomic, fuzzy font), `edit_text`, `modify_items`,
-  `duplicate_items`, `arrange_items` (group, z-order, move into), `delete_items`, `layers`, `artboards`, `swatches`
-  (global process), `styles` (paragraph/character), `fonts`
-- **Phase 3 — basic output:** `export` PNG/PDF (no bleed boxes yet); `preflight` for RGB in CMYK, missing fonts, 12 pt orphans
-- **Phase 4:** server `instructions`, response budget, minimal `AIA.*` helpers, runner C-mcp, M2 arms C1/C2 × 3 recorded
-- **Phase 5:** MRAP retry, crash → respawn, `documents close` on failure of a build (no orphan "Untitled" — M2 run A3), live suite on a scratch document
-- **Install:** local `.mcp.json` for Claude Code (no npm/plugin yet)
-
-**Out of scope (after MVP):** `path_ops`, `place`, `menu_command`, `history`, `transform_items`, `align_items`, PDF/X bleed
-boxes, overprint/separations, crop marks, the 12-page calendar macro, npm/plugin/`.mcpb`, Windows, phase 8.
-
-## Milestone 🎯 0.1 release ✅
-
-**Goal:** Chandelier installs in one step for Claude Code and Claude Desktop on a Mac other than the owner's, and an
-agent using it recovers from the usual trouble (hangs, timeouts, dialogs) without harming documents.
-
-**Exit criteria:**
-
-| Area | Pass when |
-|------|-----------|
-| npm | ✅ `npx -y chandelier-mcp` from the registry starts in a clean folder with a fresh npm cache (2026-11-23) |
-| Claude Code plugin | ✅ Installed from the marketplace; skill and commands load; M2 run C2p-2 through the plugin: 1.1 min, 10 calls, 0.44 M, 0 errors, 10/10 (2026-11-23) |
-| Claude Desktop | ✅ `chandelier-0.1.0.mcpb` installed in Claude Desktop and works (owner, 2026-11-23) |
-| Robustness | ✅ Live tests cover a timeout while Illustrator is busy: the agent gets a clear hint, and `status.last_call` shows whether the call finished and the ids it created (a modal dialog takes the same path; not automated) |
-| Tool fixes from the logo job | ✅ `preview {region}` relative to a chosen artboard, SVG export clip to artboard, colour-contrast check for RGB documents — each with unit and live tests |
-| Languages | ✅ ru_RU: live suites green; en_US moved to 0.2 (Windows VM, owner 2026-11-23) |
-| Docs | ✅ README install routes; docs current; released as **v0.1.1** (npm `chandelier-mcp@0.1.1`, plugin 0.1.2, GitHub Release with the `.mcpb`) — 0.1.0 on npm lacks the Node guard |
-
-**In scope** (tick them in the phases below):
-- **Phase 4:** the three tool fixes from the logo job
-- **Phase 5:** hang detection with hints, idempotency hints (created uuids), ru_RU tests (en_US → 0.2)
-- **Phase 6:** npm package + `npx`, Claude Code plugin (config, Illustrator skill, commands), `.mcpb` bundle
-
-**Out of scope (after 0.1):** MCP registry listing (needs the public repo), switching the maintainer's production workflow (❓ owner),
-Windows (phase 7), multiple Illustrator versions, `status {restart}`, structured logs, phase 8.
-
-## Phase 1 — Foundation ✅
-
-**Exit criteria:** p50 overhead < 10 ms; `batch` of 100 `run_script`-free steps in one call; `preview` returns an
-image; Illustrator restart is survived without restarting the MCP; live tests green.
-
-**Met 2026-11-22:** MCP round trip p50 5.7 ms (bridge alone 2.8–5.4 ms) · 100 `document_info` steps in one `batch` call,
-158 ms · `preview` returns artboards, items and regions as images · `test/live-restart.mjs` passes (quit → clear errors →
-`status {launch:true}` → runtime reloads, same server) · `npm run test:live` and 57 unit tests green.
-Open: GitHub repo (❓ public/private) so CI can run.
-
-### 1.1 Project scaffold
-- [x] ✅ `package.json` (Node ≥ 20, ESM), TypeScript 7, `@modelcontextprotocol/sdk` 1.32, `zod` 4, `vitest` 5; MVP-0 server ported to `src/*.ts` → `dist/` (2026-11-22)
-- [x] ✅ `npm run build | test | test:live | bench | lint:jsx | typecheck`; ES3 lint = acorn `ecmaVersion: 3` + ES5-API rules + bracketed nested `?:` (B9) + no reserved words as property names
-- [x] ✅ `.mcp.json` example for Claude Code; README quick start
-- [x] ✅ `AGENTS.md` / `CLAUDE.md` with repo rules (docs always current, ES3 rules for runtime)
-- [x] ✅ CI workflow `.github/workflows/ci.yml` (typecheck, build, ES3 lint, unit tests)
-- [x] ✅ GitHub repo <https://github.com/acidka/chandelier> (2026-11-22), **private for now**; CI runs on push
-
-### 1.2 Bridge (macOS)
-- [x] ✅ Spike: long-lived `osascript -l JavaScript` process, NDJSON protocol, configurable timeout
-- [x] ✅ Fix the error path (segfault on JXA `Ref()`, C1) and the running check (C2)
-- [x] ✅ Map error numbers to clear messages (`src/transport/errors.ts`): `-600` not running, `-609` crashed, `-1712` timeout (may still be running), `-1743` permission, `5001` script error, plus `-903`, `-1708`, `-1728`, `-10810`, MRAP
-- [x] ✅ Node `Transport` class: spawn, readiness handshake (15 s), request queue (one at a time), per-request deadline (timeout + 10 s grace → kill stuck bridge), **reject pending calls and respawn if the bridge dies**, clean shutdown; unit-tested with a fake bridge
-- [ ] 🧊 Optimisation: pre-compiled AppleScript handler (target ~1 ms) — not needed now: full MCP round trip p50 is 5.7 ms (2026-11-22), under the 10 ms goal
-- [x] ✅ `activate` before save/export (A10), configurable (`settings.activate`, default on)
-
-### 1.3 Runtime (`src/runtime/*.jsx`, ES3)
-- [x] ✅ Loader: version hash checked in every call; runtime sent inline (not `$.evalFile`: no file-access dependency) on first call or after Illustrator restart
-- [x] ✅ JSON for ExtendScript: `AIA.json` (ASCII-only output) and `AIA.parse` (validated)
-- [x] ✅ `dispatch(cmd, args, settings)` → `{ok, data|error, warnings, doc}`; catch-all; `userInteractionLevel` guard; scripts compiled inside the runtime so syntax errors also return a line
-- [x] ✅ Helpers: units, coordinate conversion (artboard top-left ⇄ document), colour parser + `colorStr` (same syntax back), ref resolver (`uuid`, `selection`, `name:` glob, `layer:`, `artboard:`, `@n`), item summary serializer; unit-tested in Node with a DOM shim
-- [x] ✅ Non-ASCII safety: Node sends ASCII-only (`\uXXXX`), runtime returns ASCII-escaped JSON; runtime source is ASCII
-
-### 1.4 Core tools
-- [x] ✅ `status` (+ `launch`): documents, settings, latency, runtime loads, bridge spawns; `launch:true` verified by `test/live-restart.mjs` (relaunch in 7 s)
-- [x] ✅ `configure` (units, origin, default artboard, timeouts, auto-activate)
-- [x] ✅ `run_script` (`code` or `file` + `args`, helpers as `AIA.*`, JSON result, timeout override, session units/origin)
-- [x] ✅ `batch` (steps validated in Node, all run in ONE Apple event; `@n` refs, `stop_on_error`, `rollback` of items created by AIA helpers, `results:"errors"`); 100 `document_info` steps = 158 ms live
-- [x] ✅ `documents` (list, new via `DocumentPreset` incl. bleed + artboard grid + names, open (or activate if already open), activate, save, save_as .ai/.pdf/.eps/.svg, close with `discard`)
-- [x] ✅ `document_info` (replaces MVP-0 `inspect`: artboards, layers, counts, global/spot swatches, styles, fonts, selection, issues)
-
-### 1.5 Inspect
-- [x] ✅ `find_items` with filters (type, name glob, text, font, size, fill/stroke colour, layer, in, artboard, within, top_level, hidden/locked/selected), `fields`, `limit`/`offset`, `count_only`, `by_type` counts
-- [x] ✅ `get_items` (detail, merged text runs, paragraph style name, optional path points with handles)
-- [x] ✅ `get_tree` (layers → sublayers → groups, depth/limit, optional boxes)
-- [x] ✅ `selection` (get, set, add, remove, clear, all by layer/artboard; skips locked/hidden with a warning)
-
-### 1.6 Verify assumptions
-- [x] ✅ Is `uuid` stable after save → close → reopen? **No**: uuids are renumbered on reopen, and looking up a stale one raises MRAP (caught: "No item with uuid …"). Refs are valid while the document stays open; names survive (`name:`)
-- [x] ✅ Does one `do javascript` call = one undo step? **Yes**: one tool call, and one whole `batch`, undo as one step; `app.undo()` inside a call does not undo that call's own changes → `history undo` counts calls
-- [x] ✅ Speed of `doc.pageItems` scans on a 5 000-object document: indexing `doc.pageItems` costs ~0.35 ms per item (1.9 s per scan). Switched every scan to a recursive layer → group walk (`AIA.walk`, 9 ms raw): `find_items` 49–122 ms, `document_info` 243 ms, `get_tree` 25 ms — no cache needed. `get_tree` got a `max_nodes` budget (default 300). Script: `test/verify-assumptions.mjs`
-
-### 1.7 Preview
-- [x] ✅ `preview` artboard / items (with pad) / region → MCP image, `max_px`, white or transparent background, saved flag kept. Tested: `imageCapture` renders any rectangle (also off the artboard) in ~25 ms but has a 72 ppi minimum → items/regions below that are downscaled with `sips`; artboards below 72 ppi use `exportFile` (5000 pt artboard → 512 px in 79 ms)
-
-## Phase 2 — Create and edit ✅
-
-**Exit criteria:** every core competitor tool has an equivalent ([parity map](research/competitors.md#tool-parity-map));
-the calendar benchmark can be built with ≤ 20 MCP calls and no `run_script`.
-
-**Met 2026-11-22:** parity map all ✅ for the core tools (prepress is phase 3) · `test/calendar-tools.mjs` builds the
-12-page A4 calendar for 2027 (global swatches, paragraph styles, 365 day numbers, weekend colour, frame copied to all
-artboards) in **8 MCP calls, 1.3 s, no `run_script`**, then verifies day counts per month, weekend colour, no 12 pt
-orphans → [benchmarks](research/benchmarks.md) · 30 tools · `npm run test:live` (both suites) and 68 unit tests green.
-
-- [x] ✅ `create_shape` (rect, rounded rect, ellipse, polygon, star, line; `items[]` for many in one call, all-or-nothing; shared appearance props)
-- [x] ✅ `create_path` (points + handles in the `get_items` format, **SVG `d` parser** M L H V C S Q T A Z incl. arcs and packed flags, compound paths, `fill_rule`, `scale` + offset; parser unit-tested)
-- [x] ✅ `create_text` (point/area/path; fuzzy font match; paragraph/character styles + attributes; `y_ref:"top"`; overset report; `items[]`; **atomic**: the frame is removed if styling fails — A8)
-- [x] ✅ `edit_text` (contents, document-wide or per-frame find/replace keeping styling, range styling by index (negative = from end) or match/nth)
-- [x] ✅ `modify_items` (bulk or per-item `items[]`: x/y/w/h with anchor, keep_ratio, geometric or visible bounds; all appearance/state props)
-- [x] ✅ `transform_items` (move/scale/rotate/reflect about an anchor or any point, as_group, step-and-repeat `copies`; never depends on the ruler origin)
-- [x] ✅ `duplicate_items` (offset × count, grid rows × cols, **to other artboards at the same relative position**, into layer/parent)
-- [x] ✅ `arrange_items` (group/ungroup keeping stacking order, clip, compound/release, z-order, move into layer/group, move above/below)
-- [x] ✅ `align_items` (align, distribute with equal gaps or fixed spacing; to selection/artboard/key object; geometric or visible bounds)
-- [x] ✅ `path_ops` (9 Pathfinder ops, outline stroke, offset path with joins, expand appearance, text to outlines; ~100 ms each)
-- [x] ✅ `delete_items` (dedupes groups + children; locked skipped unless `force`)
-- [x] ✅ `layers` (list tree, add/update/remove/reorder/activate; sublayers by "Parent/Child" path or any-depth name; printable, template, colour; locked/hidden layers handled)
-- [x] ✅ `artboards` (top-left rect in **both** directions, in a stable artboard-0 frame — fixes A7; add/update/remove/activate, fit_to_art, grid_layout moving art along)
-- [x] ✅ `swatches` (global process with MRAP retry, spot, plain process, gradients (`gradient:Name@angle`), groups, `clean_defaults` by colour type — B5)
-- [x] ✅ `styles` (paragraph/character list/create/update/apply/remove, character style on matched text; graphic styles list/apply; **never reads style attributes** — B1; our spec is kept in document XMP via AdobeXMPScript, survives save/reopen; `AIA.metaGet/metaSet` reusable for bleed in P3)
-- [x] ✅ `fonts` (search by query/family, families_only, `resolve` shows the fuzzy match; 1 185 fonts scanned in 4 ms)
-- [x] ✅ `place` (images linked or embedded, PDF page / AI / EPS linked or editable, SVG file or markup → editable via `groupItems.createFromFile`; fit w/h, centred by default)
-- [x] ✅ `menu_command` (internal command names, refs selected first; dialog warning)
-- [x] ✅ `history` (undo/redo × count; one step = one earlier tool call or batch)
-
-## Phase 3 — Print and prepress ✅
-
-**Exit criteria:** a PDF/X-4 export with 3 mm and 0.125 in bleed measures correct Trim/Bleed boxes on every page
-(checked with a PDF library); preflight on the owner's price-list file shows no false spot-colour or non-printing warnings.
-
-**Met 2026-11-22** (`test/live-print.mjs`): 3-artboard document (A4, A4, 100×50 mm) → PDF/X-4 with 3 mm (document bleed) and
-0.125 in bleed: every page measured with pdf-lib — MediaBox = BleedBox = artboard + bleed, TrimBox = artboard, `GTS_PDFXVersion`
-PDF/X-4; the document stays bound to its own file. Preflight on a copy of a real production price list: no spot colours
-reported (5 global process swatches), Guides/Instructions (non-printing) skipped (10 items), 0 errors, live text as one info
-line. Found on the way: that file — like every document built by the owner's scripts and by our `documents new` before
-this phase — has **no bleed** (C18). 33 tools; 78 unit tests and three live suites green.
-
-- [x] ✅ `export` PNG/JPG/SVG/WebP per artboard (and items → PNG); scale, DPI or width; transparent or white background — all via `exportForScreens`, which never rebinds the document (unlike saveAs/exportFile, C6)
-- [x] ✅ `export` PDF: any preset (default `[PDF/X-4:2008]`), one file (subsets merged with pdf-lib) or per artboard, **bleed** = document / number / per side: artboards grown → export → restored; boxes normalised with pdf-lib from Illustrator's TrimBox (MediaBox = BleedBox = artboard + bleed, TrimBox = artboard), correct whatever document bleed the preset adds
-- [x] ✅ `export` PDF variable-font check (B10): fonts with a non-empty `TextFont.axisVector` → warning
-- [x] ✅ `preflight`: 18 categories in one walk — RGB in CMYK (linked images by file header: vector fills and embedded images are converted by Illustrator), missing fonts, broken links, low-res (matrix ppi), overset, default-12 pt orphans (A8), off-artboard, registration colour, white overprint, hairlines, small text, no bleed with art at the edge, **real** spot colours only (A2), non-printing/hidden skipped (A3), `ignore` (A4), live text as one info line. Owner's price list (copy): 0 errors, no spot or non-printing noise, 10 skipped; the one warning is real (bleed 0, C18)
-- [x] ✅ Document bleed readback (A6/B4): `documents new` stores it in XMP; for other documents `document_info` reads it from the saved .ai file (AI private data, zstd/zlib, `BleedLeftValue`…: 4–9 ms). Found on the way: the property is `documentBleedOffset` — `documentBleedOffsetRect` (used until now, also in the owner's earlier build scripts) is silently ignored, so those documents have **no bleed** (C18)
-- [x] ✅ Overprint / separation info (competitor parity): `preflight` returns `inks` (process plates and spot inks used/defined) and overprint / white-overprint checks
-- [x] ✅ Crop marks (competitor parity): `artboards {action:"crop_marks"}` draws trim marks in [Registration] around artboards or items (offset = document bleed, min 3 mm)
-
-## Phase 4 — Agent efficiency ✅
-
-**Exit criteria:** calendar benchmark ≤ 20 calls, ≤ 3 min, ≤ 1.5 M input tokens; results recorded in [benchmarks](research/benchmarks.md).
-
-- [x] ✅ MCP server `instructions`: conventions (refs, colours, coordinates, units), load only the needed tools, a 5-step build (global swatches + one paragraph style per text role, batches or one builder, `preview {reference}` compare-and-fix, preflight, save/export/close)
-- [x] ✅ Response budget: minified JSON, default `limit`s (find_items 50, get_items 100, selection 50, get_tree 300 nodes), "more" notes, 20 KB clip with a hint; tool list under 50 KB
-- [x] ✅ `run_script` helper library documented in the tool description and [agent-guide.md](agent-guide.md#reference-aia-helpers-in-run_script)
-- [x] ✅ Run project `.jsx` builders with args and retry on `RETRY`/MRAP: `run_script {file, args, retries}` (replaces the owner's `run.sh`); `AIA.fresh(layer)` makes builders re-runnable
-- [x] ✅ MCP prompts: `recreate_design {image, output, notes}`, `print_export {output, bleed}`
-- [x] ✅ Agent guide in docs: [agent-guide.md](agent-guide.md) (adapted from the owner's `illustrator-for-ai-agents.md`)
-- [x] ✅ Micro benchmark A/B/C (`bench/micro.mjs`) — phase 0
-- [x] ✅ Micro benchmark runner **M** (the full Chandelier MCP server over stdio, like B); re-measured 2026-11-22: 4.9–7.2 ms per call vs 267–287 ms for ie3 → [benchmarks](research/benchmarks.md)
-- [x] ✅ Micro scenarios S5 `batch` of 200 typed steps (154 ms, 1 call) and S6 `preview` image round trip (68 ms vs ie3 export 172 ms)
-- [x] ✅ Macro scenario file `bench/scenarios/calendar.md` (exact prompt, reference `calendar-reference.png` with the product photo removed, 10-point checklist K1–K10)
-- [x] ✅ Macro scenario M2 "recreate design in Illustrator by image": `bench/scenarios/design-from-image.md` + reference image (2026-11-22)
-- [x] ✅ Run M2 arms A and B × 3 (2026-11-22): A 2.5 min / 16 calls / 0.81 M input; B 5.0 min / 103 calls / 3.21 M; both 10/10 → [benchmarks](research/benchmarks.md)
-- [x] ✅ MVP-0 server (`src/server/`: `status`, `documents`, `run_script` + `AIA.*`, `preview`, `inspect`; no deps) + `test/live-smoke.mjs` (2026-11-22)
-- [x] ✅ Run M2 arm C2 × 3 on MVP-0: **1.0 min / 13 calls / 0.38 M input / 0 errors**, quality 10, 10, 9 → [benchmarks](research/benchmarks.md)
-- [x] ✅ `preview {reference, reference_crop}`: one image [reference | preview | difference], rmse, content box in both (shift/scale) and the 3 most different regions in document coordinates; PNG codec on Node's zlib + macOS `sips` for JPEG/resize (`src/image.ts`, unit-tested). Also from that feedback: `documents new {title}` (phase 1), missing fonts in `preflight`, unstyled text in `document_info`
-- [x] ✅ From M2 C2 feedback: instructions ask for paragraph styles + a compare-and-fix round; re-run pattern = `AIA.fresh`
-- [x] ✅ Run M2 arm C1 × 3 (2026-11-22): 2.1 min / 15 calls / 1.01 M input / 10, 10, 10 — no `run_script`; and C2 re-run on Chandelier: 1.2 min / 16 calls / 0.85 M / 10, 10, 10 → [benchmarks](research/benchmarks.md)
-- [x] ✅ Slim tool schemas: 61.6 KB → 48.9 KB (≈18 k → 14 k tokens per request): `items[]`/`ranges[]` no longer repeat every prop, no `$schema`/`execution`/int bounds; budget test in `test/unit/server.test.ts`; `scripts/schema-size.mjs`
-- [x] ✅ From the Chandelier M2 runs: `document_info` fonts = text frames per font (was characters) + `unstyledText` issue; new documents always record their bleed (0 too) and the "unknown" wording is fixed; layer refs `@active`, `@first`, and "Layer 1" finds the localised default layer; `batch {steps_file}`; `swatches add` updates an existing swatch; `create_text {grid}` (cells, dx/dy, `col_props`); `preview {width}`; clearer `run_script` helper docs
-- [x] ✅ From the calendar runs' feedback: `documents new {spacing}` = gap between trim edges (C23); per-step `artboard` in `batch` and `AIA.at(k, fn)` (every run added artboard offsets by hand); `preview`/raster `export` hide non-printing layers (C22); `AIA.pstyle/text {hscale}`; `preview {reference, save_to}` also saves the plain render; `batch` lists `export` as not batchable; `test/live-layout.mjs`
-- [x] ✅ Run the calendar macro, arms C1 (tools + batch) and C2 (all) × 3 (2026-11-22; A and B are the owner's runs of 2026-11-21): C1 2.6 min / 25 calls / 1.20 M / 10, 10, 10; C2 2.8 min / 23 calls / 1.05 M / 10, 9, 9 → time, tokens, errors ✅, **calls ❌** → [benchmarks](research/benchmarks.md)
-- [x] ✅ M2 C2 re-run on the phase 4 build (1 run): 1.5 min / 19 calls / 0.70 M / 10, 13 paragraph styles
-- [x] ✅ Shorter build loop (set-up and check rounds were ~10 of the ~19 Illustrator calls): `documents new {units}` sets the session units; `documents save {export: [...], close: true}` finishes in one call; `preview {more, preflight, info}` is one check call; instructions: no `status`/`fonts` first, aim for ~8 Illustrator calls; `test/live-finish.mjs`
-- [x] ✅ Re-run the calendar C1/C2 once each on the shorter loop (2026-11-22): C1 2.8 min / 19 calls (12 to Illustrator) / 0.95 M / 9; C2 2.0 min / 17 (8) / 0.78 M / 9 → **phase 4 exit met** → [benchmarks](research/benchmarks.md)
-- [x] ✅ From that feedback: export keys in the `documents` description and in a bad export entry's error; `document_info` `unnamedText` counts only text outside named groups
-- [x] ✅ From the logo job (0.1): `preview {region, artboard}` measures the region from that artboard; SVG export is always clipped to the artboard (`clipPath` = viewBox); preflight `low_contrast` for RGB documents (text vs the opaque shape under it, WCAG AA 4.5:1 / 3:1 from 18 pt); unit tests + `test/live-release.mjs` (2026-11-22)
-- [ ] 🧊 Arm D: Adobe's official MCP when it ships in the stable app
-
-## Phase 5 — Robustness ⏳ (alongside phases 1–4)
-
-- [x] ✅ MRAP: retry known-flaky operations inside the runtime (B3): swatch create/name (a new spot whose naming fails is removed), paragraph-style create/update, style and text attribute application (tools and `AIA.swatch/pstyle/text`), and read-only commands whole; `status.mrap {retried, failed}`
-- [x] ✅ Crash detection (`-609`) → clear message; auto-reload runtime after restart (version check on every call; `test/live-restart.mjs`)
-- [x] ✅ Hang detection (0.1): after a timeout the server pings Illustrator and the error says either "answers again: call #n probably finished" or "not answering: a modal dialog may be open or it is still busy", with a do-not-repeat warning; unit test (fake Illustrator) + live test (busy Illustrator). A real modal dialog takes the same path but isn't automated (dismissing it needs accessibility rights)
-- [x] ✅ `status {restart: true}`: safe restart (0.2.1, 2026-11-24) — refused while any document is unsaved or never saved (names them; stricter than "documents the agent didn't create": a restart must never lose work), else quits (bridge op `quit`: AppleScript / COM `Quit()`), relaunches and reopens the documents, re-activating the active one; unit test + `test/live-safe-restart.mjs` (Windows VM: 37.9 s)
-- [x] ✅ Idempotency hints (0.1): every call that may change something is numbered and recorded in Illustrator; `status.last_call` = {call, cmd, finished, ok, created uuids, error, ms}, so after a timeout the agent checks instead of repeating (create tools already return their uuids)
-- [x] ✅ Node version guard (0.1.1): MCP clients start the server with the first `node` on their PATH; on Node < 22.15 it now answers with one `status` tool that explains the problem and the fix, instead of failing later (`performance is not defined`, invalid preview images — seen in the plugin benchmark run C2p-1, 2026-11-23)
-- [x] ✅ Structured logs (0.2.1): `CHANDELIER_LOG=debug` → one JSON line per tool call on stderr (tool, ms, ok, error); `CHANDELIER_LOG_FILE=<path>` appends to a file; unit test
-- [x] ✅ Live integration suite (`npm run test:live`) on scratch documents; a guard (`test/live-lib.mjs`) checks before every call that the active document is one the suite made and aborts otherwise
-- [x] ✅ A failed call leaves no empty new document (M2 run A3): documents it created with no items and no file are closed with a warning (in `batch` only with `rollback`); warnings now also come with errors
-- [x] ✅ Test in the ru_RU UI (owner's setup); en_US moved to phase 7 (Windows VM, W6) — owner 2026-11-23
-- [x] ✅ Working document (2026-11-27, owner asked after a suite run landed in the wrong file): the server remembers the document the session works in (its file path once saved — two open `runs.ai` are told apart — else its name) and sends it with every call; when the user brought another document to the front in between, the runtime switches back first and the reply warns; `documents new/open/activate` by the agent moves it; a closed one falls back to the active document with a warning. Unit tests + `test/live-working-doc.mjs` (the user's switch made through AppleScript, outside the server)
-
-## Phase 6 — Distribution and platforms ⏳
-
-- [x] ✅ Brand: logo + GitHub hero image, designed through Chandelier (2026-11-22): [brand.md](brand.md), files in `docs/assets/brand/`, README hero; [how it went](logo-plan.md#10-how-it-went-2026-11-22)
-- [x] ✅ npm package + `npx chandelier-mcp` (0.1): `package.json` ready (not private, `os: darwin`, `prepublishOnly`, no source maps); the packed tarball installed in a clean folder with a fresh npm cache runs through `npx` (32 tools, live status). **Published 2026-11-23:** `chandelier-mcp@0.1.0` on npm (npm's staged publishing: upload, then approval on npmjs.com); `npx -y chandelier-mcp` from the registry in a clean folder with a fresh cache: started in 3.3 s, 32 tools, live round trip
-- [x] ✅ Claude Code plugin (0.1): `plugin/` (`plugin.json` with the MCP server via `npx chandelier-mcp`, **Illustrator skill**, `/ai-preview`, `/ai-preflight`, icon) and `.claude-plugin/marketplace.json`; `claude plugin validate` passes. Installed from the public marketplace (`acidka/chandelier`) by the owner and loaded in Claude Code (2026-11-23)
-- [x] ✅ `.mcpb` bundle for Claude Desktop (0.1): `npm run build:mcpb` (manifest 0.2, darwin, Node ≥ 22.15 — Claude Desktop 6.28 embeds Node 24.22; 6.6 MB); the unpacked bundle ran a live round trip. Installed and working in Claude Desktop (owner, 2026-11-23)
-- [x] ✅ MCP registry listing (0.4.1, 2026-11-24): `server.json` (name `io.github.acidka/chandelier`, schema 2025-12-11; `mcp-publisher validate` passes against the live registry) and `mcpName` in `package.json`; unit test `release-meta` keeps the name and every manifest version in step. Published by the owner (`mcp-publisher login github && mcp-publisher publish`): [registry entry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.acidka/chandelier), status active. Each release: bump `server.json` with the other manifests, `npm publish`, then `mcp-publisher publish`
-- [x] ✅ Switch the maintainer's production workflow from `illustrator-mcp` to this server (2026-11-24, owner asked): its Illustrator skill and agent guide rewritten around Chandelier (existing product builders keep running through their own runner; checks through `preview`/`preflight`), its MCP-only recipe for the old server removed, issue log gets a Chandelier section; the user-level `illustrator-mcp` server removed (Chandelier comes from the plugin)
-- [x] ✅ Multiple installed Illustrator versions (target a specific app path), 2026-11-27: `CHANDELIER_APP` = the path of `Adobe Illustrator.app` (macOS: AppleScript by path) or `Illustrator.exe` (Windows: its version's ProgID `Illustrator.Application.<major>`, only that executable's process, launch starts it); a wrong path is refused before anything runs. Checked against one install each (macOS 2025, the Windows VM's 2027: version 31.0.0 through `Illustrator.Application.31`); a machine with two versions at once not yet
-
-## Phase 7 — Windows 🔄
-
-Plan, options with pros and cons, risks: [windows-plan.md](windows-plan.md). Starts after the 0.1 release; ships as
-**0.2**. Test machine: a Parallels VM with Windows 11 **ARM64** (owner, 2026-11-22); x64 via CI until a machine exists.
-
-**Exit criteria:** on Windows 11 (ARM64 VM) with Illustrator 2025+ the live suites (`test:live`, layout, finish,
-restart, verify-assumptions) are green ✅; one M2 run (C2) meets the MVP targets ✅ (C2w-1: 1.5 min, 11 calls, 0.35 M,
-quality 10); Illustrator is never launched unasked ✅; unit tests green on macOS and Windows ✅ (115/115 in the VM;
-CI runs once `develop` is pushed); `npx chandelier-mcp` works on Windows ✅ (packed 0.2.0 in a clean folder with an empty
-npm cache — a second Windows account would need its own desktop session); README has a Windows quick start ✅.
-MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24): a VM can't judge it
-([benchmarks § 1b](research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24)).
-
-- [x] ✅ W0 Parallels VM (Windows, SSH, Node, Git 2026-11-23; Illustrator 2026 wouldn't install on ARM64 and an emulated x64 VM was dropped as too slow; **2026-11-24: Illustrator 2027 (31.0.0) installs as a native ARM64 build**): Windows 11 ARM64, Illustrator 2027 native ARM64, Node 22 ARM64, Git; set up for agent access over SSH (owner once: [windows-plan § 11](windows-plan.md#11-agent-access-to-the-vm-w0), `scripts/windows/connect-vm.sh` on the Mac); live runs through `scripts/windows/run-interactive.ps1`
-- [ ] 🔄 W1 Spike: persistent `powershell.exe` bridge, `GetActiveObject` + `DoJavaScript` loop; measure latency, runtime load size, a 5-min call, a modal dialog, a crash, Unicode, whether activation is needed; choose PowerShell (A) or a .NET helper (E; owner: fine if needed) — 2026-11-24: Illustrator 2027 native ARM64 in the VM; **A kept** (8 ms median), 1 MB scripts, Unicode, errors, 70 s call, `test/live.mjs` green; crash during a call + relaunch ✅ (`test/live-restart.mjs` on Windows); 5-min call ✅; save/export need no activation on Windows → `activate` defaults to false there ✅ (`test/live-w1-activate.mjs`); open: modal dialog (windows-plan § 12)
-- [x] ✅ W2 Platform layer (`src/platform.ts`: bridge command, script paths), `src/bridge/bridge-win.ps1` (same NDJSON protocol, cached COM object, OLE message filter, fake-COM mode), `Transport` picks by platform — written 2026-11-23; first live run 2026-11-24: `test/live-w1-bridge.mjs` and `test/live.mjs` green through the full MCP server
-- [x] ✅ W3 Pure-JS image pipeline (2026-11-23): PNG 8/16-bit with alpha, JPEG via `jpeg-js` (pure JS), crop and area-average resize in `src/image.ts`; `preview` (shrink, reference crop/resize) and `export {refs}` no longer call `sips`; on macOS `sips` remains only as a converter for other formats (HEIC, TIFF, WebP, interlaced PNG); unit tests + live suites green
-- [x] ✅ W4 Paths into ExtendScript (forward slashes for `path`/`dir` args: done 2026-11-23; drive letters ✅ live 2026-11-24); runtime checks on Windows: exports, PDF presets, Pathfinder menu commands (needed a redraw after selecting, `A.syncSelection`), fonts ✅ via the live suites (windows-plan § 13); long paths: exports work, Illustrator's save/open would open a dialog → refused at 260+ chars on Windows ✅; localised names: shared code, tested in ru_RU on macOS ✅
-- [x] ✅ W5 HRESULT error map (✅ 2026-11-23, unit-tested; + 0x80041389, 0x800706BE from live runs), hints (busy/timeout messages name the links dialog ✅), launch from the registered install path (✅ live 2026-11-24), activation via `AppActivate` (works; off by default on Windows), Windows `live-restart` (✅ 2026-11-24: kill during a call, relaunch, runtime reload)
-- [x] ✅ W6 CI matrix (macOS + Windows) ✅, fake-COM bridge protocol test ✅ (`test/unit/bridge-win.test.ts`, 2026-11-23), live suites green on Windows ✅ 2026-11-24 (all nine, windows-plan § 13; transport grace 1 s on Windows so call timeouts hold)
-- [x] ✅ W7 Benchmarks on Windows (micro M, one M2 C2 run) → [benchmarks § 1b and M2 on Windows](research/benchmarks.md#1b-windows-02-phase-7-w7--2026-11-24) — 2026-11-24, VM: M2 C2w-1 1.5 min, 11 calls (6 to Illustrator), 0.35 M input, quality 10; per call 8–10 ms (bridge) / ~20 ms (MCP) when the VM is in its fast state, 100–140 ms in its slow one (Parallels adaptive hypervisor); `bench/micro.mjs` runs on Windows
-- [x] ✅ W8 Windows install and troubleshooting in README and agent guide; `.mcpb` and plugin checked on Windows — 2026-11-24: version 0.2.0; plugin starts the server through `plugin/launch.mjs` (Windows has no bare `npx`); packed package, plugin launcher and unpacked `.mcpb` answer a live `status` in the VM (windows-plan § 14)
-
-## Phase 8 — Future 🧊
-
-- [x] ✅ CEP panel (experimental, for 0.5): **events** (selection, document, saved) pushed to the agent, **chat** from the panel (`message` events, `events {say}`, activity line), **channel mode** (a panel message wakes a Claude Code session), scripts through the panel (1.6 ms vs 7.0 ms) — [panel plan](panel-plan.md). Install: `npx chandelier-mcp install-panel`. Live on macOS (Illustrator 29.1): live suite 23/23, pairing trial with the owner, fresh agent 3/3, channel wake-up. Open: signing (ZXP), x64 Windows test, hidden-panel check (owner); Windows ARM Illustrator loads only Adobe's CEP panels and Illustrator has no third-party UXP yet
-- [ ] 🧊 UXP plugin transport when Illustrator UXP is public (~Q2 2027 beta, ~Q4 2027 GA)
-- [x] ✅ Live effects via LiveEffect XML (drop shadow, round corners, feather, blur) — done in 0.4 (`effects`)
-- [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
-- [x] ✅ Visual diff: compare a preview with a reference image and report misaligned regions — done in 0.4 (`preview` `differences`)
+- [ ] 🧊 UXP plugin transport when Illustrator UXP opens to third parties (~Q2 2027 beta, ~Q4 2027 GA)
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
-- [ ] 🧊 Plan-then-run approval mode: the agent sends a whole job as one plan (`batch {plan: true}`), the designer approves it once (panel, MCP elicitation or chat), it runs as one undo step; server-enforced while `configure {approve: "plan"}`; drift check, expiry, one run per plan — [proposal](research/plan-then-run.md). **On hold (owner, 2026-11-27):** built on branch `future/plan-then-run` (not merged; as-built notes in `docs/research/plan-then-run-plan.md` § 8 on that branch); open before a merge: Windows live run (C31), elicitation in real clients, panel card review, scene build / data_merge in approval mode, fingerprint cost at 5 000 items, bug #27
+- [ ] 🧊 Graphs from data; editing symbol contents
+- [ ] 🧊 Arm D in the benchmarks: Adobe's official MCP when it ships in the stable app
+- [ ] 🧊 **Plan-then-run approval mode** — the agent sends a whole job as one plan, the designer approves it once, it
+  runs as one undo step ([proposal](research/plan-then-run.md)). On hold (owner, 2026-11-27): built on branch
+  `future/plan-then-run`, not merged; open before a merge: a Windows live run (C31), elicitation in real clients, a
+  panel card review, scene build / data_merge in approval mode, fingerprint cost at 5 000 items, bug #27
 
-## Milestone 🎯 0.2.1 — quick wins ✅ (released 2026-11-24)
+## Done
 
-The 0.1.x / quick-win items of the [gap review](research/feature-gaps.md#recommended-order) plus the two 0.2 extras that
-didn't make 0.2.0 (owner, 2026-11-24: "finish all 0.2.x"). New features go in as options on existing tools where they
-fit, to keep the tool list under its 50 KB budget.
-
-- [x] ✅ Safe restart `status {restart}` + `CHANDELIER_LOG` debug log (phase 5 items, below)
-- [x] ✅ Brand and accessibility checks as `preflight` options: `contrast: true` (WCAG AA in CMYK documents too), `tokens {colors, fonts, sizes}` → `off_token` warnings (one per item, all its off-token colours/fonts/sizes in the detail); `test/live-checks.mjs`
-- [x] ✅ Bug found on the way: a tinted swatch colour (`swatch:Navy@50`) set the tint on the **swatch itself**, so every later `swatch:Navy` came out at 50 % (both platforms, since phase 2). `A.color` now returns a new SpotColor per use; regression check in `test/live-checks.mjs`
-- [x] ✅ `export` options: `variants: [{name, show, hide}]` → one file per layer set (`<stem>-<name>`, or a subfolder), hidden layers also non-printing, every layer restored in a `finally` (the document counts as changed), a wrong layer name fails before anything changes; screen assets `{refs, each: true, scales: [1, 2, 3]}` → one PNG per item named after it, `@2x`/`@3x` copies; `test/live-checks.mjs`
-- [x] ✅ Symbols: new tool `symbols` — `list` (instances per symbol), `create` (items → symbol, replaced by one instance in place, `keep` leaves them; a taken name is refused), `place` (x, y, w/h, layer), `replace`, `expand` (break link), `remove` (refused while instances exist, `force` deletes them); `test/live-checks.mjs`
-- [x] ✅ Image trace: `path_ops {op: "trace", refs, preset}` — placed or embedded images → Image Trace + expand → a group named like the image, the image removed; non-images refused; `test/live-checks.mjs` (a generated PNG). Preset names follow the UI language
-- [x] ✅ Recipe library: `run_script {recipe, args}` runs ready builders shipped in `src/recipes/` (→ `dist/recipes/`, linted as ES3): `calendar-month` (en/uk, Monday/Sunday first, ISO weeks, paragraph styles per role), `labels-sheet`, `business-card` (band into the bleed), `color-chips`, `style-guide` (measures each style sample: a style's size can't be read, B1); `recipe: "list"` reads each file's header; unit test + `test/live-checks.mjs` (renders checked by eye)
-- [ ] ➡️ W1 modal-dialog check on Windows (needs the owner at the VM); seen in the wild: the links dialog during a restart's quit (windows-plan § 15, known issue) — carried over to phase 7 (W1); not a release blocker: listed as a known issue in the 0.2.1 notes
-- [x] ✅ Regression pass in the Windows VM: all live suites green, unit tests 118/118 (2026-11-24)
-- [x] ✅ macOS live pass (Illustrator 29.1 ru_RU, macOS, Node 22.23, 2026-11-24): all seven suites green (`live`, `live-edit`, `live-release`, `live-layout`, `live-finish`, `live-checks`, `live-print`); the earlier `live-print` failure (preflight missed `rgb_in_cmyk` **and** `low_res` for the linked `LowRes` image, so the image itself wasn't seen as a linked raster) didn't reproduce in 10 runs, alone and after the other suites. The test now records how Illustrator sees `LowRes` and prints it if the check fails again
-- [x] ✅ Release 0.2.1 (2026-11-24): npm `chandelier-mcp@0.2.1` (owner; checked from the registry with a live `status`), plugin and marketplace 0.2.1 (launcher `^0.2.0` picks it up), `main` fast-forwarded, tag `v0.2.1`, GitHub release with `chandelier-0.2.1.mcpb`
-
-## Milestone 🎯 0.3 — production automation ✅ (released 2026-11-24)
-
-Items 2–4 of the [gap review](research/feature-gaps.md#recommended-order): the jobs print shops and production teams
-repeat, done in one call each. Owner, 2026-11-24: "finish 0.3"; the tool-list size problem solved with profiles
-(owner suggested a search-and-call pattern; [plan D13](plan.md#d13--tool-profiles-full-by-default-lean-on-request--decided-03)).
-
-- [x] ✅ `data_merge` (new tool): template on an artboard (or refs) with `{{field}}` in any text (keeps the placeholder's style) and items named `{{field}}` (text, linked image fit in its box, symbol, colour) or `{{?field}}` (shown when set); data from CSV/TSV/JSON (BOM, quotes, `;`/tab) or inline rows, `offset`/`limit`; modes `artboards` (one per row), `grid` (n-up per artboard), `files` (one export per row, `{field}`/`{n}` in the path, document unchanged); `name` pattern, `remove_template`, `dry_run` (template fields vs data columns); problems per row (missing image) don't stop a run; [plan D12](plan.md#d12--data-merge-template-copies-not-illustrator-variables--decided-03)
-- [x] ✅ Multi-file jobs: `batch {files}` (paths, folders, `*.ai` globs) — open → steps → save a copy into `out_dir` (default; refused when it is the originals' folder) / `in_place` / `none` → `export` (`{name}` = file stem) → close without saving; files already open are skipped; `dry_run` runs and reports without saving or exporting; per-file results
-- [x] ✅ Recolor: `swatches {action: "recolor"}` — fills, strokes, text runs (merged into spans) and gradient stops → nearest target swatch (`to`: names or `group:Name`, default all global/spot) within `tolerance` (CIE76 ΔE, default 20), or an explicit `map`; tints of a swatch match by the swatch colour and stay tints; locked content counted, not touched; `dry_run`. `swatches {action: "import"}` reads an `.ase` swatch library (CMYK, RGB, Lab, gray; groups; global/spot/process); colour spec `lab(l,a,b)`
-- [x] ✅ Tool profiles: `CHANDELIER_TOOLS=lean` (8 tools + `tools` meta-tool: catalog, query, schema, call; 15.4 KB ≈ 4.9 k tokens) or a list of names; `full` stays the default (53.6 KB; budget raised to 55 KB)
-- [x] ✅ Tests: unit (CSV, patterns, ASE round trip, file lists, profiles, lean server) and `test/live-production.mjs` (macOS, Illustrator 29.1 ru_RU, 2026-11-24: green)
-- [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 127/127; `live-production` green by parts — merge and recolor in a full run, files on a fresh Illustrator (`ONLY=files`); Illustrator crashed twice at a new/opened document late in full runs (the 0.2.1 known issue; a 4× save-close-open loop alone doesn't reproduce it)
-- [x] ✅ Release 0.3.0 (2026-11-24): npm `chandelier-mcp@0.3.0` (owner), plugin and marketplace 0.3.0 (launcher `^0.3.0`), `main` fast-forwarded, tag `v0.3.0`, GitHub release with `chandelier-0.3.0.mcpb`
-
-## Milestone 🎯 0.4 — look and print depth ✅ (released 2026-11-24)
-
-Items 8, 10 and 12 of the [gap review](research/feature-gaps.md#recommended-order). Owner, 2026-11-24: "finish 0.4".
-
-- [x] ✅ Live effects: new tool `effects` — drop shadow, outer / inner glow (with colours), round corners, feather, Gaussian blur, offset path, roughen, zigzag, pucker & bloat, transform (copies), raw `{xml}`; lengths in session units, colours as everywhere; `clear` ([plan D14](plan.md#d14--live-effects-through-liveeffect-xml--decided-04); quirks C26, C27). The XML forms come from the art styles Illustrator writes into uncompressed .ai files and from MIT-licensed community work; each type checked live by render and bounds
-- [x] ✅ Prepress: `path_ops {op: "trap"}` (spread: overprinting stroke of the item's own fill, 2 × width; paths and text; stroked / gradient fills skipped with a warning; not counted as "created", so a batch rollback keeps the items); `export {output_intent}` (installed CMYK profile by name — "FOGRA39", "GRACoL" — or an .icc → the PDF/X OutputIntent with the profile embedded; `output_intent` read back per PDF; quirk C29); `swatches {action: "convert", mode: cmyk|rgb|gray}` (Edit Colors through the document's profiles; without refs cmyk/rgb also switch the document mode; quirk C28)
-- [x] ✅ Visual diff: `preview {reference}` → `differences` (up to 6): difference blobs classified `shifted` (with the measured shift in session units) / `missing` / `extra` / `changed`, with the items in each; rendering noise (< 3 % mean difference) ignored; replaces the 4 × 4 grid `regions`
-- [x] ✅ Tool list: full 55.0 KB (budget 56 KB: duplicated colour syntax trimmed from `run_script` and `find_items`), lean unchanged at 15.4 KB
-- [x] ✅ Tests: unit (effect XML, diff on synthetic pages, ICC profiles, output intent round trip) and `test/live-look.mjs` (macOS, Illustrator 29.1 ru_RU, 2026-11-24: green); all 10 macOS live suites green
-- [x] ✅ Windows (VM, Illustrator 2027 ARM64, 2026-11-24): unit tests 134/134; `live-look` green by parts (effects, print, diff), `live` and `live-print` green. Found and fixed there: ICC folders when the Program Files variables are missing (a scheduled task's environment), and the diff counting only dark pixels as content (a mid green rendered at grey 152 came out `changed` instead of `extra`)
-- [x] ✅ Release 0.4.0 (2026-11-24): npm `chandelier-mcp@0.4.0` (owner), plugin and marketplace 0.4.0 (launcher `^0.4.0`), `main` fast-forwarded, tag `v0.4.0`, GitHub release with `chandelier-0.4.0.mcpb`
-
-## Milestone 🎯 0.5 — Chandelier panel ✅ (released 2026-11-24)
-
-Gap item 16 (phase 8). Owner, 2026-11-24: "do everything needed to close this milestone". Design, trials and limits:
-[panel plan](panel-plan.md).
-
-- [x] ✅ Chandelier panel (experimental, opt-in `CHANDELIER_TRANSPORT=panel`; CEP, Illustrator 2021+): scripts through
-  the panel (1.6 ms vs 7.0 ms over the OS bridge), **events** (selection with uuids, document, saved, edited) and the
-  `events` tool (long poll), **chat** in the panel (one per document, kept in `~/.chandelier/chats.json`; the agent
-  answers with `events {say}`), an activity line (waiting / thinking / working), **channel mode**
-  (`CHANDELIER_CHANNEL=1`: a panel message wakes a Claude Code session, research preview); the default tool list is
-  unchanged (`events` only in panel mode)
-- [x] ✅ Install: `npx chandelier-mcp install-panel [--uninstall]`; README and plugin skill sections
-- [x] ✅ Trials on macOS (Illustrator 29.1): live suite 23/23 through the panel; pairing trial with the owner; fresh
-  agent 3/3 (headless); channel wake-up of an idle interactive session (10 s)
-- [x] ✅ Fixes found on the way, for every user: agents leave a finished document open; a batch `@n` sees every item
-  of a long step result (was the first 100); MRAP gets a fourth retry after 1 s
-- [x] ✅ Unit tests on Windows (VM, 2026-11-24): 171 tests; found and fixed a race there — pausing sharing while a look was running still sent that look's state
-- [x] ✅ Windows: on x64 Illustrator expected to work (not tested: no x64 machine); on Windows ARM Illustrator 2027
-  loads only Adobe's own CEP panels (by design), and Illustrator has no third-party UXP yet — the panel is not
-  offered there (the installer says so)
-- [x] ✅ Release 0.5.0 (2026-11-24): npm `chandelier-mcp@0.5.0` (owner; checked from the registry: 35 tools, 36 with
-  `events` in panel mode, `install-panel` works), plugin and marketplace 0.5.0 (launcher `^0.5.0`), `main`
-  fast-forwarded, tag `v0.5.0`, GitHub release with `chandelier-0.5.0.mcpb`; MCP Registry: 0.5.0 listed as
-  latest (owner, `mcp-publisher publish`; checked through the registry API). CI: Windows green; the macOS job waited for a GitHub runner (capacity)
-- [x] ✅ 0.5.1 (2026-11-24, owner: "fix install-panel and release"): `install-panel --help` / unknown options print
-  usage instead of installing; its instructions give the Windows command (`cmd /c npx …`), warn that wake-up needs the
-  channel flag on every start, say to re-run it after an upgrade, and spot Windows ARM under x64 emulation; CI actions
-  v7 (Node 24); docs for 0.5. Released: npm `chandelier-mcp@0.5.1` (owner; checked from the registry), `main`
-  fast-forwarded, tag `v0.5.1`, GitHub release with `chandelier-0.5.1.mcpb`; MCP Registry: 0.5.1 listed as latest
-  (owner; checked through the registry API)
-- Open after 0.5 (not blocking): signed ZXP (needs Adobe's ZXPSignCmd and a certificate), a test on x64 Windows, the
-  hidden-panel check (owner)
-
-## Milestone 🎯 0.5.2 — no extra installs ✅ (released 2026-11-25)
-
-Owner, 2026-11-25: on another Mac, an agent's first requests after installing Chandelier failed until it had installed
-Python imaging libraries. Session logs show why: to measure or crop a reference image, sample a colour or render a PDF
-page, agents reached for Python PIL / OpenCV (`pip install` into a venv) or a Swift script — Chandelier couldn't look at
-a file, and the skill said "measure in pixels" without a way to.
-
-- [x] ✅ `preview {image}`: PNG/JPEG (+ `sips` formats on macOS) in pure JS — px, ppi, colour mode, content box and
-  background; `region` crops and zooms up to 8× (sharp); `grid: true | step` labelled lines in image px; `sample`
-  points or rects → hex, RGB, naive CMYK. Pages of .pdf/.ai/.eps/.svg via Illustrator (`render_file`: opened with
-  alerts off, captured, closed unsaved, previous document active again; an open file is rendered as is), in session
-  units; unit tests
-- [x] ✅ Guidance: server instructions, `recreate_design` prompt and skill say `preview {image}` instead of
-  Python/PIL, Swift or sips; a row in the skill's trouble table
-- [x] ✅ Recreate method trained on a real job (2026-11-25, a photographed box front with five translucent wave
-  ribbons; RMSE 0.116 → 0.100 in six rounds): `plugin/skills/illustrator/recreate.md` — reference artboard beside
-  the work, artwork vs photo, layers from tone steps, dense measuring with gaps left open and shared edges, smooth
-  curves = designer anchors (peaks/troughs, horizontal handles, ⅓–½ handles) fitted by least squares with a
-  curvature-continuity term, colour from sampled overlaps, two-view compare (page + full-size close-up)
-- [x] ✅ Shading in the method (recreate.md § 5b, same job: RMSE 0.100 → 0.095): shade visible bands, not objects;
-  a gradient that follows a curve = stacked multiply steps between an edge and the next seen edge, clipped by the
-  exact edge; ≥ 1.5 % opacity per step (smaller steps don't render); check with tone profiles at 1 px per px
-- [x] ✅ Bugs fixed (2026-11-25, [bugs.md](bugs.md)): gradient angles (#1), `preview {reference}` with region/refs (#2), any zoom in `preview {image}` (#3), restart past the links dialog (#4), tool-list headroom 54.1 KB (#6); PDF pages in `preview {image}` verified live (V1); live-release covers them. #7–#12 fixed the same day; #5 reproduced and found to be Illustrator's own (quirk C30, [windows-plan § 16](windows-plan.md))
-- [x] ✅ Release 0.5.2 (2026-11-25): npm, GitHub release with the .mcpb, MCP Registry (0.5.2 latest, checked through its API); faster free-form recreation and the fresh-agent trial carry over to the next milestone
-
-## Milestone 🎯 0.6 — faster free-form recreation ✅ released 2026-11-27 (0.6.0)
-
-Carried over from 0.5.2 when it was released.
-
-- [ ] **`scene` tool: image → editable vector scene** (owner, 2026-11-26; main item) — [proposal](research/scene-tool.md).
-  Chandelier does the pixel work, the agent only decides: `analyze` (rectify, Lab colour quantize, regions, shared
-  edges fitted once, primitives, tone ramps → a 1-page summary + overlay), `edit` (merge, recolour to swatches, to
-  text, to a primitive, drop), `build` (layers, global swatches, one undo step), `refine` (per-region error, re-fit
-  only bad regions). Pure TS, no installs. [Implementation plan](research/scene-plan.md) (owner decisions
-  2026-11-26: behind `CHANDELIER_SCENE=1` until release, stacked shapes, S1 exit = speed win, photo lighting flattened). Target (estimate): free-form jobs ~3–5 min, 10–15 calls, < 100 k tokens
-  - [x] ✅ S1 (2026-11-26): rectify, quantize, regions, shared edges, fit, build; evaluated on suite cases 04, 08 (benchmarks § 2i)
-    - [x] ✅ Task 1 (2026-11-26): `fitCurve {t0, t1}` fixed end tangents (shared junctions, loop seams); `fitcurve.ts`
-      exports `P`, `Seg`, `bez`, `segsToD`; `imageview.ts` exports `put`, `label` (label colour); unit tests
-  - [x] ✅ S2 (2026-11-26): primitive recognition, tone ramps, translucent overlaps (multiply)
-  - [x] ✅ S3 (2026-11-26): `refine` loop (render-based ink fix, re-fit missing edges, undo when worse)
-  - [x] ✅ S4 (2026-11-26/27): text boxes, logo groups, placeholders; recreate.md § 5.0 with the purpose (organic, irregular artwork; owner-delegated 2026-11-27); plan.md tool table; flag lifted, budget 59.5 KB (2026-11-27)
-  - [ ] Suite pairs on the release build: 09 v5, 05 and 07 (manual + scene), 01 and 02 (scene listed) — 2026-11-27; owner: released first, the pairs run on 0.6.0
-- [ ] **Faster free-form recreation.** The subagent test (2026-11-25) took ~24 min (99 tool calls, ~235 k tokens,
-  ~15 s per call — model time, not Illustrator) against ~3 min for layout jobs such as the calendar. Where it went:
-  writing and debugging 7 scripts for the method (profiles, anchor fit, shared curves, shading, batch generator);
-  9 full rebuild rounds, ~4 of them on guide gaps (now fixed in recreate.md); ~38 calls through `test/mcp-call.mjs`
-  (a new server per call, runtime reloads when switching from the 0.5.1 server: a minute or two at most). Turn the
-  hand-written code into tools:
-  - [x] ✅ Edge tracks: `preview {image, profile: true | {step, min, rows}}` — column (or row) profiles, tone steps
-    linked into tracks by slope prediction, `{id, tone, above, below, pts}`, drawn on the image (`src/edges.ts`;
-    on the job photo 1122 × 1402: 21 tracks in 49 ms)
-  - [x] ✅ Curve fit: `create_path {fit, tolerance}` — anchors at prominent extremes (found on smoothed points, placed
-    on measured ones) with level/vertical handles, Schneider least squares between, split only past the tolerance;
-    several lists = a band (`src/fitcurve.ts`; job tracks: 5 anchors per wave edge at tolerance 2–4)
-  - [x] ✅ Curve fit, rest (2026-11-27): curvature continuity (handle lengths at smooth joints matched, within the
-    tolerance and ≤ tol/2 from the old curve; analyze +3 %), fixed anchors (`create_path {fit, anchors}`); end extension
-    was already `extend`
-  - [x] ✅ Curve-following shading: `create_path {fit, shade: {to, steps}}` — 6–16 multiply steps whose near side is
-    the exact fitted edge (no clip), far side k/(N+1) of the way to `to`; window minimum + smoothing of the distance
-    (live check 2026-11-25, Illustrator 29.1, macOS: smooth fade, no seams)
-  - [x] ✅ Gaps from the v5 test (2026-11-25): `create_path` `scale: [sx, sy]` and `map` (4-point, before `fit`);
-    `extend`; long gaps (no extreme anchor at a gap's edge, parabola tangents: 22.6 → 2.3 px off over a 350 px gap);
-    `shade` with `clip_to`, `taper` and a multi-list edge; `profile` tracks run on to the sides, break at sharp turns,
-    short tracks touching a side kept. Live: `clip_to` worked once, then Illustrator 29.1 went into a state where
-    every new path failed ("Target layer cannot be modified", MRAP) — restart needed; recheck after it (most likely quirk C32, a locked active layer: fixed as bug #13)
-  - [x] ✅ From v6 (2026-11-25): `extend` made spikes at the inner joints of sub-lists (now only outer ends); `shade.to`
-    shorter than the edge left a seam (the far side now runs on parallel)
-  - [x] ✅ `preview {reference, sample}`: the same points sampled in both images (every run writes a sampling script) —
-    `samples [{at, preview, reference, de}]`, 2026-11-27
-  - [x] ✅ Fit a sub-list's end exactly onto another fitted curve (2026-11-27): `create_path {fit: [list, {onto: points}]}` — the list's end moves to where its own direction meets the curve fitted through those points (or the nearest point of it); short and overshooting lists both land on it (unit + live)
-  - [x] ✅ Released in 0.5.3 (2026-11-25), so one server has every feature (no `mcp-call` detour)
-  - [ ] Measure: a fresh subagent on this job, then on another image; target a few minutes in 3–4 rounds (an
-    estimate until measured). This job, v5 (2026-11-25): ~12 min (was 16–25), 67 tool calls, 202 k tokens, 3 helper
-    scripts for JSON only ([benchmarks § 2g](research/benchmarks.md)); another image still to do
-- [ ] Recreate suite (owner, 2026-11-25: improve recreation in general, not for one image): 4 cases set up in
-  `tmp/recreate-suite/` (wall calendar, desk-calendar mockup, packaging front, ribbons photo); ✅ baseline run 1
-  (01, 02, 04 perfect; 03 waits for a better reference, [benchmarks § 2h](research/benchmarks.md)); 2026-11-26: five
-  more real jobs from the owner as cases 05–09 (signage panel, foil-logo mockup, business card, round emblem, flat
-  illustration), also the scene tool's evaluation pool
-- [ ] Fresh-agent trial on a machine without Pillow (PDF pages: verified live 2026-11-25)
-- [ ] **Token use** (2026-11-27 comparison: [benchmarks § 2j](research/benchmarks.md#2j-token-use-across-versions-same-tasks--2026-11-27)) — fewer turns and a smaller fixed context:
-  - [x] ✅ Measure M2 and the calendar on the 0.6 build (2026-11-27, one run each, [benchmarks](research/benchmarks.md#m2-and-calendar-on-the-06-build--2026-11-27-arm-c2-1-run-each-token-use)): first request 25 k tokens (was 40.8 k lean / ~52 k full), but twice the requests — M2 1.01 M (0.4: 0.36 M), calendar 2.02 M (0.78 M), mostly measuring zooms before the build; calendar quality best so far (January rmse 0.112)
-  - [x] ✅ Fewer measuring turns (2026-11-27): `preview {region: [[…], …]}` (up to 6 zooms in one call, image or render; samples stay up to 24 per call) and the guide says to measure in 1–2 calls; `run_script {recipe: "help"}` lists every `AIA.*` helper with the option keys it reads (generated from the runtime: 96 helpers), so builders don't read the source
-  - [x] ✅ Split `recreate.md` (2026-11-27): the core every job reads (`recreate.md`: § 0–2, 6, 8, 9 + which file to read, 11.2 KB, was 40.7 KB) + `recreate-type.md` (§ 3, 4.9 KB), `recreate-marks.md` (§ 4, 3.5), `recreate-scene.md` (§ 5.0, 10.8), `recreate-freeform.md` (§ 5a–c, 8.8), `recreate-shading.md` (§ 7, 3.4); SKILL.md names them; a layout job reads ~16 KB instead of 41
-  - [x] ✅ Smaller `scene` replies by default (D16 merge, 2026-11-27): summary lists the 15 largest regions + `+N regions` (`show` for more; 40 with `reply: "full"`), overlay only on `analyze` and `edit {overlay: true}`, brief `build` reply without anchors / bytes / calls / ms; summary 3.5–3.9 → 1.8–2.2 KB on five suite images ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [x] ✅ Measured on case 09, `brief` vs `full` (2026-11-27, one run each): no `show` calls in either, reply text
-    30.2 k vs 46.1 k chars, same rmse 0.103 ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [x] ✅ One `analyze` per job in the guide (recreate.md § 5.0); a `where` (box) column in the summary (F49) — 2026-11-27
-  - [x] ✅ Fewer turns per recreate job (2026-11-27): font tests in one batch are in the guide (G46); `box_format: "[x, y, w, h]"` next to every `content_box`; unknown arguments refused with a hint instead of dropped silently (`transform_items {move}` → "did you mean dx, dy?"; aliases from the runs + nearest name; no tool-list bytes); every positional reply says its units (`units: pt`) — the frame note too when the frame isn't the default
-  - [x] ✅ Watch the tool-list budget: enforced by the unit test (60 KB; 59.96 KB on 2026-11-27 after trimming descriptions for the day's options); README suggests `CHANDELIER_TOOLS=lean` (4.9 k tokens) for clients that load every schema; a new option now needs a trim or an owner decision on the budget
-  - [x] ✅ Track tokens per run in every suite record (task notification) and flag a run over 1.3× its case's best — rule in [recreate-testing.md](recreate-testing.md) (§ after a run), 2026-11-27
-- [x] ✅ **Improve scene `analyze`** (owner, 2026-11-27; released in 0.6.1, soft shading F38 still open): one call that gives a buildable scene more often, so fewer edit / rebuild rounds
-  - [x] ✅ Small regions of their own colour keep it (F52, 2026-11-27): lips red instead of brown on 09, olive patches gone from 03's beige box; the rest of the suite unchanged ([scene-plan § 9](research/scene-plan.md))
-  - [x] ✅ Crop edges (F25, F51, 2026-11-27): a `crop` is read with a 20 % margin; a shape crossing the crop edge that ends in the margin stays whole, one that runs on is cut as before; `crop_at` in the summary, `build {rect}` still places the crop
-  - [x] ✅ `drop < %` names what it took (F39, 2026-11-27): a `dropped:` line with each cluster's box and the edit to bring it back (`keep in …`, or `text …` for a line of text)
-  - [ ] Quality, measured on the suite: soft-shaded areas come out as a patchwork (F38: tried 2026-11-27 — soft band borders can be told from outlines, but the bands cross the petals; needs a crease-following segmentation, [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)); check that the 2026-11-27 changes (grainy ramp hints F29, short curved edges F32, curvature-matched joints) help on real jobs
-  - [ ] Calls: scene runs used more calls than the manual method on flat art (F23) — fewer edits needed after one analyze (better defaults, clearer hints); 2026-11-27: F52 / F25 / F39 above take edits the runs made by hand, `merge` / `sliver` hints skip regions under 0.05 % — measure in the next suite run
-  - [x] ✅ Speed (2026-11-27): profiled on the nine suite images (`regionStats` and the bilateral filter 12 % each, gamma 5 %); exact shortcuts for all three: analyze −10 % over the nine, −14 to −20 % on flat art, same output ([scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27))
-- [ ] 🧊 Scene speed and quality ideas (2026-11-27: analyze ≤ 2.3 s of 5–11 min runs, so fewer calls first; GPU / gpu.js not now; region-step and fitting ideas, ramp hints, render-and-compare) — [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)
-- [x] ✅ **Smaller replies** (branch `future/mcp-tokens`, plan D16; merged into `feature/scene` 2026-11-27): only the fields a call needs
-  - [x] ✅ `configure {reply: "full" | "brief"}` (Node only) and `fields` on `get_items` / `document_info`; brief: created
-    items as the first 20 `{uuid, box}`, `get_items` head (runs and anchors not computed), `document_info` head;
-    `full` byte-identical; `scripts/reply-size.mjs` ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [x] ✅ Live check of `get_items` / `document_info` `fields` and `brief` on a real 12-artboard calendar (2026-11-27)
-  - [x] ✅ Measure: calendar macro `brief` vs `full`, one Cursor subagent run each (2026-11-27): both pass K1/K2/K9/K10.
-    Neither used a tool that `brief` changes (one `run_script` builder), so there was no `brief` effect to measure
-    ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [x] ✅ Brief by default (owner, 2026-11-27): the `get_items` / `document_info` descriptions name the default keys and
-    `fields`; the `document_info` head gains `bleed`; `configure {reply: "full"}` / `CHANDELIER_REPLY=full` (the live
-    tests and scorers use it)
-  - [x] ✅ Merged into `feature/scene` (2026-11-27): `scene build` runs its inner batches `full` (a brief create step
-    lists 20 uuids, the build records them all); `scene` summaries and build replies follow the mode (see Token use)
-  - [x] ✅ Measured on recreate case 09 (2026-11-27): `brief` caused no extra calls; −16 k chars of reply text
-    (−35 %), mostly `scene` and `batch` replies; `preview` and `fonts` are now the largest
-    ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [x] ✅ A layout job built item by item (case 01, no `run_script` / `scene`, 2026-11-27): `brief` 2.6 min / 98 k,
-    `full` 3.2 min / 117 k, no extra calls from `brief`; both agents built with one steps-file `batch {results:
-    "errors"}`, so create lists never reached them in either mode: −7 k chars only
-    ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [x] ✅ `document_info` issues name their items (or a ref per kind): both case-01 agents made extra `find_items`
-    calls to see whose the `unnamedText` / `unstyledText` counts were — `issueItems` (3 per issue), bug #24, 2026-11-27
-
-## Candidates from the 2026-11-23 gap review 🧊
-
-Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.md). Proposed order, not yet decided (❓ owner: data merge before or after Windows):
-
-- [x] ✅ 0.1.x → shipped in 0.2.1: safe restart + logs, recipe library, contrast/token checks as `preflight` options, layer-variant and screen-asset `export` options
-- [x] ✅ 0.2: Windows (phase 7, 0.2.0) + `symbols` + image trace (0.2.1)
-- [x] ✅ 0.3: `data_merge` (CSV/JSON rows → variations), multi-file jobs with dry run, recolor to a swatch library
-- [x] ✅ 0.4: live effects, prepress extras (trap stroke, PDF/X output intents, colour conversion), visual diff
+| Phase / milestone | Finished | Exit result |
+|-------------------|----------|-------------|
+| Phase 0 — research and transport spike | 2026-11-22 | Persistent JXA bridge 0.7–5.8 ms per call vs 366 ms for ie3; plan, research, benchmark harness |
+| Phase 1 — foundation | 2026-11-22 | MCP round trip p50 5.7 ms; 100 `batch` steps in one call (158 ms); `preview` images; Illustrator restart survived; uuids renumber on reopen, one call = one undo step ([verify-assumptions](../test/verify-assumptions.mjs)) |
+| Phase 2 — create and edit | 2026-11-22 | Competitor parity for every core tool ([parity map](research/competitors.md#tool-parity-map)); 12-page calendar in 8 calls, 1.3 s, no `run_script` |
+| Phase 3 — print and prepress | 2026-11-22 | PDF/X-4 with exact Trim/Bleed boxes (pdf-lib measured); preflight on a real price list without false spot or non-printing warnings; bleed really set on new documents (C18) |
+| Phase 4 — agent efficiency | 2026-11-22 | Calendar macro C2: 2.0 min, 17 calls, 0.78 M tokens; server instructions, agent guide, short build loop, slim schemas |
+| 🎯 MVP | 2026-11-22 | M2 (design from an image): C2 1.2 min / 11 calls / 0.42 M / 10 of 10, C1 1.5 min / 10 calls / 10 of 10; a client's desk-calendar page approved by the owner |
+| Phase 5 — robustness | 2026-11-27 | MRAP retries, crash and hang detection with hints, `status.last_call`, safe restart, Node version guard, debug log, live suites with a document guard, ru_RU tests, the working document |
+| 🎯 0.1 release | 2026-11-23 | v0.1.1: npm, Claude Code plugin (M2 through the plugin: 1.1 min, 10 calls, 10 of 10), Claude Desktop bundle |
+| Phase 6 — distribution | 2026-11-27 | npm, plugin + marketplace, `.mcpb`, MCP Registry (0.4.1), brand, the owner's production workflow switched over, `CHANDELIER_APP` |
+| Phase 7 — Windows ([plan](windows-plan.md)) | 2026-11-24 | 0.2.0: PowerShell/COM bridge, all live suites green on Windows 11 ARM64 + Illustrator 2027; M2 C2w-1 1.5 min, 11 calls, 10 of 10. Open: W1 modal dialog (above) |
+| 🎯 0.2.1 — quick wins | 2026-11-24 | Safe restart, debug log, brand/contrast checks, export variants and screen assets, `symbols`, image trace, recipes |
+| 🎯 0.3 — production automation | 2026-11-24 | `data_merge` ([D12](plan.md#d12--data-merge-template-copies-not-illustrator-variables--decided-03)), `batch {files}`, `swatches {recolor, import}`, tool profiles ([D13](plan.md#d13--tool-profiles-full-by-default-lean-on-request--decided-03)) |
+| 🎯 0.4 — look and print depth | 2026-11-24 | `effects` ([D14](plan.md#d14--live-effects-through-liveeffect-xml--decided-04)), spread traps, output intents, colour conversion, `preview` `differences` |
+| 🎯 0.5 — Chandelier panel ([plan](panel-plan.md)) | 2026-11-24 | Experimental CEP panel: chat, events, channel wake-up; live suite 23/23 through it, fresh agent 3/3. Open: x64 Windows, hidden panel, signing (above) |
+| 🎯 0.5.2 — no extra installs | 2026-11-25 | `preview {image}` (no Python/PIL), the recreate method; 0.5.3 added `profile`, `create_path {fit, shade}` |
+| 🎯 0.6 — faster free-form recreation | 2026-11-27 | `scene` tool ([D15](plan.md#d15--image--scene-node-side-pipeline-stacked-shapes-batch-build--decided-06-owner-2026-11-26), [scene-plan](research/scene-plan.md)), brief replies by default ([D16](plan.md#d16--smaller-replies-field-projection-brief-by-default--decided-2026-11-27)), fewer turns, the recreate guide split per kind of job; 0.6.1: better `analyze`, working document, reply image budget. Open items above |
 
 ## Rejected ❌
 
@@ -524,229 +83,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 - ❌ **Native C++ plugin** for v1 — too heavy for the gain; ExtendScript covers almost everything
 - ❌ **GPU compute via gpu.js** (2026-11-27) — native `gl` dependency (fails on Node 23+), float32 kernels, slower than plain JS for simple per-pixel passes; the scene's analyze is ≤ 2.3 s of a 5–11 min run — [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)
 - ❌ **Temp files for params/results** — inline JSON in the Apple event is faster and leaves nothing behind
-
-## Change log
-
-| Date | Change |
-|------|--------|
-| 2026-11-22 | Phase 0 done; plan, roadmap and research written |
-| 2026-11-22 | Benchmark harness (micro A/B/C + macro metrics) and first results; bridge fixes C1, C2 |
-| 2026-11-22 | Macro scenario M2 (recreate design by image), arms A and B × 3; MVP milestone defined with M2-based exit criteria |
-| 2026-11-22 | MVP-0 server built; M2 arm C2 × 3: 2.5× faster and half the tokens of ExtendScript files, 5× / 8× vs ie3 |
-| 2026-11-22 | Phase 1.1: TypeScript scaffold on the MCP SDK, unit tests, ES3 lint, CI, AGENTS.md |
-| 2026-11-22 | Phase 1.2: transport with deadlines, respawn, error map; activate before save |
-| 2026-11-22 | Phase 1.3: runtime `dispatch` envelope, settings-aware coordinates/units, refs, colour strings, JSON parse |
-| 2026-11-22 | Phase 1.4: `status` (launch, settings, latency) and `configure` |
-| 2026-11-22 | Phase 1.4: `documents` (preset-based new with bleed/grid, save_as formats) and `document_info`; quirk C6 (SVG export rebinds the document) |
-| 2026-11-22 | Phase 1.4: `batch` (one Apple event, `@n`, rollback); full-stack unit tests with a vm-based fake Illustrator |
-| 2026-11-22 | Phase 1.5: `find_items`, `get_items`, `get_tree`, `selection` |
-| 2026-11-22 | Phase 1.7: `preview` of artboards, items and regions (`imageCapture` + `exportFile`); quirk C7 |
-| 2026-11-22 | Phase 1.6: uuids renumber on reopen; one call = one undo step; scans switched to a recursive walk (find_items 1.9 s → 0.05–0.12 s on 5 000 objects) |
-| 2026-11-22 | Bridge fix C11 (no accidental launch, calls 2.8–5.4 ms); restart test: server survives an Illustrator restart |
-| 2026-11-22 | **Phase 1 done**: all exit criteria met; server instructions updated for the new tools |
-| 2026-11-22 | Phase 2 started: runtime split into `core.jsx` + modules; shared appearance props; `create_shape`; live suite `test/live-edit.mjs` |
-| 2026-11-22 | Phase 2: `create_path` with SVG path data (fill rules behave as in SVG) |
-| 2026-11-22 | Phase 2: `create_text` (atomic, point/area/path) and `edit_text` (replace, ranges); quirk C12 |
-| 2026-11-22 | Phase 2: `modify_items`, `delete_items` |
-| 2026-11-22 | Phase 2: `transform_items`, `duplicate_items`; quirk C13 (built-in `.reflect` on every ExtendScript object) |
-| 2026-11-22 | Phase 2: `arrange_items`, `align_items`; quirk C14 (clipping-group bounds) |
-| 2026-11-22 | Phase 2: `path_ops`; quirk C15 (Pathfinder via menu commands on a group) |
-| 2026-11-22 | Phase 2: `layers`, `artboards`; quirks C16, C17; ES3 lint enforces ASCII-only runtime files |
-| 2026-11-22 | Phase 2: `swatches` (global/spot/process/gradient, groups, clean_defaults), `fonts` |
-| 2026-11-22 | Phase 2: `styles` with specs stored in document XMP |
-| 2026-11-22 | Phase 2: `place`, `menu_command`, `history` |
-| 2026-11-22 | **Phase 2 done**: calendar in 8 calls without `run_script`; parity map complete for core tools |
-| 2026-11-22 | Phase 3 started: bleed really set on new documents (C18) and read back (XMP or .ai file); `test/live-print.mjs` |
-| 2026-11-22 | Phase 3: `export` (PDF/X-4 with exact bleed boxes, PNG/JPG/SVG/WebP, items PNG); quirk C19 |
-| 2026-11-22 | Phase 3: `preflight` (18 categories, inks, linked-image colour mode); quirks C20, C21 |
-| 2026-11-22 | Phase 3: crop marks |
-| 2026-11-22 | **Phase 3 done**: PDF/X-4 bleed boxes verified per page; price-list preflight clean of false warnings |
-| 2026-11-22 | Renamed to **Chandelier** (npm `chandelier-mcp`, MCP server `chandelier`); public repo github.com/acidka/chandelier |
-| 2026-11-22 | MIT licence |
-| 2026-11-22 | M2 on Chandelier: C1 (no scripting) and C2 × 3, all 10/10; C2 misses MVP calls/input targets (schema size), no run made paragraph styles |
-| 2026-11-22 | Repo made private for now (owner) |
-| 2026-11-22 | Phase 4 started: tool schemas 61.6 → 48.9 KB |
-| 2026-11-22 | Phase 4: fixes from the M2 agents' feedback (font counts, bleed wording, layer refs, steps_file, swatch upsert, text grid, preview width) |
-| 2026-11-22 | Phase 4: `preview` compares with a reference image (side-by-side + diff + offsets) |
-| 2026-11-22 | Phase 4: server instructions, MCP prompts, `run_script {retries}`, `AIA.fresh` |
-| 2026-11-22 | Phase 4: agent guide with `AIA.*` reference |
-| 2026-11-22 | Phase 4: micro benchmark through the full MCP server (runner M) + S5/S6 |
-| 2026-11-22 | Phase 4: calendar macro scenario + reference |
-| 2026-11-22 | Phase 4: fixes from the calendar agents' feedback (trim-edge spacing C23, batch step `artboard`, `AIA.at`, renders hide non-printing layers C22, `hscale`) |
-| 2026-11-22 | Phase 4: calendar macro C1/C2 × 3 + M2 C2 × 1 recorded; exit met on time, tokens, errors and quality, missed on calls (23–25 vs ≤ 20) |
-| 2026-11-22 | Benchmarks run once per arm from now on (owner) |
-| 2026-11-22 | Phase 4: shorter build loop — `documents new {units}`, `documents save {export, close}`, `preview {more, preflight, info}`; instructions aim for ~8 Illustrator calls |
-| 2026-11-22 | MVP: tool-call counts are goals, not exit criteria (owner) |
-| 2026-11-23 | W3 done: pure-JS image pipeline, no `sips` for PNG/JPEG (ships in the next release) |
-| 2026-11-23 | **0.1 release done:** clean plugin benchmark (C2p-2: 1.1 min, 10 calls, 0.44 M, 0 errors, 10/10); tag v0.1.1 + GitHub Release |
-| 2026-11-23 | Plugin 0.1.2: server started with `npx --prefix ${CLAUDE_PLUGIN_ROOT}` — inside a folder whose `package.json` is named `chandelier-mcp` (this repo, a clone) npm 10's npx looked for the bin in the local project and failed with `chandelier-mcp: command not found` |
-| 2026-11-23 | 0.1.1: Node version check at startup — on Node < 22.15 the server answers with one `status` tool explaining the fix (found by the plugin benchmark: the user's nvm default is Node 15) |
-| 2026-11-23 | Repo public with history collapsed into one commit; CI on macOS; plugin installed from the marketplace and the `.mcpb` working in Claude Desktop |
-| 2026-11-23 | `chandelier-mcp@0.1.0` published on npm; verified from the registry with npx |
-| 2026-11-23 | Version 0.1.0 (package, server, plugin, marketplace); `npm publish --dry-run` passes |
-| 2026-11-23 | Public-repo cleanup: other projects and local paths removed from docs and tests; en_US UI test moved to 0.2 |
-| 2026-11-23 | 0.1: npm package, Claude Code plugin + marketplace, Claude Desktop bundle; README install routes |
-| 2026-11-22 | 0.1: hang hints after timeouts and `status.last_call` (idempotency) |
-| 2026-11-22 | 0.1 started: logo-job tool fixes (region from an artboard, SVG clipped to the artboard, preflight low_contrast) |
-| 2026-11-22 | Docs refined: README rewritten (why + benchmark table, features, example requests, tools, quick start, how it works, status); docs index grouped; plan catalogue/risks current; agent guide MVP numbers and real-job lessons; AGENTS.md rules (README, client files, C24) |
-| 2026-11-22 | README: Ko-fi button and Support section; `.github/FUNDING.yml` (Buy Me a Coffee doesn't support Ukraine) |
-| 2026-11-22 | Windows decisions: ARM64 VM, after 0.1 (as 0.2), .NET helper allowed if needed |
-| 2026-11-22 | Phase 7 — Windows planned ([windows-plan.md](windows-plan.md)); Future becomes phase 8 |
-| 2026-11-22 | Milestone 0.1 release defined (install for others + robustness + logo-job tool fixes) |
-| 2026-11-22 | Logo, lockups and GitHub hero designed through Chandelier; brand.md, README hero |
-| 2026-11-22 | Plan for the logo and GitHub hero image ([logo-plan.md](logo-plan.md)); README status → MVP done |
-| 2026-11-22 | MVP done: the owner approved the real-job file |
-| 2026-11-22 | MVP real job: a client calendar page rebuilt through Chandelier (files kept out of the repo); new quirk C24 |
-| 2026-11-22 | MVP exit met: M2 C1 1.5 min / 10 calls / 0.48 M / 10; C2 1.2 min / 11 calls / 0.42 M / 10; owner's real job open |
-| 2026-11-22 | Phase 5 (MVP scope): MRAP retry in the runtime + `status.mrap`, failed calls close their empty new document, live-suite document guard; crash/reload ticked |
-| 2026-11-22 | Phase 4 done: calendar C1/C2 re-run once each — 19 / 17 calls (≤ 20), 2.8 / 2.0 min, 0.95 / 0.78 M input |
-| 2026-11-23 | Feature-gap and competitor review ([research/feature-gaps.md](research/feature-gaps.md)): 4 more community Illustrator MCPs, Adobe AI Assistant and local MCP preview; candidate order for 0.1.x–0.4 |
-| 2026-11-23 | Phase 7 (0.2) macOS-side work: `src/platform.ts`, `bridge-win.ps1` (PowerShell 5.1 + COM, message filter, fake-COM mode), HRESULT error map, forward-slash script paths, CI matrix macOS + Windows, `.gitattributes` (LF); agent-driven VM plan (windows-plan § 11, `scripts/windows/`) |
-| 2026-11-23 | W0: Windows 11 ARM64 VM reachable over SSH via `connect-vm.sh`; unit tests incl. fake-COM `bridge-win.ps1` green in the VM (113/113) |
-| 2026-11-23 | W0 blocker: Illustrator (release x64 and Windows-on-ARM beta) won't install in the Parallels ARM64 VM; live Windows steps need an x64 machine |
-| 2026-11-23 | W0 x64 route: ARM VM removed; unattended Windows 10 x64 VM under Parallels x86_64 emulation (`make-x86-vm.sh`, `install-tools.ps1`; `connect-vm.sh` finds the IP via DHCP leases) |
-| 2026-11-23 | W2/W6: bridge caches its compiled C# helper DLL; `CHANDELIER_TEST_SLOW` / `CHANDELIER_BRIDGE_START_MS` for slow machines (emulated VM) |
-| 2026-11-23 | W0 back to ARM64: x64 VM deleted (too slow); Windows 11 ARM64 VM via `connect-vm.sh` + ngen; unit tests green (112 + 1 skipped), bridge ready in ~2.5 s; owner installs the Illustrator trial |
-| 2026-11-24 | W1: Illustrator 2027 installs natively in the ARM64 VM; `test/live-w1-bridge.mjs`; PowerShell bridge kept (8 ms median idle); error map knows 0x80041389 (ExtendScript error); `test/live.mjs` passes on Windows |
-| 2026-11-24 | Roadmap: W0 and W2 ticked (Illustrator 2027 native ARM64 in the VM; Windows bridge and platform layer ran live); phase 7 estimate ~3 days left |
-| 2026-11-24 | W1/W5 crash test: `test/live-restart.mjs` runs on Windows (kill during a call, relaunch, runtime reload); 0x800706BE = "quit or crashed", bridge drops a dead COM object; relaunch 24 s → 19 s |
-| 2026-11-24 | W1: 5-min call passes; save/export work in the background on Windows (`test/live-w1-activate.mjs`) → `activate` defaults to false on Windows; only the modal-dialog check is left |
-| 2026-11-24 | W4/W6: all live suites green on Windows. Fixes: menu commands on Windows need a redraw after the script changes the selection (`A.syncSelection`); transport grace 1 s on Windows so call timeouts hold. MCP round trip p50 42 ms on Windows (W7; corrected below) |
-| 2026-11-24 | Windows runs stop cluttering the owner's desktop: `run-interactive.ps1` runs headless (no terminal window); `live-w1-activate.mjs` opens no Notepad. Illustrator's links dialog (missing/modified link) noted as a script-blocking modal |
-| 2026-11-24 | Windows round trip by layer (VM): bridge 9 ms, runtime wrapper +6, server +1–5 → MCP ~20 ms p50; the 42 ms was `live.mjs`' guard adding a status call per timed call (loop now unguarded); runs vary 21–48 ms in the VM → target needs real hardware (W7) |
-| 2026-11-24 | W4/W5 done: Illustrator's saveAs to a 260+ char path opens the Save As dialog and hangs → save/open/place refuse such paths on Windows; busy/timeout hints name the links dialog |
-| 2026-11-24 | W8: version 0.2.0; plugin runs `node launch.mjs` (npx.cmd on Windows); README/agent guide for Windows; package, plugin launcher and `.mcpb` checked live in the VM |
-| 2026-11-24 | W7: Windows benchmarks in the VM — M2 C2w-1 meets every MVP target (1.5 min, 11 calls, 0.35 M, quality 10); micro M ≈ C (server adds nothing), per-call speed depends on the VM's state; < 10 ms round trip reworded as a goal (owner); all 115 unit tests pass on Windows. Phase 7 done except W1's modal-dialog check; 0.2.0 ready to release |
-| 2026-11-24 | **0.2.0 released**: npm `chandelier-mcp@0.2.0` (darwin + win32; registry install checked on macOS and in the Windows VM through the plugin launcher), plugin 0.2.0, GitHub Release v0.2.0 with `chandelier-0.2.0.mcpb`; CI green on macOS and Windows |
-| 2026-11-24 | 0.2.1 (1/6): `status {restart}` safe restart (refused while unsaved; quit + relaunch + reopen) and `CHANDELIER_LOG` per-call debug log |
-| 2026-11-24 | Tool list 49.96 → 48.13 KB to make room for 0.2.1: `refs` has no per-tool description (the server instructions list the forms; it repeated 15×), `blend` is a checked string instead of a 16-name enum, shorter `layer`/`parent` hints |
-| 2026-11-24 | 0.2.1 (2/6): `preflight {contrast, tokens}` → `off_token`; fixed: a tinted swatch colour changed the swatch's own tint (every later plain use came out tinted) |
-| 2026-11-24 | 0.2.1 (3/6): `export {variants}` (layer sets) and screen assets `{each, scales}` |
-| 2026-11-24 | 0.2.1 (4–5/6): `symbols` tool, `path_ops {op: "trace"}`; Windows: an `Illustrator.exe` without a COM object (a crash clone Windows Error Reporting holds) now gets its own message (0x80080005) instead of "not running"; tool list 49.8 KB |
-| 2026-11-24 | 0.2.1 (6/6): recipe library — `run_script {recipe}` with calendar-month, labels-sheet, business-card, color-chips, style-guide; Illustrator crashed twice in the VM late in long live runs (new document after many operations), not reproduced in isolation; the "process exists but does not answer" message now unwraps PowerShell's exception |
-| 2026-11-24 | 0.2.1 regression pass in the VM (all live suites green); known issue: the links dialog can block `status {restart}`'s quit; live tests can set a per-call client timeout |
-| 2026-11-24 | 0.2.1 macOS live pass: 6 of 7 suites green; `live-print` fails (`rgb_in_cmyk` not reported) — blocks the 0.2.1 release |
-| 2026-11-24 | 0.2.1 macOS live pass green: `live-print` failure not reproduced in 10 runs (alone and after all suites); the test now prints how Illustrator sees the linked image if it recurs — release unblocked |
-| 2026-11-24 | **0.2.1 released**: npm, plugin 0.2.1, tag `v0.2.1`, GitHub release with the `.mcpb`; W1 modal-dialog check carried over to phase 7 |
-| 2026-11-24 | 0.3 features: `data_merge`, `batch {files}`, `swatches {recolor, import}`, tool profiles (`CHANDELIER_TOOLS=lean`, `tools` meta-tool); plan D12, D13; `test/live-production.mjs` green on macOS |
-| 2026-11-24 | 0.3 Windows check (live-production by parts; Illustrator 2027 VM crashes late in long runs, as in 0.2.1); version 0.3.0, plugin launcher `^0.3.0` |
-| 2026-11-24 | **0.3.0 released**: npm, plugin 0.3.0, tag `v0.3.0`, GitHub release with the `.mcpb` |
-| 2026-11-24 | 0.4 features: `effects` tool (11 live effects + raw XML, clear), `path_ops {trap}`, `export {output_intent}`, `swatches {convert}`, `preview` `differences`; plan D14; quirks C26–C29; `test/live-look.mjs` green on macOS |
-| 2026-11-24 | 0.4 Windows check (two fixes: ICC folders without env vars, light colours count as content in the diff); version 0.4.0, plugin launcher `^0.4.0` |
-| 2026-11-24 | **0.4.0 released**: npm, plugin 0.4.0, tag `v0.4.0`, GitHub release with the `.mcpb` |
-| 2026-11-24 | M2 benchmark with the lean tool profile (C2L-1): quality 10, 1.3 min, 11 calls, 0.36 M input; fixed context 40.8 k tokens per request (~11 k less than the full list) — [benchmarks](research/benchmarks.md#m2-with-the-lean-tool-profile--2026-11-24-arm-c2-1-run-040) |
-| 2026-11-24 | Distribution: registry listing prepared (`server.json`, `mcpName`, version 0.4.1, `release-meta` unit test; owner publishes); maintainer's production workflow switched from `illustrator-mcp` to Chandelier |
-| 2026-11-24 | README refined: quick start moved up (setup notes folded), features regrouped, release history as a table, npm badge; per-call overhead of the ie3 MCP corrected to ~330 ms (benchmarks § micro) |
-| 2026-11-24 | **0.4.1 released** (registry metadata, README): plugin 0.4.1, tag `v0.4.1`, GitHub release with the `.mcpb`; npm and the registry entry are published by the owner |
-| 2026-11-24 | `chandelier-mcp@0.4.1` on npm (owner; `npx` from the registry starts, 35 tools, `status` answers — Illustrator was not running, so no live round trip) and **listed in the MCP Registry** as `io.github.acidka/chandelier` |
-| 2026-11-24 | Panel MVP (gap item 16) started on branch `feature/panel`: CEP panel, `PanelTransport`, `events` tool, installer, unit tests; [panel plan](panel-plan.md) |
-| 2026-11-24 | Panel P2 live run (Illustrator 29.1, macOS): panel loads unsigned, live suite 23/23 through it, events arrive; fixed initial/stale `state` and empty selection events on a document switch; installer `--debug` (DevTools, never shipped); `CHANDELIER_TRANSPORT=panel npm run test:live` |
-| 2026-11-24 | Agents leave a finished document open (owner's request): server instructions, plugin skill, agent guide, README, `recreate_design` prompt; close only when asked or for many-file jobs (`batch {files}` closes each itself) |
-| 2026-11-24 | Panel P3 (Windows 11 ARM64 VM, Illustrator 2027 native ARM64): unit tests 158/158, installer works, but Illustrator refuses the panel as "not supported on your device" (Adobe's own CEP panels load); needs x64 Windows; [panel plan § 8](panel-plan.md#8-windows-arm64-p3) |
-| 2026-11-24 | Panel P3 rechecked: the Windows ARM block is deliberate — `Services.aip` allows only a built-in list of Adobe CEP extension ids (`WinARMBlockedCEPExtensionsAlert`); Illustrator 2027 ships UXP, the route for Windows ARM |
-| 2026-11-24 | Panel P4 pairing trial with the owner (macOS): hand selections (click, deselect, Shift-add, text cursor) arrive within ~0.5 s with uuids; colour and font changes applied by uuid; a 7 s MRAP window explained (runtime retries ran in the panel engine too — no transport gap); [panel plan § 9](panel-plan.md#9-pairing-trial-p4) |
-| 2026-11-24 | Panel chat (owner's request): text box + Send in the panel → `message` events; `events {say}` answers in the panel; live round trip checked in Illustrator 29.1; unit tests 155 |
-| 2026-11-24 | Panel UI in two tabs: Chat (log, text box, Send) and Status (connection, sharing switch, events); chat history kept apart from events |
-| 2026-11-24 | Fix: a batch's `@n` referred only to the first 100 items of a long step result (results list ≤ 100); it now sees every item (found in the panel trial: 980 pattern dots, `@0` grouped 100); unit test |
-| 2026-11-24 | Panel activity line (owner's request): waiting to be read / thinking / working in Illustrator, with animated dots; live-checked in Illustrator 29.1 |
-| 2026-11-24 | Panel: channel mode (`CHANDELIER_CHANNEL=1`, Claude Code channels): panel messages wake the session, with the selection attached; fresh-agent trial (headless) 3/3 after fixing skipped early messages; [panel plan § 10](panel-plan.md#10-fresh-agent-trial-p4b) |
-| 2026-11-24 | Panel channel mode confirmed live: an idle interactive session woke on a panel message, changed the selected item and answered in the panel (10 s) |
-| 2026-11-24 | MRAP: a fourth retry after 1 s for steps safe to repeat (`A.retry`: 40 ms, 80 ms, 1 s) — busy spells of seconds seen in the panel trial |
-| 2026-11-24 | Panel chat history saved to `~/.chandelier/chat.json` (survives a panel reload) |
-| 2026-11-24 | Panel P5: shipped as experimental for 0.5 — `npx chandelier-mcp install-panel`, README and plugin skill sections; merged into `develop` |
-| 2026-11-24 | Panel later items: x64 Windows test needs hardware (open); UXP port blocked — Illustrator has no third-party UXP yet (Adobe NDA prerelease only), revisit when it opens |
-| 2026-11-24 | Panel: one chat per document (owner's request) — keyed by file path, switches with the document in front, answers go to the chat they answer; `~/.chandelier/chats.json`; live-checked |
-| 2026-11-24 | Fix (found on the Windows VM): pausing sharing while the panel's look was running still sent that look's state; now checked again after the look |
-| 2026-11-24 | **0.5.0 released**: npm (owner), plugin/marketplace 0.5.0, `main` fast-forwarded, tag `v0.5.0`, GitHub release with the `.mcpb` |
-| 2026-11-24 | Fix (for 0.5.1): `install-panel --help` (or an unknown option) installed the panel; now it prints usage and changes nothing |
-| 2026-11-24 | 0.5.0 in the MCP Registry (owner) |
-| 2026-11-24 | install-panel instructions: Windows `cmd /c npx`, the channel-flag warning, re-run after an upgrade, Windows ARM under emulation; 0.5.1 prepared |
-| 2026-11-24 | **0.5.1 released**: npm (owner), `main` fast-forwarded, tag `v0.5.1`, GitHub release with the `.mcpb` |
-| 2026-11-24 | CI: `actions/checkout` and `actions/setup-node` v4 → v7 (Node 24; GitHub deprecated Node 20 for actions). The red `develop` runs on 2026-11-24 were the macOS runner never being assigned (capacity), not test failures |
-| 2026-11-24 | Docs for 0.5: README (panel section with listening / wake-up setup, features, tools, how it works, develop), benchmarks § 2f (panel), agent guide (working from the panel), panel plan (set-up, risks), docs index |
-| 2026-11-25 | `preview {image}` (look at image and PDF files: zoom, grid, colour samples) + guidance, so agents stop installing Python imaging libraries on first use |
-| 2026-11-25 | Recreate method (`plugin/skills/illustrator/recreate.md`), trained on a wave-ribbon box front: smooth free-form shapes, layers from tone steps, two-view compare |
-| 2026-11-25 | Recreate method § 5b: shading and gradients that follow curves (per visible band, stacked multiply steps, profile checks) |
-| 2026-11-25 | [bugs.md](bugs.md): one list of known bugs (6 open) and unverified parts (4) |
-| 2026-11-25 | Bug fixes #1–#4, #6, V1 verified (docs/bugs.md); live-release extended; tool list 55.5 → 54.1 KB |
-| 2026-11-25 | Recreate guide tested by a fresh subagent (smooth result from the guide alone, 9 rounds, ~24 min); its gaps folded into recreate.md (panel box and uniform scale, ends, crossings, shading steps, rmse caution); bugs #7, #8 logged |
-| 2026-11-25 | Third recreate test (v3, ~16 min); owner prefers v2: recreate.md now keeps the object's shape, the shapes' behaviour at the panel edges, band contrast and tonal extremes, plus v3's gaps; bugs #9 (shared `configure`), #10 logged; benchmarks § 2g repeatability table |
-| 2026-11-25 | [recreate-testing.md](recreate-testing.md): the subagent test flow (reference artboard first, one artboard per test, prompt template, evaluation, where results go) |
-| 2026-11-25 | Fourth recreate test (v4, ~25 min, judged worst; v2 still best): recreate.md maps the photographed panel onto a given artboard, one clip for everything, gentle ends cut by the outline, hue as well as lightness, extremes in evenly lit parts, fewest whole shapes, shading seams (window-min distance, tapers, skip weak edges), profile route; bugs #11, #12; benchmarks § 2g row |
-| 2026-11-25 | Bugs #7–#12 fixed: `delete_items` of nothing deletes nothing, `layers add` idempotent, `content_box` against each image's background, frame note for a pinned `configure`, `preview` compare file names, clip groups documented; #5 reproduced in the Windows VM and closed as Illustrator's own (quirks C30, C31); live guard lets `configure` and `batch {files}` through |
-| 2026-11-25 | Release 0.5.2: `preview {image}`, recreate method in the skill, bug fixes #1–#4, #6–#12; launcher asks for `^0.5.2` |
-| 2026-11-25 | Faster free-form recreation, first tools: `preview {image, profile}` (edge tracks), `create_path {fit, tolerance, shade}` (designer-anchor fit, curve-following shading); skill and recreate.md use them instead of hand-written scripts; tool list 55.3 KB |
-| 2026-11-25 | Recreate test v5 with `profile`/`fit`/`shade`: ~12 min (was 16–25), rmse 0.099; recreate.md: whole face in the crop, per-axis mapping before `fit`, edges show through multiply shapes, long gaps, track ends, shared stretches as identical sub-lists, shade clipped to a copy of its shape, one stack where edges coincide |
-| 2026-11-25 | Owner on v5: better than v4, v2 still best — missed a small ribbon at the bottom-left, flat (3 shaded edges). recreate.md: profile every corner, count bands in corner close-ups, shade every band when `shade` is clipped; version labels on the test document's artboards |
-| 2026-11-25 | Tool gaps from v5 closed: `scale [sx, sy]`, `map`, `extend`, gap-safe `fit`, `shade {taper, multi-list}` + `clip_to`, `profile` runs to the sides / breaks at turns / keeps short side tracks; tool list trimmed to 55.8 KB |
-| 2026-11-25 | Recreate test v6 (~16 min, rmse 0.130 on the whole face): both sides slanted, corner bands found, every band shaded; fixes: `extend` only at outer ends, `shade.to` runs on parallel; recreate.md: shading-end steps, edges that change owner (`minus_front`), row profiles on side strips, regions that cut tracks, units of `tolerance`/`extend` with `map`, steep shade ends, region checks |
-| 2026-11-25 | Owner on v6: degraded, worse than v5 (sharp, pixelated: shading 50–55 % in 4.5 % steps). `shade` now 6–48 steps of ~1.5 %; recreate.md: soft shading 10–30 %, `to` along one edge. Tests: Illustrator only through the Chandelier MCP tools (no `mcp-call` from the shell); rebuild + reconnect for unreleased features |
-| 2026-11-25 | Recreate test v7 (Chandelier tools only, ~12 min): owner "nice", one ribbon short of the right side. recreate.md: side stack check (edge order, every band reaches the side), drop fold/side points before fitting, hidden ends via `extend`, measured shading strength in fine steps, end stacks before converging edges, fold wedges aren't the outline |
-| 2026-11-25 | Recreate suite: 4 real-job cases of different kinds with task cards in the git-ignored `tmp/recreate-suite/`; recreate-testing.md: guide changes are judged on every case, one case at a time |
-| 2026-11-25 | recreate.md rewritten as a general method (owner: not ribbon-oriented): a table routing design kinds to sections; new § 3 text/layout/grids and § 4 logos/marks; free-form shapes (§ 5), colour (§ 6), gradients and shading (§ 7) keep the tested rules with neutral examples; run history moved out (benchmarks § 2g); SKILL.md short version general (317 → 259 lines) |
-| 2026-11-25 | Recreate suite run 1 (guide d86ca20, one fresh agent per case, Chandelier tools only): calendar 3.5 min / rmse 0.089, desk-calendar mockup 4.6 min / 0.111 (close to the approved result), packaging front 9.9 min / 0.175 (wave bands messy), ribbons v8 9.1 min (smooth, but the panel was mapped to a rectangle); benchmarks § 2h; bugs #13–#15; owner's verdicts pending before any guide change |
-| 2026-11-25 | Bugs #13–#15 from recreate suite run 1 fixed: creating with a locked active layer (quirk C32, all create tools), gradient on live text refused with a hint instead of rendering black (quirk C33), `preview {image}` samples read the whole image, also outside `region`; live-release and unit checks |
-| 2026-11-25 | Owner on suite run 1: 01, 02, 04 (v8) perfect; 03 on hold until a better reference photo replaces the current one (benchmarks § 2h) |
-| 2026-11-25 | **0.5.3 released**: recreate tools (`preview {image, profile}`, `create_path {fit, shade, map, extend, clip_to}`), the general recreate guide, bugs #13–#15 |
-| 2026-11-26 | Plan-then-run approval mode added to phase 8 as a candidate (🧊): [research/plan-then-run.md](research/plan-then-run.md) |
-| 2026-11-26 | Milestone 0.6: `scene` tool (image → editable vector scene) added as the main item: [research/scene-tool.md](research/scene-tool.md) |
-| 2026-11-26 | `scene` tool: implementation plan (S1–S4, 17 tasks) in research/scene-plan.md; owner decisions on rollout flag, stacked shapes, S1 exit, photo lighting |
-| 2026-11-26 | Scene task 1: fixed end tangents in `fitCurve` (`t0`, `t1`), `segsToD` and drawing helpers exported for the scene pipeline |
-| 2026-11-26 | Scene task 2: `src/scene/color.ts` (sRGB ↔ Lab D65, ΔE76, hex / `lab()` strings) and `rectify.ts` (crop, projective or row-wise 4-point map, convexity check, supersampled); synthetic test fixtures |
-| 2026-11-26 | Scene task 3: `smooth.ts` (bilateral filter on Lab) and `quantize.ts` (weighted k-means on a Lab histogram fitted on flat pixels only, so anti-aliased rims get no ink of their own; merge under `min_de`; near-pair hints) |
-| 2026-11-26 | Scene task 4: `regions.ts` (3×3 vote that keeps 1-px lines, 4-connected components, rim dissolve for thin regions whose colour is an sRGB mix of two neighbours, small and similar merges, stats with poles); quantizer drops mixture clusters. On six suite images (≤ 1000 px): 54–165 regions, segmentation 0.2–0.6 s. Recreate suite: cases 05–09 added |
-| 2026-11-26 | Scene task 5: `planar.ts` — crack-edge planar map (junctions where ≥ 3 regions or a saddle meet, one edge per shared boundary with its left / right region, closed loops for islands), `loopsOf` (boundary loops of any set of regions, outer vs holes by signed area, sharpest left turn at saddles), `edgesByRegion` |
-| 2026-11-26 | Scene task 6: `fitedges.ts` — each planar edge fitted once: staircase smoothing, corners (turn > 45° with straight arms, placed where the arms cross), shared tangents for the through-pair at junctions, closed loops seamed at a corner or the middle of the top with level handles. Real images (≤ 1000 px): planar map 31–40 ms, fit 107–490 ms |
-| 2026-11-26 | Scene task 7: `stack.ts` (z by filled area, stacked shapes = a region plus the higher regions it connects to, tiling option), `raster.ts` (anti-aliased Bézier rasterizer, ids buffer, rmse); regions keep real-ink thin strokes and smaller marks (min area 0.005 %). Rendered without Illustrator, four suite images: rmse 0.035–0.054, 0.5–1.6 s per image end to end at ≤ 1000 px |
-| 2026-11-26 | Scene task 8: `types.ts` (scene model, detail presets), `analyze.ts` (pipeline, stable region ids, inks sorted by use, z moves, recompute with own render, rmse and per-region IoU), `summary.ts` (JSON line, region table, inks, hints; ≤ 3.6 KB), `overlay.ts` (labelled image | flat render). Regions: halo rings round letters dissolve, rims only between solid shapes (small text keeps its strokes), homogeneity at ΔE 10. Six suite images: analyze 0.6–1.9 s, est. rmse 0.036–0.1 (the card's small text) |
-| 2026-11-26 | Scene task 9: `edits.ts` (merge, drop / keep, recolour a region or an ink to a swatch, hex, lab() or another ink, names, z moves, tolerance, show, stack on / off, text; errors name the edit) and `store.ts` (memory per server; scene.json + labels.png on disk, reload re-runs the deterministic steps from the source image, sha1-checked); `prepare()` split out of analyze |
-| 2026-11-26 | Scene task 10: `build.ts` (batch steps: clear the layer, global swatches as `lab()`, stacked paths bottom to top in working px placed by `scale` + `x, y`, bleed, split above 1.5 MB) and the `scene` tool (analyze / edit / build; refine later) behind `CHANDELIER_SCENE=1` (+2,092 chars of schema when on); plan.md D15 + tool row 38 |
-| 2026-11-26 | Scene task 13 (S2a): `primitives.ts` — ellipse / circle (moments), rectangle (rotating calipers), rounded rectangle, regular polygon; accepted when the outline stays close and the enclosed area matches (a thin frame is no rectangle); detected on the drawn (stacked) outline, simpler kinds win ties; axis-aligned ones built as live `create_shape` objects, the rest as paths; edits `rN ellipse|circle|rect|rounded|polygon|free|auto`. z: the ink covering most of the image border is the background (a design touching the edges splits it). Case 08: background rect, ring and globe as circles; plan task 11 (live test) written, waits for Illustrator; `bench/scene-bench.mjs` (offline timings, 9 suite images 0.7–3.1 s) |
-| 2026-11-26 | Scene task 14 (S2b): `ramps.ts` — bands of one gradient found by a shared colour plane (the union fits about as well as its parts; a step between flat inks does not); photos (median noise > 0.25 ΔE: suite cases 03, 04, 06) get them merged flat (owner: lighting is not artwork), artwork gets a hint; edit `ramp rA rB…` → one region with a linear gradient (own render; build: a gradient swatch, stops placed on Illustrator's default span — live check pending), `rN flat` |
-| 2026-11-26 | Scene task 15 (S2c): `overlap.ts` — a region that looks like two neighbours multiplied over their paper (linear light) is hinted ("r20 ≈ r23 × r37 over r11"); edit `layers rA rB` → both become whole multiply shapes over the overlap, filled A/S and B/S, the overlap dropped; own render does multiply. Hints capped at 10 |
-| 2026-11-26 | Scene task 16 (S3): `refine.ts` + tool action — the build rendered by Illustrator (own render before a build), tone per region (eroded 2 px), shape IoU, each shared edge vs the image's sub-pixel edge (colour progress along normals); inks shifted beyond the threshold corrected (named swatches kept), edges missing by more than their tolerance re-fitted at half (per region pair), one rebuild; darkest / lightest / most-segments checks; heat map | new render |
-| 2026-11-26 | Scene task 17 (S4, part): edits `text x y w h` (regions left for live text; build returns `text_boxes` in session units with ink and cap height), `rN logo` (grouped with what lies on it, fitted finer), `rN placeholder` (named empty box); recreate.md § 5.0 starts free-form work from `scene` when it is listed, SKILL.md points there; flag, budget, README wait for the release |
-| 2026-11-26 | Scene task 11: live test green (Illustrator 29.1, macOS 27.2, Node 22): 7-region poster built in one call (81 ms, 2 KB), one undo step removes it all, redo, rebuild replaces the layer, drop + rebuild; Lab in a global swatch fails (quirk C34) → inks as hex |
-| 2026-11-26 | Scene suite run 1, cases 04 and 08 ([benchmarks § 2i](research/benchmarks.md)): both ~10 min, `scene` output mostly not kept. Fixed: JPEG fringe slivers and lumpy edges (wider rim rule, stronger relax, tolerance 1.5), photo test on flat areas, edits `drop < %`, ranges, `drop … fill`, `undo` / `reset`, swatch names with spaces, forced `circle` (least squares), dropped areas filled by what they sit on, refine (render-based ink fix, disagreeing inks reported, drawn edges only, undo when worse, short report, user tolerances win), build layer on top, summary (real anchors, drawn inks, tiny-region hint), overlap hint only for darkening inks; recreate.md § 5.0 rewritten, § 3 text on a circle, § 5a stacked opaque bands, § 8 lost transparency; bugs #16, #17 |
-| 2026-11-26 | Scene suite run 2 + baseline ([benchmarks § 2i](research/benchmarks.md)): 04 v10 8.1 min / 47 tool uses / rmse 0.138 (best of all 04 runs; the scene gave only the substrate); 08 v2 with the scene 9.5 min / 64, the manual baseline v3 10.0 min / 33, inner rmse 0.142 vs 0.129. Findings F1–F23, guide gaps G1–G18 recorded in [scene-plan § 9](research/scene-plan.md) |
-| 2026-11-26 | recreate.md: guide gaps G7–G18 from the suite runs (constant-width outlines as stroked centrelines + miter overshoot, read flat-logo structure from zooms first, interlocking bands, small detail inside a mark, crisp vs soft weak steps, joining track pieces, `create_path d` offsets, text size without capitals and ring-text spans, force a primitive only for a whole outline, keeping part of a scene, refine and named inks, tapered faces and rmse) |
-| 2026-11-26 | Scene case 06 rerun (v2, headroom build; [benchmarks § 2i](research/benchmarks.md)): 6.5 min / 52 calls / rmse 0.097 vs manual 0.103; owner: the tree is almost identical to the reference (crop of the tree, `colors: 2`, `detail: high`). Half-covered pixel rows no longer zigzag (near-tie fringe pixels averaged along the edge, ties to one side; square test strict again). recreate.md: ink count for foil / emboss, refine rebuilds the layer, part crops past free ends, named regions' item names, wordmark width order, centring tracked text. Findings F24–F26, G19–G24 ([scene-plan § 9](research/scene-plan.md)); bugs #18–#20 |
-| 2026-11-26 | Scene headroom notes closed ([scene-plan § 9](research/scene-plan.md)): small high-contrast patches in a large region's colour kept (06 crown holes; crown 0.140 → 0.130); 09 fitting loss measured as a smoothing trade-off (lighter smoothing brings 08's lumps back: unchanged); `cN = cM` edit implemented (F27). 09 scene re-test v3 (10.8 min / 90 calls / rmse 0.087, busier than v2); recreate.md G25–G31 (soft-shaded illustrations, `max_px` / `min_de`, part builds over the scene, layer order after builds, non-Latin fonts, cap-height check, document-wide `name:` refs); 08 and ribbons documents labelled; bug #21 |
-| 2026-11-26 | Scene reruns on the headroom 2 build ([benchmarks § 2i](research/benchmarks.md)): 06 v3 9.1 min / 83 calls / rmse **0.067** (v2 0.097, same crop; tree as good, wordmark closer); 09 v4 6.4 min / 49 / 0.089 (cleaner than v3, v2 still better on flower and hair). Fixed: build no longer fails on degenerate tiny regions (F33), counters inside text boxes no longer drawn white (F34). recreate.md G32–G41 (text-box pixels, scene layer below hand layers before checks, tracked-text centring by the returned box, style vs local tracking, stem weight after `horizontal_scale`, profile tracks for frame lines, soft-shaded illustration recipe, primitives for petals and jewellery, `max_px` never upsamples, wordmark order) |
-| 2026-11-27 | Owner verdicts: 06 v3 almost identical to the original; 09 v2 still the best, v3/v4 really bad. Cause: the guide (G25/G38/G39 sent agents to hand-draw soft-shaded shapes, gradient petals, lower `min_de`), not the build (v2-era and current builds compared on the same crop). recreate.md § 5.0 rewritten to v2's method: scene for the whole illustration, `ramp` camouflage bands, merged inks set by hand, flat outlined petals |
-| 2026-11-27 | Scene speed and quality ideas saved ([scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)): analyze profiled (0.9–2.3 s, `regionStats` 13 %), gpu.js checked and rejected for now, quality ideas from the headroom work |
-| 2026-11-27 | Scene fixes before release: `position` for the build layer, rebuilds keep their layer's place and hand-added items and keep deleted regions dropped (F24, F30), no warning on a new layer (F21), `drop … fill none` (F15), `drop in x y w h` (F35), edit overlay shows the drawn state (F16), small-crop overlays enlarged (F40), foil ink-count hint (F26); live-scene test extended (Illustrator 29.1, macOS 27.2, Node 22.23: all checks pass); recreate.md § 5.0 updated |
-| 2026-11-27 | `scene` out from behind `CHANDELIER_SCENE=1`: always in the tool list (36 tools, full list 58.9 KB, budget 59.5 KB); roadmap S1–S4 ticked; AGENTS.md: live-scene, scene-bench, scene-headroom commands |
-| 2026-11-27 | Suite 09 v5 (release build, guide = v2's method): 8.7 min / 65 calls / 202 k tokens / rmse 0.119; hat ramped into one gradient shape, clean hand-drawn lips; flower still regular ellipses, hair flat. Fixed: a rebuild left items past the first 100 per step (F41: steps ≤ 100 items, leftovers cleared by name; live test with 170 items), overlays up to 1600 px (F43). recreate.md G42–G45 |
-| 2026-11-27 | Suite case 05 sign panel, first pair: manual v1 6.1 min / 53 calls / rmse 0.079, scene v2 (mark only) 8.5 min / 74 / 0.084 — alike at full view. Series stopped after 05 (owner); 07, 01, 02 not run. recreate.md G46–G51 (font tests, constructed wordmarks, teardrop specks, JPEG weight, content_box) |
-| 2026-11-27 | Token use across versions compared ([benchmarks § 2j](research/benchmarks.md)): turns dominate; tool list 16.2 → 17.4 k, guide 4 → 13 k tokens per request; scene runs dearer than manual on suite jobs. Improvements added to 0.6 (split the guide, smaller scene replies, fewer turns, measure M2 / calendar on 0.6) |
-| 2026-11-27 | Smaller replies (plan D16, TOON considered and dropped): `configure {reply: "brief"}`, `fields` on `get_items` / `document_info`; reply sizes in benchmarks § Reply size (a create list 2 178 → 271 tokens, a 4-step create batch no longer clipped); tool list 55.8 → 56.1 KB, budget 56.5 KB |
-| 2026-11-27 | Smaller replies, measured live: `brief` `document_info` 531 → 42 tokens and 10 `get_items` 1 024 → 277 on a real calendar. Calendar macro `full` vs `brief` (one Cursor subagent run each, shell wrapper): both pass, 7.0 k vs 3.5 k reply tokens. The gap came from what each agent chose to do, not from `brief`: neither called a tool that `brief` changes |
-| 2026-11-27 | Replies brief by default (owner; plan D16): `configure {reply: "full"}` / `CHANDELIER_REPLY=full` for every key, used by the live tests and scorers; the `get_items` / `document_info` descriptions name the default keys; the `document_info` head gains `bleed`. Tool list 56.1 → 56.3 KB (+505 chars over 0.5.3), lean 15.5 KB; live suites pass |
-| 2026-11-27 | `future/mcp-tokens` (D16) merged into `feature/scene`: `scene build` keeps its inner batches `full` (brief lists 20 uuids per step, which would have broken rebuilds past 20 items); brief `scene` summaries list the 15 largest regions (40 full; 1.8–2.2 vs 3.5–3.9 KB on suite cases 04–09), brief `build` replies drop anchors / bytes / calls / ms; `live-lib` `connect(name, {env})` keeps `CHANDELIER_REPLY=full`; tool list 59.5 KB (36 tools, ≈ 17.5 k tokens), budget 60 KB; unit tests pass; live-scene passes in both modes (`REPLY=brief`, 170-item rebuild; Illustrator 29.1, macOS 27.2, Node 22.23) |
-| 2026-11-27 | Reply modes measured on recreate case 09 (v6 `brief`, v7 `full`, one subagent each, [benchmarks § Reply size](research/benchmarks.md#reply-size)): 5.8 vs 6.2 min, 45 / 144 k vs 42 / 158 k, rmse 0.103 both; reply text 30.2 k vs 46.1 k chars; no `show` and no extra call caused by `brief`. Debug log lines gain `action`, `chars`, `images`, `reply`. Findings F47–F51, guide gaps G52–G58 ([scene-plan § 9](research/scene-plan.md)) wait for the owner's verdict |
-| 2026-11-27 | Reply modes on a layout job built item by item (case 01 Run 2 `brief` / Run 3 `full`, no `run_script` / `scene`): 2.6 vs 3.2 min, 24 / 98 k vs 25 / 117 k, rmse 0.157 vs 0.110 (agents' sizing), all checks pass in both; reply text 13.0 k vs 20.3 k chars; no extra call from `brief`. Both built with one steps-file batch, errors only, so create lists never reached them ([benchmarks § Reply size](research/benchmarks.md#reply-size)); artboards labelled, Run 1's label completed |
-| 2026-11-27 | Findings from the reply-mode runs recorded: bugs #22–#26 (frame note on step artboards, mixed reply frames, `document_info` issues without items, `documents save` without a saved flag, `preflight` without an artboard filter); guide gaps G59–G62 in [scene-plan § 9](research/scene-plan.md) (G51 ticked but missing from recreate.md) |
-| 2026-11-27 | Bugs #16–#26 closed ([bugs.md](bugs.md)): frame note names step / preview artboards; `preview {artboard}` replies in that artboard's frame; `grid` / `sample` on renders; `differences` skip hidden layers; grouped transparency + `preflight {artboard, refs}`; layer moves next to locked layers; gradient type kept on `update`; `document_info` `issueItems`, `create_text {grid}` name pattern; `documents save` `saved`; #16 not reproduced. Tool list 59.8 KB (budget 60 KB); unit tests pass; `test/live-bugs-1127.mjs` + live, release, layout, edit, look, finish pass (Illustrator 29.1, macOS 27.2, Node 22.23) |
-| 2026-11-27 | Scene findings fixed ([scene-plan § 9](research/scene-plan.md)): F28 `analyze {photo}`, F31 refine keeps the helping kind of fix, F37 `max_px` upscales a smaller crop when given, F42 a far-off single-region ink is reported not moved, F44/F50 text box `cap` from the letters, F45 no darkest = lightest on one ink, F47 text ink = the letters, F48 `drop in … fill rF` cuts large regions (else an error naming them), F46 not reproduced — `get_items {points}` gives compound `subpaths`. Unit `scene-bugs.test.ts`; live-scene (full, brief) and live-bugs-1127 pass (Illustrator 29.1, macOS 27.2, Node 22.23); tool list 59.95 KB |
-| 2026-11-27 | Guide gaps G52–G62 closed in `recreate.md` (§ 1 reading zoomed previews incl. G51's missing text, § 3 per-text sizing and line width, style re-apply clears `align`, Cyrillic faces, § 4 rotated shapes, § 5.0 `size` stretches, `keep` after `drop <`, hand inks as swatches, one region holding several parts, § 8 same `max_px`, moving sets by `dx, dy`); § 5.0 also updated for the day's scene fixes (`photo: false`, `max_px` upscaling, `text_boxes` ink and cap, `drop in … fill`, partial refine revert). recreate.md 39.4 KB |
-| 2026-11-27 | Small leftovers: F49 scene summary `where` column (region box, analyzed px); F20 `create_path {map: {bilinear: true}}` (inverse of the scene's bilinear rectify, unit round trip < 1e-6 px); a font that is not found names installed faces of the same first word ("Helvetica Fancy Bold" → Helvetica, Helvetica-Bold, …); guide: one analyze per job, `where`, bilinear map. Tool list 59.93 KB after trimming 4 descriptions; unit `leftovers-1127.test.ts`; live-scene, live-bugs-1127, live pass (Illustrator 29.1, macOS 27.2, Node 22.23). Not done: multiple installed Illustrator versions (one installed here, nothing to test against) |
-| 2026-11-27 | Measurable leftovers: `preview {reference, sample}` (both images, ΔE); scene F17 (refine keeps an edge's tolerance when the tighter fit doesn't come closer: noise), F19 (forced circle fitted to the round stretch only: centre error 3+ → < 1 px on a lobed disc), F32 (short edges that bow ≥ 0.5 px are curves), F36 (`split rN in x y w h` → a new region; ids stable through undo); macOS `CHANDELIER_APP` targets one Illustrator install. Unit `block1-1127.test.ts`; live-bugs-1127, live, release, look, layout, scene (full, brief) pass (Illustrator 29.1, macOS 27.2, Node 22.23); tool list 59.95 KB (scene edit list shortened) |
-| 2026-11-27 | Block 2: scene F18 `rN stroke` (thin band → centreline stroke, measured width; ring of width 6 → 5.9–6.1, centreline within 1.2 px of the true circle), F22 (ramp hints list every band; gradient stops from Illustrator's measured default span = the outline's extent along the angle), F29 (ramp test above the noise: found at σ 1–8, steps never); curve fit: matched curvature at joints, `fit {anchors}`. Unit tests in `block1-1127.test.ts`; live-bugs-1127 (stroke built: 3 pt, no fill), live, release, look, layout, edit, scene (full, brief) pass (Illustrator 29.1, macOS 27.2, Node 22.23); tool list 59.96 KB after trimming descriptions. New roadmap item: improve scene `analyze` |
-| 2026-11-27 | Token use: `recreate.md` split (core 11.2 KB + type / marks / scene / free-form / shading files); unknown arguments refused with a hint; `units:` in every positional reply; `box_format` next to `content_box`; suite records carry tokens and flag runs over 1.3× the case's best; M2 and calendar measured on the 0.6 build (first request 25 k tokens, was 40.8 k; 18 / 31 requests → 1.01 / 2.02 M input; calendar January rmse 0.112, best so far) |
-| 2026-11-27 | Fewer turns and leftovers: `preview {region: [list]}` (up to 6 zooms per call), `run_script {recipe: "help"}` (generated helper reference), `create_path {fit: [list, {onto}]}` (a list's end lands on another curve), `CHANDELIER_APP` on Windows (versioned ProgID; VM: 31.0.0 attached, wrong path refused, default unchanged). The unknown-argument check found 3 test bugs that had passed silently (`get_items {props}`, `find_items {refs}` ×3): fixed. Unit + all macOS live suites pass; tool list 59.92 KB after trimming `scene` / `preview` / `create_text` descriptions |
-| 2026-11-27 | M2 and calendar re-run after the fewer-turns changes (one run each, [benchmarks](research/benchmarks.md#m2-and-calendar-on-the-06-build--2026-11-27-arm-c2-1-run-each-token-use)): M2 1.01 → 0.84 M, 18 → 15 requests; calendar 2.02 → 1.10 M, 31 → 18 requests, 4.8 → 3.4 min, quality kept (January rmse 0.115, K1/K2/K9/K10 ✅). `preview {region: [list], reference}` now allowed (each region compared with its part of the reference) |
-| 2026-11-27 | **Release 0.6.0**: scene tool, smaller replies, fewer turns, curve fitting, bugs #16–#26, `CHANDELIER_APP`, split recreate guide. Checks: unit 321 (macOS) / 327 (Windows VM), every macOS live suite; Windows live, live-release, live-layout, live-look, live-scene, live-bugs-1127 pass, live-edit fails on its undo check (quirk C31: Illustrator merged two calls into one undo step; the same probe on 0.5.3 does it too, 3/5 vs 1/5 — not a regression) |
-| 2026-11-27 | Illustrator no longer comes to the front: `activate` defaults to false on macOS too (it pulled Illustrator over the user's browser before every save/export). Quirk A10 (background save/export hang) doesn't reproduce: `test/live-activate-mac.mjs` with Terminal in front — new, preview, save, PNG/PDF/SVG export, save as PDF, close all fine, Illustrator never came forward; `test:live` + `live-finish` pass the same way (Illustrator 29.1, macOS 27.2). `configure {activate: true}` keeps the old behaviour |
-| 2026-11-27 | Plan-then-run put on hold (owner): the branch `future/plan-then-run` stays unmerged; open checks listed on its phase 8 item |
-| 2026-11-27 | Scene analyze (branch `feature/scene-analyze`): regions of their own colour get their own ink (F52, `ownInks`): a region whose inside is one colour and > 2 × `min_de` from its shared ink moves to an ink near its colour. Offline on the 9 suite images (macOS 27.2, Node 22.23): 01, 02, 05–08 unchanged, est. rmse equal or lower everywhere (03 0.107 → 0.106), analyze time unchanged; 09 lips red, 03 olive patches gone. A pixel-level version (patches far from their ink) was tried first and dropped: thin letters on 05 broke apart and the face error rose 0.105 → 0.113. Guide: lips no longer set by hand |
-| 2026-11-27 | Scene analyze: crop margin (F25, F51). A `crop` is read with a margin of 20 % of its longer side (inside the image, the crop keeping its own resolution); outside the crop, each region's connected pieces that touch the crop and end in the margin are kept whole, the rest cut at the crop or removed (`cutToCrop`); `build {rect}` places the crop and the margin around it; summary `crop_at`; tool description +38 chars (schema 59.96 KB). Offline (macOS 27.2, Node 22.23): 06 tree crop keeps the swoosh's right tip; 09 hair crop 25 → 18 regions, est. rmse inside the crop 0.120 → 0.108. Whole-image analyses unchanged |
-| 2026-11-27 | Scene edit: `drop < %` names the clusters it took (F39): 5+ small regions lying close together → `dropped: N at x y w h (detail? "keep in …")`, a wide flat one → `(text? "text …")`; on 09 (detail high) the bracelet is first (41 regions), on 06 the tree's holes (122) and both caption lines. Guide § 5.0 step 2 |
-| 2026-11-27 | Scene analyze: F38 tried and recorded (soft band borders measured apart from outlines on the unsmoothed image, but merging them joins 09's whole hat: the bands cross the petals; next step a crease-following segmentation, scene-plan § 10). F23: `merge` / `sliver` hints leave out regions under 0.05 % (08: 7 of 10 hints were specks); a `stroke?` hint tried and dropped (08's outline branches, so the edit refuses it) |
-| 2026-11-27 | Scene analyze speed: linear → sRGB bytes by thresholds (no power per call), lighter intermediate region stats in `segment`, bilateral filter copies one-colour 7 × 7 windows. Interleaved A/B, best of 3 (macOS 27.2, Node 22.23): 19.3 → 17.3 s over the nine suite images (−10 %), flat art −14 to −20 %; output identical |
-| 2026-11-27 | Crop margin checked live (`test/live-scene.mjs` + a part-crop step; Illustrator 29.1, macOS 27.2): the crossing box built whole 20 px past the rect. Fixed what the live run found: after the cut the background no longer touched the image border, so it was stacked above the box; a region bordering the empty area now counts as on the border (whole-image results unchanged) |
-| 2026-11-27 | Suite pass on `feature/scene-analyze` (09 v8, 06 v4, 08 v4; fresh agents, Illustrator 29.1, macOS 27.2): 33 / 40 / 56 calls and 159 / 161 / 223 k tokens — fewer calls than every earlier scene run of each case (09 v6–v7 42–45, 06 v2 52, 08 v2 64); 08 still above its manual baseline (33). Quality: 09 rmse 0.078 (best of the case), 06 0.075, 08 inner 0.118 (best). Found: bugs #28 (a > 16 MB preview reply dropped the server), #29 (own inks ignore `colors`), #30 (dropped margin pieces repainted outside the crop); guide gaps listed in benchmarks § 2i |
-| 2026-11-27 | Fixed the suite pass's bugs: #28 every tool reply's images fit a budget (6 M base64 chars, 3.7 M each; shrunk by one factor with a note) so Claude Code no longer drops the server on a large `preview`; #29 own-colour inks stop at `colors` (06's tree crop: 2 inks again; 03 and 04 at the default 16 instead of 25 / 19, est. rmse unchanged); #30 a part crop's dropped regions leave their pieces outside the crop empty |
-| 2026-11-27 | Working document: every call carries the document the session works in; a window switch by the user between calls is undone before the call runs, with a warning ("Illustrator showed …; went back to …"). Found when a suite agent's work landed in another open `runs.ai` after a misclick. Unit (runtime shim + server) and live (`test/live-working-doc.mjs`, Illustrator 29.1, macOS 27.2) tests; `test:live` suites pass |
-| 2026-11-27 | Owner saw a window flicker during the live tests: Illustrator's own progress panel on PDF / SVG exports (quirk A11, found by polling the window list during `test:live`; it floats over other apps for 0.2–0.7 s, Illustrator itself stays behind). Not from the working-document change; no scripting switch hides it |
-| 2026-11-27 | **Release 0.6.1**: scene analyze (own-colour inks F52, crop margin F25/F51, dropped-detail clusters F39, hints F23, −10 % time), working document, reply image budget, bugs #28–#30, quirk A11. Suite pass on the build: 09 / 06 / 08 with fewer calls than every earlier scene run of each case. Checks: unit 334, ES3 lint, typecheck, plugin validate, `.mcpb` built; macOS live: test:live (4 suites), live-scene, live-working-doc (Illustrator 29.1, macOS 27.2). Windows VM not re-run. Prepared, not yet published (npm, GitHub release, MCP Registry) |
+- ❌ **TOON reply encoding** (2026-11-27) — can be larger than minified JSON on nested replies and needs a format note in every request; brief replies drop data instead ([plan D16](plan.md#d16--smaller-replies-field-projection-brief-by-default--decided-2026-11-27))

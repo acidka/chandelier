@@ -894,7 +894,7 @@ once, then in every later turn (~0.4–0.6 M cached input over 50–60 calls) �
 still needed, and tool bugs that cost rounds (now fixed: degenerate regions, stale items, layer jumping on top, a
 build without `drop in`). (6) A wrong guide costs most: 09 v3 (248 k) followed the later-revised "hand-draw shaded
 shapes". (7) Small slips add a round each (`content_box` read as corners, a session in pt, font trial and error,
-guessed argument names). Improvements: [roadmap 0.6, token use](../roadmap.md).
+guessed argument names). Improvements: [changelog](../../CHANGELOG.md); open items: [roadmap](../roadmap.md#recreation-quality-and-cost-from-milestone-06).
 
 ## 3. Targets
 

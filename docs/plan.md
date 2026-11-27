@@ -1,6 +1,6 @@
 # Plan
 
-Last updated: 2026-11-22 · Status legend: see [README](README.md#status-legend-used-in-every-doc)
+Last updated: 2026-11-27 · Status legend: see [README](README.md#status-legend-used-in-every-doc)
 
 ## 1. Why this project exists
 
@@ -22,10 +22,12 @@ Last updated: 2026-11-22 · Status legend: see [README](README.md#status-legend-
 5. **Safe:** never touch documents the agent didn't target, never discard unsaved work silently, no orphan objects after errors.
 6. **Owned by us:** we merge our own fixes the same day.
 
-**Non-goals (for now)**
-- Windows support in v1 (planned later: [roadmap phase 7](roadmap.md#phase-7--windows-), [windows-plan.md](windows-plan.md)).
+**Non-goals**
 - Replacing ExtendScript build files for big reproducible builds. We make them easier to run (`run_script` with `file` + `args`), not obsolete.
-- A UI panel inside Illustrator (later, CEP/UXP: [phase 8](roadmap.md#phase-8--future-)).
+- A native C++ plugin ([roadmap: rejected](roadmap.md#rejected-)).
+
+Windows (0.2, [windows-plan.md](windows-plan.md)) and a panel inside Illustrator (0.5, experimental, [panel-plan.md](panel-plan.md)),
+non-goals for v1, have since shipped.
 
 ## 3. Design principles
 
@@ -50,10 +52,12 @@ Last updated: 2026-11-22 · Status legend: see [README](README.md#status-legend-
  └──────┬─────────────────────────────┘
         │  newline-delimited JSON over stdin/stdout (one long-lived child process)
  ┌──────▼─────────────────────────────┐
- │ bridge-mac.js  (osascript -l JS)    │  NSAppleScript in-process: `with timeout of N seconds`
- │                                     │  → tell app id "com.adobe.illustrator" to do javascript
+ │ macOS: bridge-mac.js (osascript -l  │  NSAppleScript in-process: `with timeout of N seconds`
+ │   JavaScript)                       │  → raw "do javascript" event to Illustrator (C11)
+ │ Windows: bridge-win.ps1 (PowerShell)│  cached COM object → DoJavaScript (windows-plan.md)
+ │ panel mode: the CEP panel (socket)  │  opt-in, adds events (panel-plan.md)
  └──────┬─────────────────────────────┘
-        │  Apple Events
+        │  Apple Events / COM / CEP evalScript
  ┌──────▼─────────────────────────────┐
  │ Illustrator ExtendScript engine     │  $.global.AIA = runtime (loaded once, versioned):
  │  core.jsx + modules: JSON, coords,  │  commands registry, dispatch(), helpers for run_script
@@ -88,7 +92,7 @@ there, so Illustrator never shows a dialog and the bridge never sees a raw Apple
 | Python | Owner uses Python for PDF tooling (PyMuPDF) | Second language next to ExtendScript; `uvx` install is fine but heavier; no shared code with runtime |
 | Go / Swift binary | Single binary, fastest start | MCP SDKs less mature; Swift could replace the JXA bridge but adds a compile/sign step |
 
-### D2 — Transport to Illustrator 🔄 spike done, needs one optimisation
+### D2 — Transport to Illustrator ✅ decided
 
 | Option | Per-call overhead (measured / expected) | Pros | Cons |
 |--------|------|------|------|
@@ -100,9 +104,10 @@ there, so Illustrator never shows a dialog and the bridge never sees a raw Apple
 | UXP plugin | — | Adobe's future platform, modern JS | **Not available** to third parties in Illustrator until ~Q2 2027 (public beta) |
 | C++ plugin (Illustrator SDK) | fastest | Full native API incl. things ExtendScript lacks | Huge effort, per-version builds, signing/notarisation |
 
-**Decision:** ship the persistent JXA bridge; optimise to a pre-compiled handler if the 5 ms matters; keep the
-`Transport` interface clean so a CEP/UXP transport can be added later without touching tools.
-2026-11-24: a CEP panel transport is being tried as an opt-in (`CHANDELIER_TRANSPORT=panel`) for **events**, not speed — [panel plan](panel-plan.md).
+**Decision:** the persistent JXA bridge on macOS (a pre-compiled handler stays a 🧊 option: the MCP round trip is
+~5 ms); on Windows the same protocol over a persistent PowerShell + COM bridge (0.2, [windows-plan](windows-plan.md)).
+The `Transport` interface keeps tools independent of the route: the CEP panel transport (0.5, opt-in
+`CHANDELIER_TRANSPORT=panel`) was added that way, for **events** rather than speed — [panel plan](panel-plan.md).
 
 ### D3 — Helper runtime loaded once ✅ decided (verified: `$.global` survives between calls)
 
@@ -119,11 +124,11 @@ there, so Illustrator never shows a dialog and the bridge never sees a raw Apple
 | **~30 focused tools + `batch` + `run_script`** (chosen) | Common work in 1 call; tool list stays readable; escape hatch for everything else | Some tools take an `action` parameter, so schemas are a bit richer |
 | Only `run_script` | Maximum power, tiny tool list | Agent must write ExtendScript for everything; more errors; no validation |
 
-### D5 — Coordinate system ❓ needs owner confirmation (proposal below)
+### D5 — Coordinate system ✅ decided (in every tool since phase 1)
 
 | Option | Pros | Cons |
 |--------|------|------|
-| **Artboard-relative, origin top-left, y grows down** (proposed default) | Matches how agents measure screenshots and how designers think (pixels from the top); no sign flips; same in requests and responses | Differs from Illustrator's internal Y-up document coordinates (we convert) |
+| **Artboard-relative, origin top-left, y grows down** (chosen default) | Matches how agents measure screenshots and how designers think (pixels from the top); no sign flips; same in requests and responses | Differs from Illustrator's internal Y-up document coordinates (we convert) |
 | Illustrator document coordinates (Y-up) | Matches raw ExtendScript | The source of A7/A9-style confusion; agents must do `top − y` maths |
 
 Plus: a session setting `units` (`pt` default, `mm`, `in`, `px`) and `origin` (`artboard` default or `document`).
@@ -163,7 +168,7 @@ Any copied code keeps their copyright notice.
 | `exportFile(PNG24)` with artboard clipping | Well-known | Whole artboard only; touches the active artboard |
 
 **Decision:** `imageCapture` for items, regions and artboards at ≥ 72 ppi (min. resolution is 72: smaller item/region
-previews are rendered at 72 and downscaled with macOS `sips`); `exportFile` for artboards below 72 ppi and as a fallback.
+previews are rendered at 72 and downscaled in pure JS, `src/image.ts`, since W3); `exportFile` for artboards below 72 ppi and as a fallback.
 Preview returns the PNG as MCP **image content**, scaled to `max_px` (default 1024) so it doesn't waste tokens.
 
 ### D10 — Distribution: MCP first, Claude Code plugin second ✅ decided
@@ -262,8 +267,8 @@ build records every created uuid (a brief create step lists 20). Sizes: [benchma
 ## 6. Tool catalogue
 
 Every mutating tool can also be a `batch` step: `{"tool": "create_shape", "args": {...}}`.
-Status 2026-11-24: tools 1–36 are built (crop marks are an `artboards` action; `symbols` in 0.2.1; `data_merge` and the
-`tools` meta-tool in 0.3; `effects` in 0.4).
+Status 2026-11-27 (0.6.1): every tool below is built. The default list has 36 tools; `tools` (35) appears only in a
+tool profile and `events` (37) only in panel mode. Crop marks are an `artboards` action.
 MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` for many objects in one call.
 
 | # | Tool | Actions / what it does | Phase |
@@ -308,7 +313,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 38 | `scene` | Image → editable vector scene (0.6; organic, irregular artwork — see D15 purpose): `analyze` (crop — read with a margin, shapes ending in it kept whole — or 4-point map, inks (a region of its own colour gets its own), regions, shared fitted edges → id, 1-page summary — the 15 largest regions, 40 with `reply: "full"` (D16) — + overlay), `edit` (merge, drop, recolour to swatches / hex / inks, z moves, names, tolerance, primitives, `ramp` → linear gradient, `layers rA rB` → two multiply shapes over their overlap, `text x y w h` (→ `text_boxes` at build), `rN logo`, `rN placeholder`, `rN stroke` (centreline stroke), `split rN in x y w h`, stack on/off); photos (noise) get their lighting ramps flattened (`photo: false` keeps them as hints; a given `max_px` upscales a small crop), `build` (one undo step: global swatches + stacked paths on a layer, clean primitives — rect, rounded rect, ellipse, circle — as live shapes, rotated ones and regular polygons as paths; rect, artboard, bleed), `refine` (renders the build in Illustrator, measures tone per region and each edge against the image's sub-pixel edge, corrects shifted inks, re-fits missing edges tighter, rebuilds once; heat map) ([D15](#d15--image--scene-node-side-pipeline-stacked-shapes-batch-build--decided-06-owner-2026-11-26)) | 0.6 |
 
 Tool descriptions are kept short; the conventions (refs, colours, coordinates) live in the MCP server
-`instructions`, sent once per session instead of being repeated in 33 schemas.
+`instructions`, sent once per session instead of being repeated in every schema.
 
 ## 7. Risks
 
@@ -318,12 +323,12 @@ Tool descriptions are kept short; the conventions (refs, colours, coordinates) l
 | `MRAP` errors in long sessions (B3) | High | Medium | ✅ Retry inside the runtime for known-flaky operations (swatches, styles, text styling, read-only commands); `status.mrap` reports retries and failures; restart routine in the agent guide |
 | Illustrator crash on certain reads (B1) | Low | High | Runtime never reads `ParagraphStyle.characterAttributes`; crash detected (`-609`) → clear message, runtime reload after restart |
 | Apple Events permission prompt on first run | High (first run) | Low | Documented; `status` explains the System Settings path on `-1743` |
-| Background hang on save/export (A10) | Medium | Medium | Auto-activate before save/export (configurable) |
-| JXA/NSAppleScript deprecated in a future macOS | Low | High | `Transport` interface; Swift helper or CEP transport as fallbacks |
+| Background hang on save/export (A10) | Low (not seen since 2026-11-27 checks) | Medium | No activation by default; `configure {activate: true}` brings it back (D11) |
+| JXA/NSAppleScript deprecated in a future macOS | Low | High | `Transport` interface; the CEP panel transport already exists; a Swift helper as another fallback |
 | Runtime state lost when Illustrator restarts | Certain | Low | Hash check in every call reloads automatically |
 | Localised UI strings (Russian here) | Certain | Medium | Never match by localised names (swatches by colour type, menu commands by internal ID); test in ru_RU |
-| Illustrator 2026 behaves differently | Medium | Medium | Live test suite runs on every installed version; `status` reports version |
-| Scope creep (32 tools) | Medium | Medium | Phases with exit criteria; `run_script` covers gaps meanwhile |
+| A new Illustrator version behaves differently | Medium | Medium | Live suites run on 29.1 (macOS) and 2027 / 31.0 (Windows); `status` reports the version; `CHANDELIER_APP` picks one install |
+| Tool list grows past what agents can afford to re-read (36 tools) | High | Medium | New features as options on existing tools; unit-tested size budget (60 KB); `CHANDELIER_TOOLS=lean`; `run_script` covers gaps |
 
 ## 8. Testing strategy
 
@@ -332,13 +337,13 @@ Tool descriptions are kept short; the conventions (refs, colours, coordinates) l
 | TypeScript (schemas, queue, protocol, PDF boxes, the scene pipeline on synthetic images) | `vitest` unit tests, no Illustrator needed | Every commit (CI on GitHub Actions, macOS and Windows runners; the Windows job also drives `bridge-win.ps1` in fake-COM mode) |
 | Runtime pure helpers (colour parse, coords, SVG `d` parser, JSON) | Load `src/runtime/*.jsx` in Node with a tiny shim and test functions | Every commit |
 | ES3 compatibility of the runtime | Lint rule set that forbids ES5+ (`let`, arrows, `Array#map`, `JSON`, trailing commas) | Every commit |
-| Live integration | `npm run test:live` creates **scratch documents**, runs every tool, checks results, closes without saving; a guard aborts if another document becomes active | Before each release, on the owner's Mac |
+| Live integration | `npm run test:live` creates **scratch documents**, runs every tool, checks results, closes without saving; a guard aborts if another document becomes active | Before each release: the owner's Mac; affected suites in the Windows VM |
 | Benchmarks | `npm run bench` against the competitor and the calendar scenario | Each phase exit; results in [benchmarks](research/benchmarks.md) |
 
-## 9. Open questions for the owner ❓
+## 9. Questions for the owner (all answered)
 
-1. **Coordinates (D5):** OK with top-left / y-down artboard coordinates as the default?
+1. ~~**Coordinates (D5)**~~ ✅ top-left / y-down artboard coordinates, in every tool since phase 1.
 2. ~~**Name**~~ ✅ decided 2026-11-22: **Chandelier** (npm `chandelier-mcp`, MCP server `chandelier`) — see the README.
-3. **Public or private repo?** Private for now (<https://github.com/acidka/chandelier>, made private again 2026-11-22; MIT licence kept for when it opens).
-4. **Windows:** needed at all, and when? → yes: roadmap phase 7, after the 0.1 release (as 0.2), tested on a Windows 11 ARM64 VM ([windows-plan.md](windows-plan.md)) ✅
+3. ~~**Public or private repo?**~~ ✅ public since the 0.1 release (2026-11-23): <https://github.com/acidka/chandelier>, MIT.
+4. ~~**Windows**~~ ✅ released as 0.2 (2026-11-24), tested on a Windows 11 ARM64 VM ([windows-plan.md](windows-plan.md)).
 5. ~~**Migration of the maintainer's production workflow**~~ ✅ done 2026-11-24 (roadmap phase 6).

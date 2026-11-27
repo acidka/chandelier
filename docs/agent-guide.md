@@ -21,7 +21,9 @@ only: 1.5 min, 10 calls; all tools: 1.2 min, 11 calls; both 10/10. The old advic
 the MCP" is no longer needed: a batch or one `run_script` builds, and the same server checks.
 
 **Load only the tools a job needs.** Every tool you load is re-read on every request (the whole list is
-~14 k tokens). A typical build needs `documents`, `batch` (or `run_script`) and `preview`: `preview {preflight: true}` checks
+~17 k tokens; `CHANDELIER_TOOLS=lean` cuts it to ~5 k for clients that load every schema). Replies are brief by
+default for the same reason: created items list the first 20, `get_items` and `document_info` a short head —
+ask for more with `fields`, or `configure {reply: "full"}`. A typical build needs `documents`, `batch` (or `run_script`) and `preview`: `preview {preflight: true}` checks
 and `documents save {export}` exports, so `preflight` and `export` need not be loaded.
 
 ## 2. Before you start
@@ -77,6 +79,10 @@ names the one or two `recreate-*.md` files a design needs (type, marks, scene, f
 7. If the reference font isn't installed, pick the closest installed one (`fonts`) and match **widths**, not only
    heights: set the style's `hscale` until the lines break where the reference breaks; body text goes in area text so
    it re-flows.
+
+For organic artwork (illustrations, detailed silhouettes, many flat-colour shapes) `scene` does the pixel work in
+one call: `analyze` (inks, regions, shared edges) → `edit` → `build` (one undo step) → `refine`; layouts, geometry and
+text are still built from measurements as above. How: [recreate-scene.md](../plugin/skills/illustrator/recreate-scene.md).
 
 The `recreate_design` MCP prompt walks through these steps.
 

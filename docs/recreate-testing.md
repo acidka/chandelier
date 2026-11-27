@@ -89,7 +89,7 @@ In the open document <file>, recreate the design in <reference image> onto the e
 
 ## Rules (breaking them voids the test)
 - Don't read other scratch folders, the job's output folder, docs/research/benchmarks.md, docs/bugs.md,
-  docs/roadmap.md; don't copy or inspect the art of other artboards or their layers.
+  docs/roadmap.md, CHANGELOG.md; don't copy or inspect the art of other artboards or their layers.
 - Everything on NEW layers "<prefix> …", swatches "<prefix> …"; change nothing else.
 - Save the document when done; leave it open.
 
@@ -124,7 +124,7 @@ In the open document <file>, recreate the design in <reference image> onto the e
 3. Tool problems → [bugs.md](bugs.md) (mark ones not yet reproduced).
    Runs with the `scene` tool (in the tool list since 0.6; build and reconnect first when testing unreleased changes): also record the
    analyze summary's first line, the edits used, refine rounds and what was still built by hand.
-4. A change-log row in the [roadmap](roadmap.md); commit.
+4. A row in the [changelog](../CHANGELOG.md); commit.
 
 ## Worked example (2026-11-25)
 

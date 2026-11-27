@@ -1,6 +1,6 @@
-# `scene`: image → editable vector scene (proposal)
+# `scene`: image → editable vector scene (spec)
 
-Status: S1–S4 built (2026-11-26), live test green, evaluated on the real-job suite (benchmarks § 2i), flag lifted 2026-11-27 — in the tool list for 0.6; purpose: plan.md D15; [implementation plan](scene-plan.md) with owner decisions; the main item of milestone 0.6 "faster free-form recreation" ([roadmap](../roadmap.md)).
+Status: ✅ shipped in 0.6.0 (2026-11-27), improved in 0.6.1. Written as the proposal; S1–S4 built 2026-11-26, evaluated on the real-job suite (benchmarks § 2i). Purpose: [plan.md D15](../plan.md#d15--image--scene-node-side-pipeline-stacked-shapes-batch-build--decided-06-owner-2026-11-26); [implementation plan](scene-plan.md) with owner decisions; how agents use it: [recreate-scene.md](../../plugin/skills/illustrator/recreate-scene.md); open items: [roadmap](../roadmap.md#recreation-quality-and-cost-from-milestone-06).
 
 ## Problem
 

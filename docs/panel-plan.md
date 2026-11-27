@@ -1,8 +1,9 @@
 # Chandelier panel: events from Illustrator (phase 8, gap item 16)
 
-Status: **experimental, merged into `develop` for 0.5** (2026-11-24) — live-tested in Illustrator 29.1 on macOS
-(live suite, pairing trial, fresh agent 3/3, channel wake-up); opt-in (`CHANDELIER_TRANSPORT=panel`), the default
-transport is unchanged. Install: `npx chandelier-mcp install-panel`.
+Status: **experimental, shipped in 0.5** (2026-11-24) and in every release since — live-tested in Illustrator 29.1 on
+macOS (live suite, pairing trial, fresh agent 3/3, channel wake-up); opt-in (`CHANDELIER_TRANSPORT=panel`), the
+default transport is unchanged. Install: `npx chandelier-mcp install-panel`. Open: x64 Windows test, hidden-panel
+check, signing ([roadmap](roadmap.md#platforms-and-panel)).
 
 ## 1. Why
 
