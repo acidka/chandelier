@@ -46,14 +46,16 @@ const gridShape = z.object({
 });
 
 /** Expand a grid into create_text items: cell i sits at column i % cols, row floor(i / cols). */
-export function expandGrid(g: z.infer<typeof gridShape>): Record<string, unknown>[] {
+export function expandGrid(g: z.infer<typeof gridShape>, name?: string): Record<string, unknown>[] {
   const out: Record<string, unknown>[] = [];
   g.cells.forEach((cell: unknown, i: number) => {
     if (cell === null || cell === undefined || cell === '') return;
     const col = i % g.cols, row = Math.floor(i / g.cols);
     const own = typeof cell === 'object' ? (cell as Record<string, unknown>) : { text: String(cell) };
     if (own.text === undefined || own.text === null || own.text === '') return;
-    out.push({ ...(g.col_props?.[String(col)] ?? {}), x: g.x + col * g.dx, y: g.y + row * g.dy, ...own, text: String(own.text) });
+    // a name pattern names each cell (bug #24: unnamed grid cells flooded document_info's unnamedText)
+    const nm = name ? { name: name.replace(/\{(row|col|n)\}/g, (_m, k: string) => String(k === 'row' ? row + 1 : k === 'col' ? col + 1 : out.length + 1)) } : {};
+    out.push({ ...(g.col_props?.[String(col)] ?? {}), x: g.x + col * g.dx, y: g.y + row * g.dy, ...nm, ...own, text: String(own.text) });
   });
   return out;
 }
@@ -63,13 +65,15 @@ export const create_text: ToolDef = {
   description: `Create text frames. Atomic: if styling fails the frame is removed.
 point (x, y; y = first BASELINE unless y_ref:"top"; align left|center|right anchors at x) · area (x, y, w, h; reports overset) · path (on_path = a path ref; keep_path copies it). kind defaults from the props given.
 Character: font (fuzzy), size, fill/color, stroke, leading, tracking, baseline_shift, underline, strikethrough, caps, horizontal_scale, character_style. Paragraph: align, paragraph_style, space_before/after, indents, hyphenation (sizes in pt).
-Placement: layer or parent. Many at once: items:[{text, x, y, …}] with shared props at the top level, or grid {x, y, cols, dx, dy, cells, col_props} for tables and calendars (x, y = first cell; align applies per cell).
+Placement: layer or parent. Many at once: items:[{text, x, y, …}] with shared props at the top level, or grid {x, y, cols, dx, dy, cells, col_props} for tables and calendars (x, y = first cell; align applies per cell; name "Day {row}-{col}" or "{n}" names each cell).
 Returns {count, items:[{uuid, name, type, box}], overset?}.`,
   shape: { ...textProps, ...placeShape, items: itemsSchema(5000), grid: gridShape.optional() },
   step: (a) => {
     if (!a.grid) return { cmd: 'create_text', args: a };
     const { grid, ...rest } = a;
-    return { cmd: 'create_text', args: { ...rest, items: [...(a.items ?? []), ...expandGrid(grid)] } };
+    const pattern = typeof a.name === 'string' && /\{(row|col|n)\}/.test(a.name) ? a.name : undefined;
+    if (pattern) delete rest.name;
+    return { cmd: 'create_text', args: { ...rest, items: [...(a.items ?? []), ...expandGrid(grid, pattern)] } };
   },
 };
 

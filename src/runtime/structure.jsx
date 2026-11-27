@@ -20,7 +20,12 @@
     var m = String(pos).match(/^(above|below):(.+)$/);
     if (!m) throw new Error('position must be top, bottom, above:Name or below:Name.');
     var ref = A.layerByName(m[2]);
-    L.move(ref, m[1] === 'above' ? ElementPlacement.PLACEBEFORE : ElementPlacement.PLACEAFTER);
+    // a locked or hidden neighbour refuses the move too (bug #18): open it for the move, then restore it
+    var rl = ref.locked, rv = ref.visible;
+    if (rl) ref.locked = false;
+    if (!rv) ref.visible = true;
+    try { L.move(ref, m[1] === 'above' ? ElementPlacement.PLACEBEFORE : ElementPlacement.PLACEAFTER); }
+    finally { if (!rv) ref.visible = false; if (rl) ref.locked = true; }
   }
   function setLayer(L, a) {
     var wasLocked = L.locked;

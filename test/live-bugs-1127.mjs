@@ -1,0 +1,105 @@
+#!/usr/bin/env node
+// Live checks for bugs #16–#26 (docs/bugs.md, found in the reply-mode runs 2026-11-26/27). Needs a running
+// Illustrator; works only in a document it creates, which it closes without saving at the end.
+//   npm run build && node test/live-bugs-1127.mjs
+import { mkdtempSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { connect, assert, txt } from './live-lib.mjs';
+
+const { call, done } = await connect('live-bugs-1127');
+const tmp = mkdtempSync(join(tmpdir(), 'chandelier-bugs-'));
+const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) < 0.6);
+
+await call('documents', { action: 'new', width: 200, height: 100, units: 'pt', color: 'cmyk', artboards: 2, columns: 2, spacing: 20, title: 'live-bugs-1127' });
+await call('artboards', { action: 'activate', index: 0 });
+await call('configure', { artboard: 0 }); // pinned, as in the case-01 runs
+
+// #16, #22: path_ops in a step with artboard 1 replies in artboard 1's frame, and the frame note says so
+await call('batch', { steps: [
+  { tool: 'create_shape', args: { shape: 'rect', x: 10, y: 10, w: 20, h: 20, fill: 'cmyk(0,100,100,0)', stroke: 'none' }, artboard: 1 },
+  { tool: 'create_shape', args: { shape: 'rect', x: 20, y: 10, w: 20, h: 20, fill: 'cmyk(0,100,100,0)', stroke: 'none' }, artboard: 1 },
+  { tool: 'path_ops', args: { op: 'unite', refs: ['@0', '@1'], name: 'united' }, artboard: 1 },
+  { tool: 'find_items', args: { name: 'united' } },
+] }, { check: (v, r) => {
+  const box = v.results[2].data.items[0].box, abs = v.results[3].data.items[0].box;
+  assert(near(box, [10, 10, 30, 20]), '#16 path_ops box in artboard 1 frame: ' + box);
+  assert(near(abs, [230, 10, 30, 20]), 'step without artboard: session frame (artboard 0): ' + abs);
+  const note = txt(r);
+  assert(/steps 0-2: artboard 1; other steps: artboard 0/.test(note), '#22 frame note names the step frames: ' + note.slice(-160));
+} });
+
+// #19: a shape on a hidden layer under the moved one is not named in differences
+await call('layers', { action: 'add', name: 'Hid' });
+await call('batch', { steps: [{ tool: 'create_shape', args: { shape: 'rect', x: 10, y: 10, w: 30, h: 20, fill: 'cmyk(100,0,0,0)', stroke: 'none', layer: 'Hid', name: 'hidden-one' }, artboard: 1 }] });
+await call('layers', { action: 'update', name: 'Hid', visible: false });
+const ref = join(tmp, 'ref.png');
+// #23: an artboard render's rect is in that artboard's frame
+await call('preview', { artboard: 1, width: 400, save_to: ref }, { check: (v, r) => {
+  assert(near(v.rect, [0, 0, 200, 100]), '#23 rect of artboard 1 render: ' + v.rect);
+  assert(/frame: artboard 1, pt$/.test(txt(r)), '#23 note: ' + txt(r).slice(-60));
+} });
+await call('transform_items', { refs: 'name:united', dx: 100 });
+await call('preview', { artboard: 1, width: 400, reference: ref }, { check: (v) => {
+  assert(v.differences?.length, 'differences found');
+  for (const d of v.differences) {
+    assert(d.rect[0] >= -1 && d.rect[0] + d.rect[2] <= 201, '#23 difference rect inside artboard 1 frame: ' + d.rect);
+    assert(!(d.items ?? []).some((i) => i.name === 'hidden-one'), '#19 hidden layer item named: ' + JSON.stringify(d.items));
+  }
+} });
+
+// #20: grid and samples on a render
+await call('preview', { artboard: 1, width: 400, grid: true, sample: [[120, 20], [5, 90]] }, { check: (v) => {
+  assert(typeof v.grid === 'number', '#20 grid step reported: ' + v.grid);
+  assert(v.samples?.[0]?.cmyk && v.samples[0].hex !== '#ffffff', '#20 sample on the red shape: ' + JSON.stringify(v.samples?.[0]));
+  assert(v.samples[1].hex === '#ffffff', 'white paper sample: ' + JSON.stringify(v.samples[1]));
+} });
+await call('preview', { artboard: 1, grid: true, reference: ref }, { expectError: true });
+
+// #21: stops alone keep a radial gradient radial
+await call('swatches', { action: 'add', kind: 'gradient', name: 'Glow', type: 'radial', stops: [{ color: 'cmyk(0,0,0,0)' }, { color: 'cmyk(0,50,100,0)' }] });
+await call('swatches', { action: 'update', name: 'Glow', stops: [{ color: 'cmyk(0,0,0,0)' }, { color: 'cmyk(100,0,0,0)' }] }, { check: (v) => {
+  assert(v.type === 'radial', '#21 still radial: ' + JSON.stringify(v));
+} });
+await call('swatches', { action: 'update', name: 'Glow', type: 'linear' }, { check: (v) => { assert(v.type === 'linear' && v.stops?.length === 2, 'type alone, stops kept: ' + JSON.stringify(v)); } });
+
+// #18: a new layer below a locked one
+await call('layers', { action: 'add', name: 'Locked', locked: true });
+await call('layers', { action: 'add', name: 'Under', position: 'below:Locked' });
+await call('layers', { action: 'list' }, { check: (v) => {
+  const names = v.layers.map((l) => l.name), k = names.indexOf('Locked');
+  assert(names[k + 1] === 'Under', '#18 Under right below Locked: ' + names);
+  assert(v.layers[k].locked === true, 'Locked stays locked');
+} });
+await call('layers', { action: 'update', name: 'Locked', locked: false });
+
+// #17, #26: 30 shade items on artboard 0 → one grouped transparency line; scoped preflight
+await call('create_shape', { shape: 'rect', w: 4, h: 4, fill: 'cmyk(0,0,0,100)', opacity: 40, blend: 'multiply', layer: 'Under',
+  items: Array.from({ length: 30 }, (_, i) => ({ x: 5 + (i % 10) * 6, y: 50 + Math.floor(i / 10) * 6 })) });
+await call('preflight', {}, { check: (v) => {
+  const t = v.checks.transparency;
+  assert(t && t.count === 30 && t.items.length === 1 && t.items[0].count === 30 && t.items[0].layer === 'Under', '#17 grouped: ' + JSON.stringify(t));
+} });
+await call('preflight', { artboard: 1 }, { check: (v) => { assert(!v.checks.transparency, '#26 artboard 1 has no shade items: ' + JSON.stringify(v.checks.transparency)); } });
+await call('preflight', { refs: 'name:united' }, { check: (v) => { assert(!v.checks.transparency, '#26 refs scope'); } });
+await call('preview', { artboard: 1, preflight: true }, { check: (v, r) => { assert(!/transparency/.test(txt(r)), '#26 preview {artboard, preflight} checks that artboard only'); } });
+
+// #24: grid cells named by a pattern; issues list a few items
+await call('create_text', { size: 9, font: 'Arial', layer: 'Under', name: 'Day {row}-{col}', grid: { x: 100, y: 20, cols: 3, dx: 20, dy: 12, cells: [1, 2, 3, 4, 5, 6] } }, { check: (v) => {
+  assert(v.count === 6, 'six cells');
+} });
+await call('find_items', { name: 'Day 2-3' }, { check: (v) => { assert(v.total === 1, '#24 cell Day 2-3 named'); } });
+await call('create_text', { text: 'stray', x: 150, y: 80, size: 9, font: 'Arial', layer: 'Under' });
+await call('document_info', {}, { check: (v) => {
+  assert(v.issues.unnamedText === 1, '#24 only the stray text unnamed: ' + JSON.stringify(v.issues));
+  assert(v.issueItems?.unnamedText?.[0]?.text === 'stray', '#24 issueItems names it: ' + JSON.stringify(v.issueItems));
+} });
+
+// #25: save says saved
+await call('documents', { action: 'save', path: join(tmp, 'bugs.ai') }, { check: (v) => { assert(v.saved === true, '#25 saved flag: ' + JSON.stringify(v)); } });
+await call('documents', { action: 'save' }, { check: (v) => { assert(v.saved === true, '#25 plain save'); } });
+
+await call('configure', { artboard: null });
+await call('documents', { action: 'close', discard: true });
+rmSync(tmp, { recursive: true, force: true });
+process.exit(await done() ? 1 : 0);

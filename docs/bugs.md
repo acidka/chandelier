@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-27 (bugs #7–#15 fixed; #16–#26 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-27 (bugs #1–#26 fixed or closed; none open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -9,21 +9,10 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 
 ## Open
 
-Illustrator-side issues seen on Windows are quirks C30, C31.
+Illustrator-side issues seen on Windows are quirks C30, C31. No open bugs.
 
 | # | Sev. | Found | Where | Bug | Workaround | Fix idea |
 |---|---|---|---|---|---|---|
-| 16 | 🟡 | 2026-11-26, recreate suite case 08 | `batch` with a step `artboard`, `path_ops` | A `path_ops` result `box` inside a batch step with `artboard: 1` came back in the artboard-0 frame, other steps in the step's frame (not yet reproduced) | Read boxes with `find_items` after the batch | Pass the step's settings to the result formatting of `path_ops` |
-| 17 | 🟡 | 2026-11-26, recreate suite case 04 | `preflight` | Every `shade` step (multiply, < 100 % opacity) is listed as a transparency info item: 645 lines for one panel | Ignore `info` items | Group transparency infos by layer / blend, give a count |
-| 18 | 🟡 | 2026-11-26, recreate suite case 06 | `layers add {position: "below:<locked layer>"}` | Fails "Cannot modify a layer that is locked" when the layer it goes below is locked (not yet reproduced) | Add at the top, then reorder | Unlock the neighbour for the move and lock it again |
-| 19 | 🟡 | 2026-11-26, recreate suite case 06 | `preview {reference}` `differences` | `items` lists items on hidden layers (not yet reproduced) | Ignore names from hidden layers | Skip hidden items / layers when naming differences |
-| 20 | 🟡 | 2026-11-26, recreate suite case 06 | `preview {grid}` | `grid` works only with `image`, not on artboard renders | Save the render (`save_to`) and preview it as an image | Draw the grid on artboard renders too |
-| 21 | 🟠 | 2026-11-26, recreate suite case 09 | `swatches update` on a gradient | Giving only `stops` turned a radial gradient linear (not yet reproduced) | Pass `type: "radial"` again | Keep the gradient's type when it isn't given |
-| 22 | 🟡 | 2026-11-27, recreate suite case 01 (reply-mode runs) | the positional note on replies | Every reply ends "frame: artboard 0, mm" even when the call or batch step gave another `artboard`; the step's own coordinates were right, the note misleads | Trust the step's `artboard` | Name the frame the reply's boxes are in (the step's artboard when given) |
-| 23 | 🟡 | 2026-11-27, cases 01 and 09 | `transform_items`, `modify_items`, `get_items` boxes, `preview` `differences` rects | Returned in the session frame (artboard 0: x 660 and up on artboard 3) while create calls with an `artboard` return boxes relative to that artboard (as #16) | Subtract the artboard's x / y | Same frame in every reply of a call or step with `artboard` |
-| 24 | 🟡 | 2026-11-27, case 01 | `document_info` issues | Issues are counts only (`unnamedText: 115`, `unstyledText: 4`), so agents call `find_items` to learn whose they are; `unnamedText` counts `create_text {grid}` cells, which can't be named there (noise for calendars) | `find_items` by layer / artboard | A few refs (or names) per issue; don't flag grid cells, or let `grid` take a name pattern |
-| 25 | 🟡 | 2026-11-27, case 01 | `documents save` | The reply has name and path only, no saved flag or time | `documents list` (`saved`) | Add `saved: true` |
-| 26 | 🟡 | 2026-11-27, case 09 | `preflight` | In a shared test document it lists items of every artboard (other versions' transparency items); there is no artboard filter | Ignore names from other layers | `artboard` / `refs` option to limit the checks |
 
 ## To verify
 
@@ -39,6 +28,17 @@ Recent fixes found during work (older ones are in the roadmap change log):
 
 | Fixed | Bug | Where it is recorded |
 |-------|-----|----------------------|
+| 2026-11-27 | #16 (suite 08) `path_ops` box in a batch step with `artboard` "in the artboard-0 frame": not reproduced — the box comes back in the step's frame (checked live with a pinned `configure {artboard: 0}` as in the run); the misleading frame note (#22) is the likely cause | `test/live-bugs-1127.mjs` |
+| 2026-11-27 | #17 (suite 04) `preflight` listed every transparent item: transparency is now one line per layer + blend + opacity with a `count` (30 shade items → 1 line) | `test/live-bugs-1127.mjs` |
+| 2026-11-27 | #18 (suite 06) `layers {add/reorder, position: "below:<locked layer>"}` failed: the neighbour is unlocked (and shown) for the move, then restored | `test/live-bugs-1127.mjs` |
+| 2026-11-27 | #19 (suite 06) `preview {reference}` `differences` named items the render doesn't show: `items_at` skips items in hidden groups and on hidden or non-printing layers too | unit `bugs-1127.test.ts` + live |
+| 2026-11-27 | #20 (suite 06) `grid` and `sample` now work on an artboard / region / items render (labels in the reply's frame); still refused together with `reference` or `more` | `test/live-bugs-1127.mjs` |
+| 2026-11-27 | #21 (suite 09) `swatches update` with only `stops` made a radial gradient linear: the type changes only when given; `type` alone keeps the stops | `test/live-bugs-1127.mjs` |
+| 2026-11-27 | #22 (case 01) the frame note said "artboard 0" on batch steps with their own `artboard`: it now names them (`frame (mm): steps 0-2: artboard 3; other steps: artboard 0 (session configure…)`), and `preview {artboard}` says that artboard | unit `bugs-1127.test.ts` + live |
+| 2026-11-27 | #23 (cases 01, 09) mixed frames: `preview {artboard}` now replies `rect`, `content_box` and `differences` from that artboard's top-left (before: only with `region`). `transform_items` / `modify_items` / `get_items` already reply in the frame of their call — a batch step with `artboard` gives that artboard's frame — and the note (#22) now says which | `test/live-bugs-1127.mjs` |
+| 2026-11-27 | #24 (case 01) `document_info` issues were counts only: `issueItems` lists up to 3 items per issue (uuid, name, text start); `create_text {grid}` takes a name pattern (`name: "Day {row}-{col}"`, `{n}`) so calendar cells are named | unit + live |
+| 2026-11-27 | #25 (case 01) `documents save` replies `saved` (the document's saved flag) | `test/live-bugs-1127.mjs` |
+| 2026-11-27 | #26 (case 09) `preflight {artboard}` / `{refs}` checks only those items; `preview {artboard, preflight: true}` (without `more`) checks only that artboard | `test/live-bugs-1127.mjs` |
 | 2026-11-25 | #13 (found in recreate suite 02) creating on a named layer failed with "Target layer cannot be modified" whenever the **active** layer was locked or hidden (Illustrator, [quirk C32](research/illustrator-quirks.md)); every create tool hit it, not only `create_path`. The target's layer now becomes active when the active one is unusable | `test/live-release.mjs` (locked active layer: shape, path, text on new layers) |
 | 2026-11-25 | #14 (suite 02) `gradient:` on text rendered black with no error ([quirk C33](research/illustrator-quirks.md): no scripted route renders it). `create_text`, `edit_text` and `styles` now refuse it with a hint (solid colour, or `path_ops outline_text` and fill the outlines); `modify_items` on groups skips the text with a warning | `test/live-release.mjs` |
 | 2026-11-25 | #15 (suites 01–03) `preview {image, region, sample}`: points outside the region came back `outside`; samples now read the whole image (rendered PDF/AI pages: still only the region) | unit `image.test.ts` |

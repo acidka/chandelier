@@ -1,9 +1,9 @@
 // Builds the MCP server: one McpServer, tools from src/tools, a shared context (transport + runtime).
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { mkdtempSync, appendFileSync } from 'node:fs';
+import { mkdtempSync, appendFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { Transport } from './transport/transport.js';
 import { PanelTransport } from './transport/panel.js';
 import { events } from './tools/events.js';
@@ -32,7 +32,7 @@ Only touch documents you created or were asked to change. Leave a finished docum
 export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {
   const t = performance.now();
   const r = await callToolInner(tool, args, ctx);
-  const note = !r.isError && POSITIONAL.has(tool.name) ? frameNote(ctx.settings) : null;
+  const note = !r.isError && POSITIONAL.has(tool.name) ? frameNote(ctx.settings, callFrames(tool.name, args)) : null;
   if (note) r.content.push({ type: 'text', text: note });
   if (LOG) {
     // reply size: what the agent re-reads on every later request (text chars; images counted, not sized)
@@ -45,11 +45,37 @@ export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<Call
 // Tools whose arguments or results are positions in the session frame.
 const POSITIONAL = new Set(['create_shape', 'create_path', 'create_text', 'artboards', 'transform_items', 'modify_items', 'get_items', 'find_items', 'place', 'batch', 'align_items', 'duplicate_items', 'get_tree', 'preview']);
 
-/** The frame a pinned configure set, said in every positional result: agents in one session share one server, so
- * one agent's configure {artboard: 2} silently moved everyone's coordinates (bug #9). Default frame: no note. */
-export function frameNote(s: Ctx['settings']): string | null {
-  if (s.artboard === null && s.origin === 'artboard') return null;
-  return `frame: ${s.origin === 'document' ? 'document origin (y up)' : 'artboard ' + s.artboard}, ${s.units} (session configure, shared by every agent on this server)`;
+/** Artboards a call measures from instead of the session frame: batch steps with artboard (step index → artboard),
+ * preview of an artboard ([-1, k]: the whole call). */
+export function callFrames(tool: string, args: any): [number, number][] {
+  if (tool === 'batch') {
+    let steps = args?.steps;
+    if (!steps && typeof args?.steps_file === 'string') {
+      try { const f = JSON.parse(readFileSync(resolve(args.steps_file), 'utf8')); steps = Array.isArray(f) ? f : f?.steps; } catch { /* the batch reported it */ }
+    }
+    return Array.isArray(steps) ? steps.flatMap((st: any, i: number) => (typeof st?.artboard === 'number' ? [[i, st.artboard] as [number, number]] : [])) : [];
+  }
+  if (tool === 'preview' && typeof args?.artboard === 'number' && !args.image) return [[-1, args.artboard]];
+  return [];
+}
+
+/** The frame of a positional result's coordinates. A pinned configure frame is said in every positional result: agents
+ * in one session share one server, so one agent's configure {artboard: 2} silently moved everyone's coordinates (bug #9).
+ * A call or step with its own artboard says that one (bug #22: "frame: artboard 0" on steps measured from artboard 3).
+ * Default frame and no own artboard: no note. */
+export function frameNote(s: Ctx['settings'], own: [number, number][] = []): string | null {
+  const pinned = !(s.artboard === null && s.origin === 'artboard');
+  if (!pinned && !own.length) return null;
+  const shared = '(session configure, shared by every agent on this server)';
+  if (s.origin === 'document') return `frame: document origin (y up), ${s.units} ${shared}`;
+  if (own.length === 1 && own[0][0] === -1) return `frame: artboard ${own[0][1]}, ${s.units}`;
+  if (!own.length) return `frame: artboard ${s.artboard}, ${s.units} ${shared}`;
+  const by = new Map<number, number[]>();
+  for (const [i, k] of own) by.set(k, [...(by.get(k) ?? []), i]);
+  const span = (l: number[]) => l.reduce<number[][]>((r, i) => { const last = r[r.length - 1]; if (last && i === last[1] + 1) last[1] = i; else r.push([i, i]); return r; }, [])
+    .map(([a, b]) => (a === b ? String(a) : `${a}-${b}`)).join(', ');
+  const parts = [...by].map(([k, steps]) => `step${steps.length > 1 ? 's' : ''} ${span(steps)}: artboard ${k}`);
+  return `frame (${s.units}): ${parts.join('; ')}; other steps: ${pinned ? `artboard ${s.artboard} ${shared}` : 'the active artboard'}`;
 }
 
 async function callToolInner(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolResult> {

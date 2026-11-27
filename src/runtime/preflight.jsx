@@ -82,11 +82,23 @@
       return !!tok.spec[s];
     }
     function off(what) { for (var q = 0; q < offs.length; q++) if (offs[q] === what) return; offs.push(what); }
+    // transparency is one line per layer + blend + opacity with a count, not one per item (bug #17: 645 shade lines)
+    var tgroups = {};
     function hit(cat, it, detail) {
       if (ignore[cat]) return;
       var c = checks[cat];
       if (!c) c = checks[cat] = { severity: SEV[cat], count: 0, items: [] };
       c.count++;
+      if (cat === 'transparency') {
+        var ly = ''; try { ly = A.layerOf(it).name; } catch (e) {}
+        var key = ly + '|' + detail, tg = tgroups[key];
+        if (tg) { tg.count++; return; }
+        if (c.items.length >= max) return;
+        tg = tgroups[key] = { layer: ly, detail: detail, count: 1 };
+        try { tg.uuid = it.uuid; if (it.name) tg.name = it.name; } catch (e) {}
+        c.items.push(tg);
+        return;
+      }
       if (c.items.length < max) {
         var o = {};
         if (it) { try { o.uuid = it.uuid; if (it.name) o.name = it.name; o.type = A.kindOf(it.typename); } catch (e) {} }
@@ -150,13 +162,25 @@
       return false;
     }
 
-    A.walk(function (it) {
+    // scope (bug #26): artboard = only items touching that artboard; refs = only those items and what is inside them
+    var onlyAb = null;
+    if (a.artboard !== undefined && a.artboard !== null) {
+      if (a.artboard < 0 || a.artboard >= abs.length) throw new Error('Artboard ' + a.artboard + ' does not exist (document has ' + abs.length + ').');
+      onlyAb = abs[a.artboard];
+    }
+    function visit(it) {
       order++;
+      if (onlyAb) { var bb = null; try { bb = A.vb(it); } catch (e) {} if (bb && !A.intersects(bb, onlyAb)) return; }
       if (!a.include_non_printing && nonPrinting(it)) { skipped++; return; }
       offs = [];
       walkOne(it);
       if (offs.length) hit('off_token', it, offs.join('; '));
-    });
+    }
+    if (a.refs !== undefined && a.refs !== null) {
+      var roots = A.refs(a.refs);
+      if (!roots.length) throw new Error('No items for ' + A.json(a.refs) + '.');
+      for (i = 0; i < roots.length; i++) { visit(roots[i]); if (roots[i].typename === 'GroupItem') A.walk(visit, roots[i]); }
+    } else A.walk(visit);
     function walkOne(it) {
       var t = it.typename;
       if (doContrast && (t === 'PathItem' || t === 'CompoundPathItem')) {

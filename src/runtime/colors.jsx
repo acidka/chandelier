@@ -53,10 +53,13 @@
     return findSwatch(doc, name);
   }
   function makeGradient(doc, a) {
-    if (!a.stops || a.stops.length < 2) throw new Error('A gradient needs stops: [{color, at}, ...] (2 or more).');
-    var g;
-    try { g = doc.gradients.getByName(a.name); } catch (e) { g = doc.gradients.add(); g.name = a.name; }
-    g.type = a.type === 'radial' ? GradientType.RADIAL : GradientType.LINEAR;
+    var g = null;
+    try { g = doc.gradients.getByName(a.name); } catch (e) {}
+    // an update may change only the type or only the stops: what isn't given stays (bug #21: stops alone made it linear)
+    if (a.stops ? a.stops.length < 2 : !g) throw new Error('A gradient needs stops: [{color, at}, ...] (2 or more).');
+    if (!g) { g = doc.gradients.add(); g.name = a.name; }
+    if (a.type !== undefined) g.type = a.type === 'radial' ? GradientType.RADIAL : GradientType.LINEAR;
+    if (!a.stops) return findSwatch(doc, a.name);
     while (g.gradientStops.length < a.stops.length) g.gradientStops.add();
     while (g.gradientStops.length > a.stops.length) g.gradientStops[g.gradientStops.length - 1].remove();
     for (var i = 0; i < a.stops.length; i++) {

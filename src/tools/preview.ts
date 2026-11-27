@@ -24,10 +24,10 @@ async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<CallToolRes
 
 export const preview: ToolDef = {
   name: 'preview',
-  description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it). max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
+  description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it); with artboard, rect and differences are from its top-left. max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
 reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
 more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
-image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step; sample [[x,y]|[x,y,w,h]] (image: anywhere, not only in region) → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
+image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step (also on a render); sample [[x,y]|[x,y,w,h]] (image: anywhere, not only in region) → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
   shape: {
     artboard: z.number().min(0).optional(),
     refs: refSchema.optional(),
@@ -50,7 +50,8 @@ image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, pag
   },
   async run(a, ctx) {
     if (a.image) return imagePreview(a, ctx);
-    if (a.grid || a.sample || a.page || a.profile) return fail('grid, sample, page and profile work with image (a file to look at).');
+    if (a.page || a.profile) return fail('page and profile work with image (a file to look at).');
+    if ((a.grid || a.sample) && (a.reference || a.more?.length)) return fail('grid and sample work on one render without reference (or with image).');
     const { more, preflight, info, ...main } = a;
     const res = await render(main, ctx);
     if (res.isError) return res;
@@ -60,7 +61,8 @@ image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, pag
     }
     for (const [on, name] of [[preflight, 'preflight'], [info, 'document_info']] as const) {
       if (!on) continue;
-      const r = await callTool(ctx.tools.get(name)!, {}, ctx);
+      // one artboard shown (no more): preflight checks only that artboard (bug #26: shared test documents)
+      const r = await callTool(ctx.tools.get(name)!, name === 'preflight' && a.artboard !== undefined && !more?.length ? { artboard: a.artboard } : {}, ctx);
       res.content.push({ type: 'text', text: `${name}: ` + (r.content[0] as { text: string }).text });
     }
     return res;
@@ -91,6 +93,14 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   if (!reference) {
     delete v.doc_bounds; delete v.page_bounds;
     rmSync(file, { force: true });
+    if (a.grid || a.sample) {
+      // grid / samples on a render (bug #20): labels and points in the reply's frame (rect), as for a PDF page
+      const img = decodePng(data), [rx, ry, rw] = v.rect as number[];
+      const g = view({ img, ox: rx, oy: ry, k: img.w / rw }, { grid: a.grid, sample: a.sample, max_px: Math.max(img.w, img.h) });
+      data = encodePng(g.img);
+      if (g.grid !== undefined) v.grid = g.grid;
+      if (g.samples) v.samples = g.samples;
+    }
     return { content: [{ type: 'image', data: data.toString('base64'), mimeType: 'image/png' }, { type: 'text', text: J(v) }] };
   }
   // compare with the reference: crop it and resize it to the preview's exact pixel size, then diff

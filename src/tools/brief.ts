@@ -19,9 +19,9 @@ export const DOC_SECTIONS: Record<string, string[]> = {
   swatches: ['globalSwatches', 'spotColors', 'swatchCount'],
   styles: ['paragraphStyles', 'characterStyles'],
   fonts: ['fonts'],
-  issues: ['issues'],
+  issues: ['issues', 'issueItems'],
 };
-export const DOC_BRIEF = ['name', 'colorSpace', 'units', 'bleed', 'artboardCount', 'counts', 'issues'];
+export const DOC_BRIEF = ['name', 'colorSpace', 'units', 'bleed', 'artboardCount', 'counts', 'issues', 'issueItems'];
 
 /** created / changed items (A.outList); reads and the agent's own scripts keep their lists */
 export const LIST_MAX = 20;

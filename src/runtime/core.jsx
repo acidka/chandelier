@@ -1132,14 +1132,14 @@ $.global.AIA = (function () {
     if (!a.path) {
       if (String(d.path) === '') throw new Error('Document ' + d.name + ' was never saved: give a path (.ai, .pdf or .eps).');
       d.save();
-      return { name: d.name, path: d.fullName.fsName };
+      return { name: d.name, path: d.fullName.fsName, saved: d.saved }; // saved flag (bug #25): no documents list to confirm
     }
     var f = new File(a.path), fmt = a.format, o;
     if (fmt === 'svg') {
       o = new ExportOptionsSVG(); o.embedRasterImages = true; o.fontType = SVGFontType.OUTLINEFONT;
       d.exportFile(f, ExportType.SVG, o);
       // Illustrator 29 rebinds the document to the exported SVG (quirk C6): a later plain save would write SVG.
-      return { name: d.name, renamed_from: before !== d.name ? before : undefined, path: f.fsName,
+      return { name: d.name, renamed_from: before !== d.name ? before : undefined, path: f.fsName, saved: d.saved,
         note: 'Illustrator now treats the SVG as this document\'s file: save as .ai to keep an editable original.' };
     }
     if (fmt === 'pdf') {
@@ -1153,7 +1153,7 @@ $.global.AIA = (function () {
       o = new IllustratorSaveOptions(); o.pdfCompatible = true;
       d.saveAs(f, o);
     }
-    return { name: d.name, renamed_from: before !== d.name ? before : undefined, path: d.fullName.fsName };
+    return { name: d.name, renamed_from: before !== d.name ? before : undefined, path: d.fullName.fsName, saved: d.saved };
   };
   DOC.close = function (a) {
     var d = A.docByName(a.name);
@@ -1202,8 +1202,18 @@ $.global.AIA = (function () {
     var c = { all: 0 }, fonts = {}, rgb = 0, emptyText = 0, unnamed = 0, overset = 0, emptyGroups = 0, unstyled = 0, checks = a.checks !== false;
     // paragraph style 0 is the document's default ([Normal Paragraph Style], localised): text left on it is "unstyled"
     var defStyle = doc.paragraphStyles.length ? doc.paragraphStyles[0].name : null, hasStyles = doc.paragraphStyles.length > 1;
-    function rgbPaint(p) {
+    // up to 3 items per issue (bug #24: counts alone sent agents to find_items to learn whose they were)
+    var ex = {};
+    function example(key, it) {
+      var l = ex[key] || (ex[key] = []);
+      if (l.length >= 3) return;
+      var o = {};
+      try { o.uuid = it.uuid; if (it.name) o.name = it.name; if (it.typename === 'TextFrame') o.text = it.contents.slice(0, 24); else o.type = A.kindOf(it.typename); } catch (e) {}
+      l.push(o);
+    }
+    function rgbPaint(p, it) {
       try {
+        if ((p.filled && p.fillColor.typename === 'RGBColor') || (p.stroked && p.strokeColor.typename === 'RGBColor')) example('rgbInCmyk', it);
         if (p.filled && p.fillColor.typename === 'RGBColor') rgb++;
         if (p.stroked && p.strokeColor.typename === 'RGBColor') rgb++;
       } catch (e) {}
@@ -1213,24 +1223,24 @@ $.global.AIA = (function () {
       c.all++;
       c[k] = (c[k] || 0) + 1;
       if (t === 'TextFrame') {
-        if (!it.contents.length) emptyText++;
+        if (!it.contents.length) { emptyText++; example('emptyText', it); }
         // only text with no name and no named group around it is hard to find again
-        if (!it.name) { try { if (!(it.parent.typename === 'GroupItem' && it.parent.name)) unnamed++; } catch (e) { unnamed++; } }
-        if (A.overset && A.overset(it)) overset++;
+        if (!it.name) { var un = true; try { un = !(it.parent.typename === 'GroupItem' && it.parent.name); } catch (e) {} if (un) { unnamed++; example('unnamedText', it); } }
+        if (A.overset && A.overset(it)) { overset++; example('oversetText', it); }
         try {
           // textRanges holds one range per character (C12): count each font once per frame
           var runs = it.textRanges, rn = Math.min(runs.length, 50), seen = {};
           for (var j = 0; j < rn; j++) {
             var ca = runs[j].characterAttributes, fn = ca.textFont.name;
             if (!seen[fn]) { seen[fn] = true; fonts[fn] = (fonts[fn] || 0) + 1; }
-            if (checks && ca.fillColor.typename === 'RGBColor') rgb++;
+            if (checks && ca.fillColor.typename === 'RGBColor') { rgb++; example('rgbInCmyk', it); }
           }
         } catch (e) {}
-        if (hasStyles && it.contents.length) { try { var pst = it.paragraphs[0].paragraphStyles; if (!pst.length || pst[0].name === defStyle) unstyled++; } catch (e) {} }
+        if (hasStyles && it.contents.length) { try { var pst = it.paragraphs[0].paragraphStyles; if (!pst.length || pst[0].name === defStyle) { unstyled++; example('unstyledText', it); } } catch (e) {} }
       } else if (checks) {
-        if (t === 'PathItem') rgbPaint(it);
-        else if (t === 'CompoundPathItem') { var cp = it.pathItems, cn = cp.length; for (var q = 0; q < cn; q++) rgbPaint(cp[q]); }
-        else if (t === 'GroupItem' && !it.pageItems.length) emptyGroups++;
+        if (t === 'PathItem') rgbPaint(it, it);
+        else if (t === 'CompoundPathItem') { var cp = it.pathItems, cn = cp.length; for (var q = 0; q < cn; q++) rgbPaint(cp[q], it); }
+        else if (t === 'GroupItem' && !it.pageItems.length) { emptyGroups++; example('emptyGroups', it); }
       }
     });
     out.counts = c;
@@ -1260,6 +1270,9 @@ $.global.AIA = (function () {
       if (overset) issues.oversetText = overset;
       if (unstyled) issues.unstyledText = unstyled;
       out.issues = issues;
+      var exk = {}, any = false;
+      for (var ik in issues) if (issues.hasOwnProperty(ik) && ex[ik]) { exk[ik] = ex[ik]; any = true; }
+      if (any) out.issueItems = exk;
     }
     try { var sel = doc.selection; out.selection = sel instanceof Array ? sel.length : (sel ? 1 : 0); } catch (e) {}
     return out;
@@ -1272,9 +1285,18 @@ $.global.AIA = (function () {
   // share of the item's visible area inside the rect, so a page background doesn't win every region)
   A.cmd.items_at = function (a) {
     var leaves = [], out = [], i, j;
+    // only what the render shows (bug #19): no hidden items, nothing in hidden groups or hidden / non-printing layers
+    function shown(it) {
+      for (var p = it, n = 0; p && n < 60; n++, p = p.parent) {
+        if (p.typename === 'Document') return true;
+        if (p.typename === 'Layer') { if (!p.visible || !p.printable) return false; }
+        else if (p.hidden) return false;
+      }
+      return true;
+    }
     A.walk(function (it) {
       if (it.typename === 'GroupItem') return;
-      try { if (it.hidden) return; leaves.push({ it: it, b: A.vb(it) }); } catch (e) {}
+      try { if (!shown(it)) return; leaves.push({ it: it, b: A.vb(it) }); } catch (e) {}
     });
     for (i = 0; i < a.rects.length; i++) {
       var r = a.rects[i], hits = [];
@@ -1299,8 +1321,9 @@ $.global.AIA = (function () {
   };
   A.cmd.preview = function (a) {
     var doc = A.doc(), wasSaved = doc.saved, bounds, what, i;
-    // a region is measured from the given artboard (else the session's reference artboard, usually the active one)
-    var inFrame = function (fn) { return (a.region && a.artboard !== undefined && a.artboard !== null) ? A.at(a.artboard, fn) : fn(); };
+    // with an artboard, the region and the reply's rect are measured from that artboard (bug #23: an artboard render's
+    // rect and differences came back in the session frame); else the session's reference artboard, usually the active one
+    var inFrame = function (fn) { return (a.artboard !== undefined && a.artboard !== null && A.S.origin !== 'document') ? A.at(a.artboard, fn) : fn(); };
     if (a.region) { bounds = inFrame(function () { return A.rectIn(a.region); }); what = 'region'; }
     else if (a.refs) {
       var items = A.refs(a.refs);
