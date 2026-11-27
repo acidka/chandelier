@@ -490,8 +490,12 @@ Carried over from 0.5.2 when it was released.
   - [x] ✅ Measured on recreate case 09 (2026-11-27): `brief` caused no extra calls; −16 k chars of reply text
     (−35 %), mostly `scene` and `batch` replies; `preview` and `fonts` are now the largest
     ([benchmarks § Reply size](research/benchmarks.md#reply-size))
-  - [ ] A layout job built item by item with `create_*` / `get_items` (no `run_script`, no `scene`) — the case `brief`
-    was designed for
+  - [x] ✅ A layout job built item by item (case 01, no `run_script` / `scene`, 2026-11-27): `brief` 2.6 min / 98 k,
+    `full` 3.2 min / 117 k, no extra calls from `brief`; both agents built with one steps-file `batch {results:
+    "errors"}`, so create lists never reached them in either mode: −7 k chars only
+    ([benchmarks § Reply size](research/benchmarks.md#reply-size))
+  - [ ] `document_info` issues name their items (or a ref per kind): both case-01 agents made extra `find_items`
+    calls to see whose the `unnamedText` / `unstyledText` counts were
 
 ## Candidates from the 2026-11-23 gap review 🧊
 
@@ -709,3 +713,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-27 | Replies brief by default (owner; plan D16): `configure {reply: "full"}` / `CHANDELIER_REPLY=full` for every key, used by the live tests and scorers; the `get_items` / `document_info` descriptions name the default keys; the `document_info` head gains `bleed`. Tool list 56.1 → 56.3 KB (+505 chars over 0.5.3), lean 15.5 KB; live suites pass |
 | 2026-11-27 | `future/mcp-tokens` (D16) merged into `feature/scene`: `scene build` keeps its inner batches `full` (brief lists 20 uuids per step, which would have broken rebuilds past 20 items); brief `scene` summaries list the 15 largest regions (40 full; 1.8–2.2 vs 3.5–3.9 KB on suite cases 04–09), brief `build` replies drop anchors / bytes / calls / ms; `live-lib` `connect(name, {env})` keeps `CHANDELIER_REPLY=full`; tool list 59.5 KB (36 tools, ≈ 17.5 k tokens), budget 60 KB; unit tests pass; live-scene passes in both modes (`REPLY=brief`, 170-item rebuild; Illustrator 29.1, macOS 27.2, Node 22.23) |
 | 2026-11-27 | Reply modes measured on recreate case 09 (v6 `brief`, v7 `full`, one subagent each, [benchmarks § Reply size](research/benchmarks.md#reply-size)): 5.8 vs 6.2 min, 45 / 144 k vs 42 / 158 k, rmse 0.103 both; reply text 30.2 k vs 46.1 k chars; no `show` and no extra call caused by `brief`. Debug log lines gain `action`, `chars`, `images`, `reply`. Findings F47–F51, guide gaps G52–G58 ([scene-plan § 9](research/scene-plan.md)) wait for the owner's verdict |
+| 2026-11-27 | Reply modes on a layout job built item by item (case 01 Run 2 `brief` / Run 3 `full`, no `run_script` / `scene`): 2.6 vs 3.2 min, 24 / 98 k vs 25 / 117 k, rmse 0.157 vs 0.110 (agents' sizing), all checks pass in both; reply text 13.0 k vs 20.3 k chars; no extra call from `brief`. Both built with one steps-file batch, errors only, so create lists never reached them ([benchmarks § Reply size](research/benchmarks.md#reply-size)); artboards labelled, Run 1's label completed |

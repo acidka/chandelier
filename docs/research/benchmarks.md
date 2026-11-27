@@ -600,6 +600,26 @@ different work (v7 a second, part scene: 2 more scene calls), so the 14 k token 
 effect alone; the quality came out alike (same rmse, both close to v2). **Result: `brief` cost no extra calls and
 cut reply text by a third on this job (−16 k chars, ≈ −4.5 k tokens of re-read context per later request).**
 
+**Agent runs: case 01 (wall calendar, M2 page) built item by item, `brief` vs `full`** — 2026-11-27 03:07–03:13, same
+setup; the prompt forbade `run_script` and `scene` (create_text items / grid, create_shape, create_path, styles,
+swatches, `get_items` / `find_items` / `document_info` to inspect). RMSE re-measured by the evaluator at one setting for
+all (`preview {artboard, reference, reference_crop: [34,13,1143,1265], max_px: 1024}`); Run 1 (§ 2h, `run_script`
+allowed) for scale.
+
+| Run | Reply | Wall | Tool uses / tokens | Chandelier calls | Reply text: chars / tokens | Largest non-preview reply | Extra calls for missing data | RMSE | Checks |
+|-----|-------|-----:|-------------------:|-----------------:|---------------------------:|---------------------------|------------------------------|-----:|--------|
+| Run 2 | brief | 2.6 min | 24 / 98 k | 19 | 13 021 / 3 720 | `find_items` 473 | 2 `find_items` counts: `document_info` issues give counts, not which items (in both modes) | 0.157 | all pass, 121 live texts, 13 styles |
+| Run 3 | full | 3.2 min | 25 / 117 k | 18 | 20 303 / 5 801 | `batch` 1 500, `document_info` 1 311 | none | 0.110 | all pass, 13 styles |
+| Run 1 (§ 2h) | full (0.5.3) | ~3.5 min | 28 / 109 k | — | — | — | — | 0.089 | perfect (owner) |
+
+Both agents built the page in **one 31-step `batch` from a steps file with `results: "errors"`**, which drops the
+create lists in either mode, and never called `get_items`; so `brief` changed only the fix batches (119 vs 1 500
+chars), one `document_info` (229 vs 1 311) and the transform replies. `preview` was 83 % of all reply text in both.
+The rmse gap is the agents' own sizing (Run 2's main dates and mini months differ most), not the reply mode.
+**Result: with the guide's build pattern (one steps-file batch, errors only), agents don't read create lists, so
+`brief` saves ~7 k chars (≈ 2 k tokens) here and costs no calls; the 100-item create lists `brief` was designed for
+appear only when an agent asks for all results.**
+
 **Re-read, an illustration (not a run):** a reply is in its own request and every later one. Calendar C2-3 (§ 2,
 17 requests, 1.05 M input) with four 100-item create replies on requests 8–11: ~74 k tokens of input with `full`,
 ~9 k with `brief` (~6 % of the run); one `document_info` on request 12 −2.6 k; one 80-anchor `get_items` on request 13
