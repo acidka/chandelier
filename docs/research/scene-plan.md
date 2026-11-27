@@ -487,6 +487,11 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F44 | ⏳ | 09 v5 | `text_boxes` cap height (25.3 mm for the title) doesn't match the real caps |
 | F45 | ⏳ | 05 v2 | refine on a one-ink part reports darkest = lightest (meaningless) |
 | F46 | ⏳ | 05 v1, v2 | `get_items {points}` on a compound path fails with MRAP (twice in both runs) |
+| F47 | ⏳ | 09 v6 | `text_boxes` gave the caption's ink as `#ffffff` (the text is dark grey) |
+| F48 | ⏳ | 09 v6 | `drop in x y w h` dropped nothing when the patch is part of a large region (a black blob under the brim that belongs to the sweater's r1) |
+| F49 | ⏳ | 09 v6, v7 | the summary has no region positions: agents map overlay labels back to px to pick ramp / drop ids (a `where` box column, or ids by point) |
+| F50 | ⏳ | 09 v7 | `text_boxes` `cap` equals the box height (10.16 / 24.19 mm), not a cap height (as F44) |
+| F51 | ⏳ | 09 v7 | a part scene's crop edge shows as a square seam where its hair meets the main scene's black |
 | F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
@@ -540,6 +545,13 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G43 | ✅ | 09 v5 | lips belong with flower and jewellery on the "draw by hand" list (the scene's lips are a lumpy blob) |
 | G44 | ✅ | 09 v5 | measure caps from the image, not from `text_boxes` |
 | G45 | ✅ | 09 v5 | dropping a part that wraps another (a bracelet on a wrist) fills it with what lies under: draw the covered piece (skin) or `fill` the right region |
+| G52 | ⏳ | 09 v6 | re-applying a paragraph style clears every local override, `align` too (text jumped ~50 mm): put `align` in the style (§ 3 says only tracking) |
+| G53 | ⏳ | 09 v6 | "petals as rotated ellipses": `create_shape` has no rotation; say how (ellipse path + `transform_items` rotate, or generated Béziers) and size the flower from its measured box |
+| G54 | ⏳ | 09 v7 | hair inside the black region (hair + brim underside + sleeve one region): nothing to recolour; a part crop of the hair, the rest dropped `fill none`, built below the hand layers |
+| G55 | ⏳ | 09 v7 | `drop < 0.05` also drops eyelashes, eye, earring, finger detail: `keep` them after, or `drop in` boxes |
+| G56 | ⏳ | 09 v7 | the case-09 paragraph should repeat that refine changes hand-set inks (hair, lips) unless they are swatches |
+| G57 | ⏳ | 09 v6, v7 | non-Latin text: a shortlist of installed faces with the script (AvenirNext-UltraLight showed tofu; Helvetica Neue Light, Montserrat Light worked) |
+| G58 | ⏳ | 09 v7 | `size` with a non-square image (620 × 617 → 620 × 620): pad or stretch, and where — text placed from px was 1–2 mm off |
 | G46 | ✅ | 05 v1, v2 | test fonts in one batch (same line in 4–6 candidates, compare box widths with the measured width, one render); the x-height : cap-height ratio points to the family |
 | G47 | ✅ | 05 v1, v2 | `content_box` is [x, y, w, h]; on a panel with a white area the whole-page box can be wrong — judge with region compares |
 | G48 | ✅ | 05 v1, v2 | a geometric lowercase wordmark: construct it (circles/ellipses + stems, unite, minus_front the counters) instead of chasing fonts |

@@ -100,7 +100,7 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
   step lists its first 20 items (2 178 → 271 tokens for 100), `get_items` and `document_info` return a short head, and
   `fields` asks for more ([benchmarks](docs/research/benchmarks.md#reply-size)). `configure {reply: "full"}` or
   `CHANDELIER_REPLY=full` brings back every key.
-- **Debug log:** `CHANDELIER_LOG=debug` writes one JSON line per tool call (tool, time, result) to stderr;
+- **Debug log:** `CHANDELIER_LOG=debug` writes one JSON line per tool call (tool, action, time, result, reply size) to stderr;
   `CHANDELIER_LOG_FILE=/path/to/file` appends them to a file.
 - **From source:**
 

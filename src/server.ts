@@ -34,7 +34,11 @@ export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<Call
   const r = await callToolInner(tool, args, ctx);
   const note = !r.isError && POSITIONAL.has(tool.name) ? frameNote(ctx.settings) : null;
   if (note) r.content.push({ type: 'text', text: note });
-  if (LOG) log({ tool: tool.name, ms: Math.round((performance.now() - t) * 10) / 10, ok: !r.isError, error: r.isError ? firstText(r).slice(0, 300) : undefined });
+  if (LOG) {
+    // reply size: what the agent re-reads on every later request (text chars; images counted, not sized)
+    const chars = r.content.reduce((n, c) => n + (c.type === 'text' ? c.text.length : 0), 0), images = r.content.filter((c) => c.type === 'image').length;
+    log({ tool: tool.name, ...(typeof args?.action === 'string' ? { action: args.action } : {}), ms: Math.round((performance.now() - t) * 10) / 10, ok: !r.isError, chars, ...(images ? { images } : {}), reply: ctx.settings.reply, error: r.isError ? firstText(r).slice(0, 300) : undefined });
+  }
   return r;
 }
 

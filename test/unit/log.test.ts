@@ -7,7 +7,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 
 describe('debug log', () => {
-  it('writes tool, ms and ok per call', async () => {
+  it('writes tool, action, ms, ok and reply size per call', async () => {
     const file = join(mkdtempSync(join(tmpdir(), 'aia-log-')), 'calls.log');
     process.env.CHANDELIER_LOG_FILE = file;
     const { createServer } = await import('../../src/server.js');
@@ -22,9 +22,10 @@ describe('debug log', () => {
     delete process.env.CHANDELIER_LOG_FILE;
     const lines = readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toMatchObject({ tool: 'configure', ok: true });
+    expect(lines[0]).toMatchObject({ tool: 'configure', ok: true, reply: 'brief' });
+    expect(lines[0].chars).toBeGreaterThan(20);
     expect(typeof lines[0].ms).toBe('number');
-    expect(lines[1]).toMatchObject({ tool: 'documents', ok: false });
+    expect(lines[1]).toMatchObject({ tool: 'documents', action: 'open', ok: false });
     expect(lines[1].error).toMatch(/not found/i);
   });
 });

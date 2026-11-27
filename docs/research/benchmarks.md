@@ -581,7 +581,24 @@ and with `edit {overlay: true}` (as before).
 | 08 round emblem | 261 | 3 687 / 1 053 | 2 011 / 575 | 55 % |
 | 09 flat illustration | 82 | 3 511 / 1 003 | 1 835 / 524 | 52 % |
 
-Not an agent run: whether 15 rows cost extra `show` calls on a job is still to measure (roadmap, Token use).
+**Agent runs: case 09 (scene), `brief` vs `full`** — 2026-11-27 02:51–03:03, Illustrator 29.1.0 ru_RU, macOS 27.2,
+Node 22.23, Apple M1; one fresh Claude Code subagent (Claude Opus 5.5) per arm, one after the other, the same prompt
+(recreate-testing template), Chandelier as MCP tools; the shared session set to `reply: "full"` by the evaluator for
+v7 only. Reply sizes from `CHANDELIER_LOG_FILE` (one line per call: tool, action, ms, chars, images, reply mode;
+tokens ≈ chars / 3.5); tokens and tool uses from the task notifications. Rows also in § 2i.
+
+| Run | Reply | Wall | Tool uses / tokens | Chandelier calls | Reply text: chars / tokens | `scene` analyze + edit: calls, chars | Extra calls for missing data | RMSE |
+|-----|-------|-----:|-------------------:|-----------------:|---------------------------:|-------------------------------------:|------------------------------|-----:|
+| v6 | brief | 5.8 min | 45 / 144 k | 33 (1 error) | 30 178 / 8 622 | 3 calls, 6 223 (2 017–2 189 each) | none from `brief`: no `show`; 3 previews to find text placement and brim inks (a style re-apply cleared `align`; the summary has no region positions) | 0.103 |
+| v7 | full | 6.2 min | 42 / 158 k | 35 | 46 099 / 13 171 | 5 calls, 17 865 (3 178–3 817 each) | 1 `get_items` + 1 `get_items` step for text boxes (its own `results: "errors"`) | 0.103 |
+
+Per call, `brief` halved the `scene` text (analyze 2 189 vs 3 579 on average, edit 2 017 vs 3 569) and the `batch`
+replies (203 vs 419 chars); `preview` (16–17 calls, ~14 k chars and 16 images in both) and `fonts` (5.7–7.2 k) were
+the same and are now the largest text. **Neither agent called `show`**: both said the 15-row table was enough for
+their edits; both missed region positions (a "where" column), which `full`'s 40 rows don't give either. The runs did
+different work (v7 a second, part scene: 2 more scene calls), so the 14 k token gap between them is not a `brief`
+effect alone; the quality came out alike (same rmse, both close to v2). **Result: `brief` cost no extra calls and
+cut reply text by a third on this job (−16 k chars, ≈ −4.5 k tokens of re-read context per later request).**
 
 **Re-read, an illustration (not a run):** a reply is in its own request and every later one. Calendar C2-3 (§ 2,
 17 requests, 1.05 M input) with four 100-item create replies on requests 8–11: ~74 k tokens of input with `full`,
@@ -738,6 +755,8 @@ start/end. RMSE comparable only within a case (same crop).
 | 09 | v5 | scene (release build; guide = v2's method) | 8.7 min | 65 / 202 k | 0.119 ([0,0,617,617]) | whole image at detail high, `ramp` on the hat, lips/skin/brim inks by hand, 1 refine (one ink worse, reset by hand); flower, earring, bracelet, lips, text by hand | awaiting owner; evaluator: closest to v2 so far — hat one smooth gradient, clean lips; flower regular ellipses, hair flat, blotchy cheek |
 | 09 | v4 | scene (headroom 2 build) | 6.4 min | 49 / 178 k | 0.089 ([0,0,617,617]) | body, face, hand, earring from an illustration crop (115 regions, 13 inks), 1 refine; hat, flower, bracelet by hand with gradients | owner: really bad (hair near-black, flower "bubbly", bracelet a disc) |
 | 09 | v3 | scene (headroom build) | 10.8 min | 90 / 248 k | 0.087 ([0,0,617,617]; not comparable with v2's crop) | face, hair, hand from a crop at 24 inks, `min_de 3`, detail high (426 regions); hat, flower, jewellery by hand with gradients | owner: really bad (faceted face and hand, ragged hair, "grape" flower) |
+| 09 | v6 | scene, reply `brief` (D16 merge build) | 5.8 min | 45 / 144 k | 0.103 ([2,0,617,617]) | whole image at detail high, `ramp` on two hat sets, lips ink by hand, `drop < 0.05`, 2 text boxes, 1 refine; flower, lips, lash, earring, bracelet, a brim patch, text by hand | awaiting owner; evaluator: crown still patchy (not every band ramped), hand a flat blob |
+| 09 | v7 | scene, reply `full` (same build) | 6.2 min | 42 / 158 k | 0.103 ([0,0,620,617]) | the same recipe + a part scene for the hair (crop, the rest dropped `fill none`, built below the flower), `keep` for eye / earring after `drop < 0.05`, 1 refine; flower, lips, earring, bracelet, text by hand | awaiting owner; evaluator: brown hair back, hat crown band lost in one ramp, seam at the hair crop's edge |
 | 05 sign panel | v1 | manual (baseline) | 6.1 min | 53 / 175 k | **0.079** ([39,29,1209,1008]) | — | mark from profile tracks + fit (two lists per outline, sharp notch and foot), teardrop splashes, wordmark constructed from circles and stems, Tahoma for the Cyrillic lines; awaiting owner |
 | 05 | v2 | scene (mark only) | 8.5 min | 74 / 193 k | 0.084 ([39,29,1209,1008]) | the apple mark from a crop (`colors: 2`, detail high): 7 regions, one compound path, 18 anchors, cut a real hole (`drop … fill none`); splashes, wordmark, text, panel by hand | looks the same as v1 at full view; one flat stretch on the left lobe; more calls (font tries, a misread `content_box`); awaiting owner |
 | 06 foil logo mockup | v1 | manual (baseline) | 8.0 min | 42 / 153 k | 0.103 ([120,1,1050,1050]) | — | clean; tree crown simplified to a blob |
