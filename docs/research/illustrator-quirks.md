@@ -35,7 +35,7 @@ Each row is a **design requirement**. Status: ✅ handled in code · 🔄 spike/
 | A7 | Artboard `rect.y` means bottom on write, top on read | One convention for rects everywhere: `[x, y, w, h]` with `y` = top, read and write; artboard rects in an artboard-0 frame | ✅ |
 | A8 | Text frame created, styling fails → error + orphan frame | Create-and-style is atomic: on error the frame is removed; multi-item calls are all-or-nothing; batch `rollback` | ✅ |
 | A9 | One tool answers in a different coordinate system | Coordinates converted in one runtime function used by every command (`AIA.P` / `fromDoc` / `rectOut` / `rectIn`) | ✅ |
-| A10 | Save/export hang when Illustrator is in the background | Bridge `activate` before save/export (configurable) | ✅ save (export in P3) |
+| A10 | Save/export hang when Illustrator is in the background | Was: bridge `activate` before save/export. **Gone** with the current bridge: macOS 2026-11-27 (Illustrator 29.1, `test/live-activate-mac.mjs`: new, preview, save .ai, PNG/PDF/SVG export, save as PDF, close with Terminal in front, no hang, Illustrator never came forward; the `test:live` suites too), Windows 2026-11-24 (W1). `activate` now defaults to false (it pulled Illustrator over the user's browser); `configure {activate: true}` brings the old behaviour back | ✅ not needed |
 
 ## Bridge findings (our spike, 2026-11-22)
 

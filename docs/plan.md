@@ -178,7 +178,7 @@ Both: the plugin is a thin wrapper around the npm package.
 ### D11 — Safety defaults ✅ decided
 
 - Never auto-launch Illustrator (unless `status {launch: true}`).
-- Never auto-activate (bring to front), except before **save/export** on macOS, where background hangs were seen (A10). Configurable; off by default on Windows, which saves and exports fine in the background (W1, 2026-11-24).
+- Never auto-activate (bring to front). Until 2026-11-27 macOS activated before **save/export** for background hangs (A10); they no longer happen (macOS `test/live-activate-mac.mjs` 2026-11-27, Windows W1 2026-11-24), so it is off everywhere: `configure {activate: true}` brings it back.
 - `documents close` on an unsaved document requires `discard: true` or `save: true`.
 - Writes target an explicit document when given (`doc` argument); otherwise the active one, and every response says which document was used.
 - `run_script` is powerful by design; it's documented as such. No sandbox (ExtendScript can't be sandboxed).

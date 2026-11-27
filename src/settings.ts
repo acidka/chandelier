@@ -10,11 +10,12 @@ export interface Settings {
   artboard: number | null;
   /** default timeout per call, seconds */
   timeout: number;
-  /** bring Illustrator to the front before save/export (avoids background hangs, quirk A10: macOS only — Windows saves
-   *  and exports fine in the background, W1 2026-11-24, so it defaults to off there) */
+  /** bring Illustrator to the front before save/export. Off by default everywhere: it pulled Illustrator over the
+   *  user's browser mid-work, and the background hang it guarded against (quirk A10) no longer happens — Windows W1
+   *  2026-11-24, macOS test/live-activate-mac.mjs 2026-11-27. true = the old behaviour, if a save ever hangs */
   activate: boolean;
   /** "brief": replies keep only the fields the next step usually needs (src/tools/brief.ts); Node-side only */
   reply: 'full' | 'brief';
 }
 
-export const defaultSettings = (os: OS = osOf()): Settings => ({ units: 'pt', origin: 'artboard', artboard: null, timeout: 300, activate: os === 'mac', reply: 'brief' });
+export const defaultSettings = (_os: OS = osOf()): Settings => ({ units: 'pt', origin: 'artboard', artboard: null, timeout: 300, activate: false, reply: 'brief' });

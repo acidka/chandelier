@@ -295,7 +295,7 @@ Node 26.13 ARM64, Illustrator 31.0.0, no document open:
   with `configure {activate:false}`, Illustrator visible but not in front, then minimized: PNG, PDF/X-4, SVG and
   `save_as .ai` all write valid files, and Illustrator stays in the background. (The first version put Notepad in
   front; Windows 11's Notepad hands off to an existing window, so the test left Notepad tabs on the owner's desktop.
-  The test now opens no windows: it minimizes Illustrator and shows it again without activating it.) So `activate` now defaults to **false on Windows** (true on
+  The test now opens no windows: it minimizes Illustrator and shows it again without activating it.) So `activate` now defaults to **false on Windows** (2026-11-27: on macOS too, A10 no longer reproduces; was true on
   macOS): activating would only steal the user's focus and cost 0.2–1.3 s per save/export.
 - **Still open in W1:** a modal dialog in Illustrator (needs someone to dismiss it in the VM).
 

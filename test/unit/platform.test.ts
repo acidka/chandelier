@@ -32,8 +32,8 @@ describe('platform', () => {
     expect(longPathProblem('C:/x/' + 'a'.repeat(250), 'win')).toBeNull();
     expect(longPathProblem(long, 'mac')).toBeNull();
   });
-  it('activates before save/export on macOS only (A10; Windows saves in the background, W1)', () => {
-    expect(defaultSettings('mac').activate).toBe(true);
+  it('never brings Illustrator to the front by default (A10 gone: Windows W1, macOS live-activate-mac 2026-11-27)', () => {
+    expect(defaultSettings('mac').activate).toBe(false);
     expect(defaultSettings('win').activate).toBe(false);
   });
   it('ships an ASCII PowerShell bridge that speaks the same ops', () => {
