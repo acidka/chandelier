@@ -85,6 +85,22 @@ await call('layers', { action: 'list' }, { check: (v) => {
 await call('scene', { action: 'build', id, layer: 'Scene 2', position: 'bottom' }, { check: (v, r) => assert(r.content.length === 1, 'first build: no warning ' + JSON.stringify(r.content.slice(1))) });
 await call('layers', { action: 'list' }, { check: (v) => assert(v.layers[v.layers.length - 1].name === 'Scene 2', 'position bottom: ' + v.layers.map((l) => l.name).join(',')) });
 
+// a part from a crop (F25): read with a margin, placed by rect; the blue box crosses the crop's left edge (x 50) and
+// ends in the margin (x 30), so it stays whole and runs 20 px left of the rect; the paper is cut at the crop
+await call('scene', { action: 'analyze', image: png, crop: [50, 20, 140, 110] }, { check: (v, r) => {
+  const head = JSON.parse(first(r).split('\n')[0]);
+  globalThis.partId = head.id;
+  assert(JSON.stringify(head.crop_at) === '[28,20,140,110]', 'crop_at (margin 28, 20 at the image top) ' + JSON.stringify(head.crop_at));
+} });
+await call('scene', { action: 'build', id: globalThis.partId, layer: 'Part', rect: [0, 0, 140, 110] }, { check: (v) => assert(JSON.stringify(v.rect) === '[0,0,140,110]', 'rect ' + JSON.stringify(v.rect)) });
+await call('find_items', { name: 'Part r*', top_level: true }, { check: (v) => {
+  const near = (b, e) => b.every((x, i) => Math.abs(x - e[i]) < 1.5);
+  // the box: whole, 20 px into the margin; the paper at the bottom starts at the crop's top (it runs on under the box)
+  const box = v.items.find((it) => it.name === 'Part r1'), paper = v.items.find((it) => it.name === 'Part r0');
+  assert(box && near(box.box, [-20, 10, 120, 80]), 'box whole, into the margin: ' + JSON.stringify(v.items.map((it) => [it.name, it.box])));
+  assert(paper && Math.abs(paper.box[1]) < 1.5, 'paper cut at the crop top: ' + JSON.stringify(paper && paper.box));
+} });
+
 // more than 100 items: the runtime lists 100 created items per step; a rebuild must still replace every one
 {
   const GW = 480, GH = 360, dots = new Uint8Array(GW * 4 * GH * 4 * 3);

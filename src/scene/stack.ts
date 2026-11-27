@@ -11,18 +11,19 @@ import type { Region } from './regions.js';
  * below darker on ties. */
 export function zOrder(pm: PlanarMap, regions: Region[]): number[] {
   const filled = regions.map((r) => loopsOf(pm, new Set([r.id])).filter((l) => l.outer).reduce((a, l) => a - l.area, 0));
-  const border = new Map<number, number>();
+  const border = new Map<number, number>(), outside = new Set<number>();
   let total = 0;
   for (const e of pm.edges) {
     const r = e.left === OUT ? e.right : e.right === OUT ? e.left : -1;
     if (r < 0 && !(e.left === OUT || e.right === OUT)) continue;
     total += e.pts.length;
-    if (r >= 0) border.set(regions[r].group, (border.get(regions[r].group) ?? 0) + e.pts.length);
+    if (r >= 0) { border.set(regions[r].group, (border.get(regions[r].group) ?? 0) + e.pts.length); outside.add(r); }
   }
   let bg = -2, most = 0;
   for (const [g, n] of border) if (n > most) { most = n; bg = g; }
   if (most < total * 0.5) bg = -2;
-  const isBg = (id: number) => (regions[id].group === bg && regions[id].touchesBorder ? 0 : 1);
+  // on the image border, or on what is left empty (a crop read with a margin is cut at the crop: F25)
+  const isBg = (id: number) => (regions[id].group === bg && (regions[id].touchesBorder || outside.has(id)) ? 0 : 1);
   const order = regions.map((r) => r.id).sort((a, b) => isBg(a) - isBg(b) || filled[b] - filled[a] || regions[b].L - regions[a].L || a - b);
   const z = new Array<number>(regions.length);
   order.forEach((id, n) => { z[id] = n; });
