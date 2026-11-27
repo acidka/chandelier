@@ -92,7 +92,9 @@ export function components(labels: Uint8Array, w: number, h: number): { map: Int
 }
 
 /** Stats for every region id 0..count-1 of a map (ids with no pixels get area 0). */
-export function regionStats(map: Int32Array, w: number, h: number, count: number, lab: Lab, labels?: Uint8Array): Region[] {
+/** lite: skip homogeneity and poles (chamfer) — the merge passes inside segment read only area, box, colour and
+ * neighbours */
+export function regionStats(map: Int32Array, w: number, h: number, count: number, lab: Lab, labels?: Uint8Array, lite = false): Region[] {
   const R: Region[] = [];
   for (let id = 0; id < count; id++) R.push({ id, area: 0, bbox: [w, h, -1, -1], cx: 0, cy: 0, L: 0, a: 0, b: 0, group: -1, homog: 0, pole: [0, 0], depth: 0, perim: 0, touchesBorder: false, nbrs: new Map() });
   const groupCount = labels ? new Map<number, Map<number, number>>() : null;
@@ -118,6 +120,7 @@ export function regionStats(map: Int32Array, w: number, h: number, count: number
   }
   for (const r of R) if (r.area) { r.cx /= r.area; r.cy /= r.area; r.L /= r.area; r.a /= r.area; r.b /= r.area; }
   if (groupCount) for (const [id, g] of groupCount) { let best = -1, bn = 0; for (const [v, n] of g) if (n > bn) { bn = n; best = v; } R[id].group = best; }
+  if (lite) { for (const r of R) if (r.area) r.pole = [r.cx, r.cy]; return R; }
   // homogeneity
   const near = new Float64Array(count);
   for (let i = 0; i < w * h; i++) { const id = map[i]; if (id < 0) continue; const r = R[id]; if (de76(lab.L[i], lab.A[i], lab.B[i], r.L, r.a, r.b) < 10) near[id]++; }
@@ -279,9 +282,9 @@ export function segment(lab: Lab, labels: Uint8Array, o: SegOpts = {}): Segmenta
   const { w, h } = lab, minDe = o.minDe ?? 6, minArea = o.minArea ?? Math.max(12, Math.round(w * h * 5e-5));
   const voted = modeFilter(labels, w, h, o.modePasses ?? 2);
   const cc = components(voted, w, h);
-  const seg: Segmentation = { w, h, map: cc.map, regions: regionStats(cc.map, w, h, cc.count, lab, voted) };
+  const seg: Segmentation = { w, h, map: cc.map, regions: regionStats(cc.map, w, h, cc.count, lab, voted, true) };
   if (!o.noDissolve) dissolveThin(seg, lab, Math.max(6, minDe * 2), o.centres, minDe);
-  seg.regions = regionStats(seg.map, w, h, cc.count, lab, voted);
+  seg.regions = regionStats(seg.map, w, h, cc.count, lab, voted, true);
   const root = mergeRegions(seg.regions, minArea, o.noSimilar ? 0 : minDe / 2);
   for (let i = 0; i < w * h; i++) if (seg.map[i] >= 0) seg.map[i] = root[seg.map[i]];
   const merged = compact(seg, lab, voted);

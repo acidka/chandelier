@@ -640,6 +640,12 @@ collection 6 %, colour maths (`de76`, `gam`, `rgbToLab`, `labToRgb`, `mixT`) ~13
   fewer temporary arrays (GC); cache the smoothed Lab image and the quantization per (image, crop, `max_px`) so a
   re-analyze with other edits or detail starts from them; colour conversions through a lookup table (sRGB → linear).
   Estimate: analyze roughly halved — a few hours of work, not worth it before quality.
+- **Done 2026-11-27 (branch `feature/scene-analyze`; macOS 27.2, Node 22.23, interleaved A/B of `analyze`, best of
+  3, same output on all nine suite images):** the linear → sRGB byte by 255 thresholds instead of a power per call;
+  `segment`'s intermediate region stats without homogeneity and chamfer (only the final ones are read); the bilateral
+  filter copies pixels whose 7 × 7 window is one exact colour (50–73 % of the pixels on flat art, ~0 on photos):
+  filter alone 1.6–2.5× faster on flat art, ~20 ms slower on photos. Whole analyze 19.3 → 17.3 s over the nine
+  (−10 %; flat art −14 to −20 %, case 03 +3 %).
 - **GPU (gpu.js) — not now** (checked 2026-11-27): gpu.js 2.24.1 (24 Sep 2026) is maintained, but in Node it runs
   through the native `gl` (headless-gl), which per its 2.24.0 notes fails to build on Node 23+ (installs on ≤ 22;
   Apple Silicon not confirmed); kernels are float32 with fixed loop bounds; its own M1 Max benchmark has a 4 M-element

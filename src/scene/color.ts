@@ -33,8 +33,18 @@ export function rgbToLab(img: Img): Lab {
 }
 
 const finv = (t: number) => (t * t * t > E ? t * t * t : (116 * t - 16) / K);
-const gam = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055);
-const byte = (c: number) => Math.max(0, Math.min(255, Math.round(gam(c) * 255)));
+// linear light → sRGB byte without a power per call (it was 5 % of an analyze): TH[k] is the linear value where the
+// rounded byte goes from k to k + 1, so the byte is the number of thresholds at or below c (the same rounding as
+// round(gamma(c) · 255), the thresholds being that curve's inverse at k + 0.5)
+const TH = new Float64Array(255);
+for (let k = 0; k < 255; k++) { const v = (k + 0.5) / 255; TH[k] = v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+const byte = (c: number) => {
+  if (!(c >= TH[0])) return 0;
+  if (c >= TH[254]) return 255;
+  let lo = 0, hi = 254; // TH[lo] <= c < TH[hi]
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (TH[m] <= c) lo = m; else hi = m; }
+  return lo + 1;
+};
 
 /** [L, a, b] → sRGB bytes (out-of-gamut colours clipped) */
 export function labToRgb(L: number, a: number, b: number): [number, number, number] {
