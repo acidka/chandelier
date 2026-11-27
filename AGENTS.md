@@ -32,6 +32,7 @@ ssh -F tmp/windows-vm/ssh_config win  # into the Windows VM (docs/windows-plan.m
 node test/live-w1-bridge.mjs      # Windows, desktop session (run-interactive.ps1): bridge latency, script size, Unicode, errors (W1)
 node test/live-w1-activate.mjs    # Windows, desktop session: save/export with Illustrator in the background (W1)
 node test/live-activate-mac.mjs   # macOS: save/export with another app in front (A10); shows which calls bring Illustrator up
+node test/live-working-doc.mjs    # macOS: the user switches documents between calls → the next call goes back to the working one
 scripts/windows/run-interactive.ps1  # over SSH: run a command in the VM's desktop session (live tests need it)
 node test/live-scene.mjs           # scene tool: analyze → build → undo/redo → rebuild with hand work → refine → part crop (own document); REPLY=brief for the default reply mode
 node bench/scene-bench.mjs <image>  # scene timings and payload; bench/scene-headroom.mjs <image> [crop] [roi]: error per pipeline stage

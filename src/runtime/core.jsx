@@ -617,6 +617,29 @@ $.global.AIA = (function () {
   A.warn = function (msg) { A.warnings.push(String(msg)); };
 
   function docName() { try { return app.documents.length ? app.activeDocument.name : null; } catch (e) { return null; } }
+  // A document's identity: its file path once saved (two open files may share a name, e.g. two runs.ai), else its name
+  function docKey(d) {
+    try { if (d.saved !== undefined && d.path && d.path.fsName) return d.fullName.fsName; } catch (e) {}
+    try { return 'name:' + d.name; } catch (e2) { return null; }
+  }
+  A.docKey = docKey;
+  // The document this session works in (key from the server): when another one is in front (the user switched
+  // windows between calls), bring it back first, so a call never lands in the wrong document
+  function keepDoc(key) {
+    if (!key || !app.documents.length) return;
+    var act = app.activeDocument;
+    if (docKey(act) === key) return;
+    for (var i = 0; i < app.documents.length; i++) {
+      var d = app.documents[i];
+      if (docKey(d) === key) {
+        var was = act.name;
+        app.activeDocument = d;
+        A.warnings.push('Illustrator showed "' + was + '" (switched since the last call); went back to "' + d.name + '", the document this session works in. To work in another document, documents activate or open it.');
+        return;
+      }
+    }
+    A.warnings.push('The document this session worked in (' + key.replace(/^name:/, '') + ') is closed; working in the active one, "' + act.name + '".');
+  }
   function setSettings(s) {
     var o = {}, k;
     for (k in DEFAULTS) if (DEFAULTS.hasOwnProperty(k)) o[k] = DEFAULTS[k];
@@ -671,6 +694,7 @@ $.global.AIA = (function () {
     try { lvl = app.userInteractionLevel; app.userInteractionLevel = UserInteractionLevel.DONTDISPLAYALERTS; } catch (e) {}
     try {
       setSettings(req.settings);
+      keepDoc(req.doc);
       var data;
       var c = A.cmd[req.cmd];
       if (!c) throw new Error('Unknown runtime command "' + req.cmd + '".');
@@ -692,6 +716,7 @@ $.global.AIA = (function () {
       A.last.doc = docName();
     }
     env.doc = docName();
+    try { env.docKey = app.documents.length ? docKey(app.activeDocument) : null; } catch (e) { env.docKey = null; }
     if (A.warnings.length) env.warnings = A.warnings;
     var out;
     try { out = A.json(env); } catch (e) { out = A.json({ ok: false, error: 'Could not serialise the result: ' + e.message, doc: env.doc }); }
