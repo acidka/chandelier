@@ -108,6 +108,12 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       }
       for (const x of over) s.meta[x].drop = true;
       res.changed = true;
+    } else if (reg.test(t[0]) && t[1] === 'stroke') {
+      // rN stroke: a thin band of constant width drawn as a stroke along its centreline (F18); "rN fill" = back to a shape
+      const id = region(t[0]);
+      s.meta[id].stroke = true; res.changed = true;
+    } else if (reg.test(t[0]) && t[1] === 'fill' && t.length === 2) {
+      s.meta[region(t[0])].stroke = false; res.changed = true;
     } else if (reg.test(t[0]) && t[1] === 'flat') {
       s.meta[region(t[0])].ramp = false; res.changed = true;
     } else if (head === 'drop' || head === 'keep') {
@@ -224,7 +230,7 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
         for (const r of R) if (r.area && s.z[r.id] >= s.z[id] && inside(r.bbox, R[id].bbox)) s.meta[r.id].tol = s.meta[r.id].tol ?? Math.max(0.3, s.tol / 2);
       }
       res.changed = true;
-    } else fail('unknown edit (undo [n], reset, merge, split rN in x y w h, ramp, rN flat, layers rA rB, rN logo, rN placeholder, text x y w h, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
+    } else fail('unknown edit (undo [n], reset, merge, split rN in x y w h, rN stroke, rN fill, ramp, rN flat, layers rA rB, rN logo, rN placeholder, text x y w h, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
   });
   s.edits.push(...edits);
   if (res.changed) recompute(s);

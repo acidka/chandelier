@@ -41,7 +41,7 @@ Use as colours: "swatch:Name", "swatch:Name@50" (tint), "gradient:Name@45" (angl
 
 export const fonts: ToolDef = {
   name: 'fonts',
-  description: 'Installed fonts. query (substring of PostScript name or "Family Style", spaces/dashes ignored) and/or family (exact) → [{name (PostScript), family, style}] (limit default 50); families_only:true lists family names. resolve:"Montserrat SemiBold" shows which font the fuzzy matching used by create_text picks.',
+  description: 'Installed fonts. query (substring of PostScript or "Family Style" name) and/or family (exact) → [{name (PostScript), family, style}] (limit default 50); families_only:true lists family names. resolve:"Montserrat SemiBold" shows which font fuzzy matching picks.',
   shape: {
     query: z.string().optional(), family: z.string().optional(),
     families_only: z.boolean().optional(), resolve: z.string().optional(),

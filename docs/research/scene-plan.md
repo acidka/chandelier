@@ -459,18 +459,18 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F15 | ✅ | 08 v2 | no way to remove lost transparency: now `drop … fill none` leaves the area empty |
 | F16 | ✅ | 08 v2 | `edit {overlay: true}` showed the analyzed labels: the overlay now outlines what is drawn after the edits and labels only drawn regions |
 | F17 | ✅ | 08 v2 | refine's tightened tolerances (0.4) follow JPEG noise; its rmse never moved in run 2 → fixed 2026-11-27: refine re-measures each tightened edge and keeps its tolerance when the tighter fit doesn't come ≥ 15 % closer (reported "tolerance kept") |
-| F18 | ⏳ | 08 v1, v2 | thin constant-width outlines come out as lumpy filled bands (both runs redrew them as stroked centrelines) |
+| F18 | ✅ | 08 v1, v2 | thin constant-width outlines come out as lumpy filled bands (both runs redrew them as stroked centrelines) → fixed 2026-11-27: `rN stroke` edit: Zhang–Suen skeleton → centreline (loop or longest path, spurs pruned), width = area ÷ length, built as one stroked path (miter joins, butt caps); `rN fill` back |
 | F19 | ✅ | 08 v2 | forcing `circle` on a disc whose outline is only partly round throws the fit 5 mm off → fixed 2026-11-27: a forced circle is fitted to the round stretch only (trimmed least squares) |
 | F20 | ✅ | 04 v10 | `create_path {map}` is projective, the scene maps bilinear: hand-built parts sat ~40 px off until the agent wrote its own map → fixed 2026-11-27: `create_path {map: {from, to, bilinear: true}}` maps like the scene (inverse bilinear); guide § 1 says when |
 | F21 | ✅ | 04 v9, v10 | first build to a new layer warned "Nothing found for layer:…": a new layer gets no delete step |
-| F22 | ⏳ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show |
+| F22 | ✅ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show → fixed 2026-11-27: two causes, both fixed: the ramp hint listed only the first 6 bands (the rest stayed flat stripes) — now every band as ranges; and the gradient stops assumed Illustrator spans the box width, while it spans the outline's own extent along the angle (measured live: ellipse 300 × 200 at 30° → 278.5) — angled ramps had flat ends; error inside a 70° ramp 5–11 → 2–5 (of 255) |
 | F23 | ⏳ | 08 v2 | `scene` used far more calls than the baseline on flat art (16 scene + 34 other vs 19 in total) |
 | F24 | ✅ | 06 v2 | `refine` / rebuild replaced the whole layer: now only its own items (hand-added items stay), and regions whose items were deleted stay dropped (`dropped_deleted`) |
 | F25 | ⏳ | 06 v2 | a part crop cuts every shape crossing the crop edge square (the ground swoosh's ends; tips added by hand) |
 | F26 | ✅ | 06 v2 | the default analyze of one flat ink rendered as foil: 12 inks, 817 regions: hint "photo with N inks: … colors = that number" |
 | F27 | ✅ | 09 v3 | `cN = cM` (documented) failed "use swatch:Name, #rrggbb, lab(L,a,b) or cN": now moves every region of cN to cM |
 | F28 | ✅ | 09 v3 | a crop of soft-shaded petals came back `photo: true` (lighting flattened); no switch to turn photo mode off → fixed 2026-11-27: `analyze {photo: false}` keeps shading as ramp hints (`true` forces photo mode; default: detected) |
-| F29 | ⏳ | 09 v3 | no ramp hints on hat, skin or petals (soft gradients): all gradients built by hand |
+| F29 | ✅ | 09 v3 | no ramp hints on hat, skin or petals (soft gradients): all gradients built by hand → fixed 2026-11-27: ramp test measured above the regions' own noise: gradients found at noise σ 1–8 (lost at 8 before), steps never |
 | F30 | ✅ | 09 v3 | every build / refine put the scene layer on top: `position` for a new layer; an existing layer stays where it is |
 | F31 | ✅ | 09 v3 | refine on a 426-region scene reverted everything while listing 8 disagreeing inks → fixed 2026-11-27: refine keeps the kind of fix that helps (only the inks or only the edges, `reverted: "edges"|"inks"`) instead of undoing everything |
 | F33 | ✅ | 06 v3 | build failed on a degenerate tiny region ("item 106: The path has no drawable segments") and rolled back: one-segment loops are now left out, a region with nothing drawable is skipped |

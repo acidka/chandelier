@@ -78,3 +78,101 @@ describe('F17 refine on a noisy edge', () => {
     for (const x of kept) { const [, a, b] = x.why.match(/edge r(\d+)\|r(\d+)/)!; expect(s.edgeTol?.[`${Math.min(+a, +b)},${Math.max(+a, +b)}`]).toBeUndefined(); }
   });
 });
+
+describe('F22 ramp stops where Illustrator puts its default gradient span', () => {
+  it('an angled ramp on an ellipse: stops are fractions of the ellipse\'s own extent along the angle', async () => {
+    const { buildSteps } = await import('../../src/scene/build.js');
+    const W = 400, H = 300, th = (30 * Math.PI) / 180, ux = Math.cos(th), uy = Math.sin(th), rgb = new Uint8Array(W * H * 3);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 3;
+      if (((x - 200) / 150) ** 2 + ((y - 150) / 100) ** 2 > 1) { rgb.set([245, 240, 230], i); continue; }
+      const t = Math.max(0, Math.min(1, (((x - 200) * ux + (y - 150) * uy) / 150 + 1) / 2));
+      rgb.set([230 - 140 * t, 120 - 90 * t, 40 + 80 * t].map(Math.round), i);
+    }
+    const s = analyze({ w: W, h: H, rgb }, P, { dir: '/tmp', path: 'x' });
+    const ids = s.rampGroups[0].ids;
+    applyEdits(s, ['ramp ' + ids.map((i) => 'r' + i).join(' ')]);
+    const id = ids[0], rp = s.ramps[id]!, steps = buildSteps(s, { rect: [0, 0, W, H] }).batches[0];
+    const stops = steps.find((x) => x.tool === 'swatches' && x.args.kind === 'gradient')!.args.stops as { at: number }[];
+    const a = Math.atan2(rp.uy, rp.ux), ext = 2 * Math.hypot(150 * Math.cos(a), 100 * Math.sin(a)), qc = rp.ux * (rp.cx - 200) + rp.uy * (rp.cy - 150);
+    const want = (t: number) => 50 + (100 * (qc + t)) / ext;
+    expect(Math.abs(stops[0].at - want(rp.t0))).toBeLessThan(1.5);
+    expect(Math.abs(stops[1].at - want(rp.t1))).toBeLessThan(1.5);
+  });
+});
+
+describe('F18 rN stroke: a thin band as a centreline stroke', () => {
+  it('a ring of width 6 becomes one closed stroke of width ~6; an open band an open stroke', async () => {
+    const { buildSteps } = await import('../../src/scene/build.js');
+    const { summary } = await import('../../src/scene/summary.js');
+    const { ring } = await import('./scene-fixtures.js');
+    const im = paint(300, 200, [ring(100, 100, 57, 63, [30, 60, 120]), rect(180, 97, 100, 6, [200, 40, 40])], { bg: BG, noise: 1 });
+    const s = analyze(im, P, { dir: '/tmp', path: 'x' });
+    const ringId = s.seg.regions.find((r) => r.area > 0 && r.b < -20)!.id, barId = s.seg.regions.find((r) => r.area > 0 && r.a > 30)!.id;
+    const before = s.estRmse;
+    applyEdits(s, [`r${ringId} stroke`, `r${barId} stroke`]);
+    const rs = s.shapes.find((sh) => sh.region === ringId)!.stroke!, bs = s.shapes.find((sh) => sh.region === barId)!.stroke!;
+    expect(rs.closed).toBe(true);
+    expect(Math.abs(rs.width - 6)).toBeLessThan(0.5);
+    // the centreline runs on the ring's middle circle (r 60) all the way round
+    const { bez } = await import('../../src/fitcurve.js');
+    for (const c of rs.segs) for (const t of [0, 0.5]) { const p = bez(c, t); expect(Math.abs(Math.hypot(p[0] - 100, p[1] - 100) - 60)).toBeLessThan(1.2); }
+    expect(bs.closed).toBe(false);
+    expect(Math.abs(bs.width - 6)).toBeLessThan(0.7);
+    expect(summary(s)).toMatch(new RegExp(`r${ringId} .* stroke \\d`));
+    expect(s.estRmse).toBeLessThan(before + 0.04); // a stroke of the measured width: only the anti-aliased edges differ
+    const items = buildSteps(s, { rect: [0, 0, 150, 100], ptPerUnit: 72 / 25.4 }).batches.flat().filter((x) => x.tool === 'create_path').flatMap((x) => x.args.items as any[]);
+    const ri = items.find((i) => i.name === `Scene r${ringId}`);
+    expect(ri).toMatchObject({ fill: 'none', join: 'miter' });
+    expect(ri.stroke).toMatch(/^swatch:/);
+    expect(ri.stroke_width).toBeCloseTo(rs.width * 0.5 * 72 / 25.4, 1);
+    expect(ri.d).toMatch(/Z$/);
+    expect(items.find((i) => i.name === `Scene r${barId}`).d).not.toMatch(/Z$/);
+    applyEdits(s, [`r${ringId} fill`]);
+    expect(s.shapes.find((sh) => sh.region === ringId)!.stroke).toBeUndefined();
+  });
+});
+
+describe('F29 ramp hints on grainy soft gradients', () => {
+  const grad = (c0: number[], c1: number[]) => Array.from({ length: 260 }, (_, i) => rect(20 + i, 30, 1, 140, c0.map((c, k) => Math.round(c + ((c1[k] - c) * i) / 259)) as RGB));
+  it('a gradient is a ramp at noise σ 1–8; a step between two flat inks never is', { timeout: 30_000 }, () => {
+    for (const noise of [1, 4, 8]) {
+      const g = analyze(paint(300, 200, grad([220, 160, 120], [120, 60, 40]), { bg: [245, 245, 245], noise, jpeg: 70 }), { ...P, photo: false }, { dir: '/tmp', path: 'x' });
+      expect(g.rampGroups.length).toBeGreaterThan(0);
+      const st = analyze(paint(300, 200, [rect(20, 30, 130, 140, [200, 140, 100]), rect(150, 30, 130, 140, [170, 110, 75])], { bg: [245, 245, 245], noise, jpeg: 70 }), { ...P, photo: false }, { dir: '/tmp', path: 'x' });
+      expect(st.rampGroups).toEqual([]);
+    }
+  });
+});
+
+describe('curve fit: curvature continuity and fixed anchors', () => {
+  const curvEnd = (c: number[][], end: boolean) => {
+    const [a, b, q] = end ? [c[3], c[2], c[1]] : [c[0], c[1], c[2]];
+    const d1 = [b[0] - a[0], b[1] - a[1]], d2 = [q[0] - b[0], q[1] - b[1]], L = Math.hypot(d1[0], d1[1]);
+    return ((end ? -1 : 1) * (2 / 3) * (d1[0] * d2[1] - d1[1] * d2[0])) / L ** 3;
+  };
+  const gaps = (segs: number[][][]) => segs.slice(1).map((B, k) => { const a = curvEnd(segs[k], true), b = curvEnd(B, false); return a * b > 0 ? Math.abs(a - b) / (Math.abs(a) + Math.abs(b)) : 0; });
+  it('a joint whose bend jumps is evened out within the tolerance', async () => {
+    const { fitCurve, matchCurvature, bez } = await import('../../src/fitcurve.js');
+    const pts = Array.from({ length: 200 }, (_, i) => [i * 2, 60 + 40 * Math.sin(i / 20)]);
+    const segs = fitCurve(pts, { tolerance: 1 }) as any;
+    expect(Math.max(...gaps(segs))).toBeLessThan(0.35);
+    // spoil one joint: A's last handle 1.2× longer
+    const k = 0, A = segs[k], d = [A[2][0] - A[3][0], A[2][1] - A[3][1]];
+    const bad = segs.map((c: any) => c.map((q: any) => [...q]));
+    bad[k][2] = [A[3][0] + 1.2 * d[0], A[3][1] + 1.2 * d[1]];
+    const before = gaps(bad)[k];
+    matchCurvature(bad, pts as any, 3);
+    expect(gaps(bad)[k]).toBeLessThan(before);
+    const miss = Math.max(...pts.map((q) => Math.min(...bad.flatMap((c: any) => Array.from({ length: 33 }, (_, i) => { const p = bez(c, i / 32); return Math.hypot(p[0] - q[0], p[1] - q[1]); })))));
+    expect(miss).toBeLessThan(3.2);
+  });
+  it('anchors: the nearest measured point becomes an anchor', async () => {
+    const { fitCurve } = await import('../../src/fitcurve.js');
+    const pts = Array.from({ length: 101 }, (_, i) => [i, 0.002 * (i - 50) ** 2]);
+    const free = fitCurve(pts, { tolerance: 0.5 }), fixed = fitCurve(pts, { tolerance: 0.5, anchors: [[25.2, 1.3], [80, 2]] });
+    const at = (segs: any[]) => segs.slice(1).map((c) => c[0][0]);
+    expect(at(fixed)).toEqual(expect.arrayContaining([25, 80]));
+    expect(at(free)).not.toContain(25);
+  });
+});

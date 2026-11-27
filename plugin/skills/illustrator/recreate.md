@@ -152,6 +152,8 @@ Skip what already exists (a document, a reference artboard): reuse it.
   centreline and draw it as a **stroke** (`create_path {fit, stroke_width}` with `join: "miter"`), not as a filled
   band — a stroke keeps the width constant by construction. Corners: place the anchor at the **centreline**
   intersection; a miter tip sticks out by w / (2·sin(θ/2)) beyond it. Need a fill: `path_ops {op: "outline_stroke"}`.
+  In a scene, `r8 stroke` does this for a band region (centreline + measured width; `r8 fill` undoes it) — check the
+  width in the summary (`stroke 6.1`) against a close-up.
 - **Interlocking bands that change colour along their length** (a blue band running on as a red one): two shapes,
   the one below continues under the other; the colour boundary is the top shape's end or corner — layer order, not a
   cut.
@@ -209,7 +211,8 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
    (folds, shadows, side faces; the region a dropped one sits on fills its place — `drop r12 fill r0` to choose;
    `drop < 0.05` drops every tiny region at once, e.g. small text and texture — and with it eyelashes, eyes,
    earrings and finger detail: `keep r41 r57` them right after, or drop by `drop in x y w h` boxes instead), `text x y w h` over each text block (in the analyzed crop's pixels),
-   `r10 logo` on marks, `rN circle` / `rect` to force a primitive — only when the **whole** outline is that primitive
+   `r8 stroke` on a thin band of one width (a frame, a ring, a line: drawn as a stroke, not a lumpy filled band),
+   `split r5 in x y w h` to cut a part off a region, `r10 logo` on marks, `rN circle` / `rect` to force a primitive — only when the **whole** outline is that primitive
    (a disc with a lobe is not a circle: keep it free and fix the round stretch afterwards) —, `c0 = swatch:…` for
    brand inks, `name` the parts.
    Hints are suggestions: take `ramp …` only for a gradient that is artwork — and give `ramp rA rB rC` yourself
@@ -345,7 +348,9 @@ photo points: tolerance ≈ 3–4 px (2 follows the noise as bumps). **Units:** 
 points' units after `map` (with a px→mm map, 0.3–0.4 mm); without `map`, before `scale`.
 - A band: `fit: [edge A, edge B reversed], closed: true` (lists joined by straight lines).
 - **Shared stretches:** each list in `fit: [...]` is fitted on its own, so split an edge at the merge point and pass the
-  *same* sub-list (same points, same tolerance) in every shape that uses it: identical curves, no slivers. End
+  *same* sub-list (same points, same tolerance) in every shape that uses it: identical curves, no slivers. Two paths
+  fitted from different point lists that must meet: give both the same `anchors: [[x, y], …]` (the nearest measured
+  point becomes an anchor). Joints get matching curvature on both sides automatically (within the tolerance). End
   sub-lists where both run the same direction, or the joint shows a slight bend.
 - **Joining pieces from different tracks into one edge** (an edge read partly from one track, partly from another):
   leave out the few points on each side of a steep join and let the fit bridge the gap; joining them point to point

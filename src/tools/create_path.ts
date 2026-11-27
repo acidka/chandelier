@@ -7,17 +7,18 @@ import { styleShape, placeShape, STYLE_HELP, itemsSchema } from './common.js';
 const xy = z.array(z.number()).length(2);
 const point = z.union([xy, z.object({ a: xy, in: xy.optional(), out: xy.optional() })]);
 const pathProps = {
-  points: z.array(point).optional().describe('[x,y] corners, or {a:[x,y], in:[x,y], out:[x,y]} with Bézier handles (same format get_items returns)'),
+  points: z.array(point).optional().describe('[x,y] or {a, in, out} (Bézier handles; as get_items returns)'),
   closed: z.boolean().optional(),
   paths: z.array(z.array(point)).optional().describe('several point lists → one compound path (holes)'),
   fit: z.array(z.any()).optional().describe('measured points [[x,y],…] or several lists (joined by lines) → smooth curve, anchors at extremes'),
   tolerance: z.number().positive().optional().describe('fit: max miss (default 1)'),
   extend: z.union([z.number(), z.array(z.number()).length(2)]).optional().describe('fit: run on past the ends ([start, end])'),
+  anchors: z.array(xy).optional().describe('fit: forced anchors'),
   map: z.object({ from: z.array(xy).length(4), to: z.array(xy).length(4), bilinear: z.boolean().optional() }).optional().describe('fit: 4-point map applied first (bilinear: as scene)'),
   shade: z.object({ to: z.union([z.number(), z.array(z.array(z.number()))]), steps: z.number().int().min(2).max(60).optional(), taper: z.number().min(0).optional() }).optional()
-    .describe('fit = edge: multiply fade (opacity, fill) to none at to (distance or next edge points); taper ends'),
-  clip_to: z.union([z.string(), z.number()]).optional().describe('path ref: the new paths go in a clip group masked by a copy'),
-  d: z.string().optional().describe('SVG path data: M L H V C S Q T A Z, absolute/relative; several subpaths → compound path'),
+    .describe('fit = edge: multiply fade (opacity, fill) to none at to (distance or edge points); taper'),
+  clip_to: z.union([z.string(), z.number()]).optional().describe('path ref: clip the new paths to a copy of it'),
+  d: z.string().optional().describe('SVG path data (any command); several subpaths → compound path'),
   x: z.number().optional(), y: z.number().optional(),
   scale: z.union([z.number().positive(), z.array(z.number().positive()).length(2)]).optional().describe('multiplies coordinates ([sx, sy]); then x, y offset'),
   fill_rule: z.enum(['nonzero', 'evenodd']).optional(),
@@ -27,7 +28,7 @@ const pathProps = {
 export const create_path: ToolDef = {
   name: 'create_path',
   description: `Create a path from points, several point lists (compound path), SVG path data "d" (y down, session units; scale and x, y place it) or measured points (fit).
-Default paint when neither fill nor stroke is given: closed → black fill, open → 1 pt black stroke.
+Default paint: closed → black fill, open → 1 pt black stroke.
 ${STYLE_HELP}
 Placement: layer or parent. Many at once: items:[{…}]. Returns {count, items:[{uuid, name, type, box}]}.`,
   shape: { ...pathProps, ...placeShape, items: itemsSchema(2000) },
@@ -38,11 +39,11 @@ Placement: layer or parent. Many at once: items:[{…}]. Returns {count, items:[
  * item per shading step */
 function withFit(a: Record<string, any>): Record<string, any> {
   const ok = (l: unknown) => Array.isArray(l) && l.length >= 2 && l.every((q) => Array.isArray(q) && q.length >= 2 && q.every((v) => typeof v === 'number' && isFinite(v)));
-  const FIT = ['fit', 'tolerance', 'extend', 'map', 'shade'];
+  const FIT = ['fit', 'tolerance', 'extend', 'map', 'shade', 'anchors'];
   const one = (o: Record<string, any>, shared: Record<string, any> = {}): Record<string, any>[] => {
     const g = (k: string) => o[k] ?? shared[k];
     if (o.fit === undefined) {
-      for (const k of ['shade', 'extend', 'map']) if (o[k] !== undefined) throw new ArgError(`${k} needs fit (the measured points).`);
+      for (const k of ['shade', 'extend', 'map', 'anchors']) if (o[k] !== undefined) throw new ArgError(`${k} needs fit (the measured points).`);
       return [o];
     }
     if (o.points || o.paths || o.d) throw new ArgError('fit replaces points, paths and d: give one.');
@@ -53,7 +54,8 @@ function withFit(a: Record<string, any>): Record<string, any> {
     try {
       const mp = g('map'), m = mp ? (mp.bilinear ? bilinearMap : projective)(mp.from, mp.to) : null;
       if (m) parts = parts.map((l: number[][]) => l.map(m));
-      const fo = { tolerance: g('tolerance'), extend: g('extend') };
+      const am = g('anchors') as number[][] | undefined;
+      const fo = { tolerance: g('tolerance'), extend: g('extend'), anchors: am && m ? am.map(m) : am };
       if (!shade) return [{ ...rest, d: fitToD(parts, o.closed ?? shared.closed ?? false, fo).d }];
       if (typeof shade.to !== 'number' && !ok(shade.to)) throw new Error('shade.to: a distance or [[x,y], …] (≥ 2 points).');
       const to = typeof shade.to === 'number' || !m ? shade.to : shade.to.map(m);

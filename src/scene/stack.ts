@@ -37,6 +37,8 @@ export interface Shape {
   /** any hole loop → even-odd fill */
   holes: boolean;
   blend?: 'multiply';
+  /** drawn as a stroke along this centreline (F18); loops are its outline, for our own render */
+  stroke?: import('./stroke.js').Stroke;
 }
 
 export interface StackOpts {

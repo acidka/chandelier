@@ -14,6 +14,7 @@ import { zOrder, stacked, fillers, type Shape } from './stack.js';
 import { partPts } from './planar.js';
 import { detectPrimitive, primSegs, type Prim } from './primitives.js';
 import { rasterize, rmse } from './raster.js';
+import { centreline, strokeOutline } from './stroke.js';
 import { DETAIL, type Params, type Scene } from './types.js';
 
 let counter = 0;
@@ -92,6 +93,8 @@ export function applyZ(s: Scene, auto: number[]): number[] {
 
 /** regions not drawn (dropped, left for text) */
 export const skipped = (s: Scene) => new Set(s.meta.map((m, i) => (m.drop || m.text || m.placeholder ? i : -1)).filter((i) => i >= 0));
+/** regions not filled: skipped ones and strokes (drawn on top as a centreline; what lies under them fills their place) */
+const unfilled = (s: Scene) => { const k = skipped(s); s.meta.forEach((m, i) => { if (m.stroke && s.seg.regions[i]?.area) k.add(i); }); return k; };
 
 /** geometry and checks from the current labels and meta */
 export function recompute(s: Scene): void {
@@ -102,9 +105,17 @@ export function recompute(s: Scene): void {
   s.fits = fitEdges(s.pm, { tolOf });
   s.z = applyZ(s, zOrder(s.pm, s.seg.regions));
   const exact = new Map(s.meta.map((m, i) => [i, m.multiply] as const).filter(([i, m]) => m && s.seg.regions[i].area) as [number, number[]][]);
-  const skip = skipped(s), given = new Map(s.meta.map((m, i) => [i, m.fill] as const).filter(([, f]) => f !== undefined) as [number, number][]);
+  const skip = unfilled(s), given = new Map(s.meta.map((m, i) => [i, m.fill] as const).filter(([, f]) => f !== undefined) as [number, number][]);
   s.fillers = fillers(s.seg.regions, s.z, skip, given);
   const shapes = stacked(s.pm, s.seg.regions, s.z, s.fits, { tile: s.tile, skip, exact, filler: s.fillers });
+  // strokes (F18): one centreline each, slotted into the stack at the region's z
+  for (const [i, m] of s.meta.entries()) {
+    if (!m.stroke || !s.seg.regions[i]?.area || skipped(s).has(i)) continue;
+    const st = centreline(s.seg.map, w, h, i, s.seg.regions[i].bbox, m.tol ?? s.tol);
+    if (!st) continue;
+    const at = shapes.findIndex((sh) => s.z[sh.region] > s.z[i]);
+    shapes.splice(at < 0 ? shapes.length : at, 0, { region: i, loops: strokeOutline(st), raw: [], holes: st.closed, stroke: st });
+  }
   s.prims = primitives(s, shapes);
   for (const sh of shapes) { const p = s.prims[sh.region]; if (p) { sh.loops = [primSegs(p)]; sh.holes = false; } }
   s.shapes = shapes;

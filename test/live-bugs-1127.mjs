@@ -110,6 +110,29 @@ await call('get_items', { refs: 'name:cp', points: true }, { check: (v) => {
 } });
 await call('delete_items', { refs: 'name:cp' });
 
+// scene F18: a ring drawn as a centreline stroke (width 6 px of a 300 px image on a 150 pt wide rect = 3 pt)
+{
+  const W = 300, H = 200, rgb = new Uint8Array(W * H * 3);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const d = Math.hypot(x + 0.5 - 100, y + 0.5 - 100); rgb.set(d >= 57 && d <= 63 ? [30, 60, 120] : [240, 230, 210], (y * W + x) * 3); }
+  const { encodePng } = await import('../dist/image.js');
+  const png = join(tmp, 'ring.png');
+  (await import('node:fs')).writeFileSync(png, encodePng({ w: W, h: H, rgb }));
+  let id, ringId;
+  await call('scene', { action: 'analyze', image: png }, { check: (v, r) => {
+    const text = r.content.find((c) => c.type === 'text').text;
+    id = JSON.parse(text.split('\n')[0]).id;
+    ringId = text.split('\n').find((l) => /^r\d+ +#(1|2)/.test(l))?.split(' ')[0];
+    assert(ringId, 'ring region found: ' + text.slice(0, 400));
+  } });
+  await call('scene', { action: 'edit', id, edits: [`${ringId} stroke`] });
+  await call('scene', { action: 'build', id, rect: [0, 0, 150, 100], layer: 'Ring' });
+  await call('get_items', { refs: `name:Ring ${ringId}`, fields: ['fill', 'stroke', 'sw', 'closed'] }, { check: (v) => {
+    const it = v.items[0];
+    assert(it.fill === 'none' && /^swatch:/.test(it.stroke) && Math.abs(it.sw - 3) < 0.3, 'F18 stroked ring: ' + JSON.stringify(it));
+  } });
+  await call('delete_items', { refs: 'layer:Ring' });
+}
+
 // #25: save says saved
 await call('documents', { action: 'save', path: join(tmp, 'bugs.ai') }, { check: (v) => { assert(v.saved === true, '#25 saved flag: ' + JSON.stringify(v)); } });
 await call('documents', { action: 'save' }, { check: (v) => { assert(v.saved === true, '#25 plain save'); } });

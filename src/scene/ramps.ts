@@ -62,8 +62,11 @@ export function findRamps(regions: Region[], stats: PlaneStats[], minDe: number,
     const a = find(a0), b = find(b0);
     if (a === b) continue;
     const u = addStats(S[a], S[b]), f = fitPlane(u);
-    // the union fits one plane about as well as the parts: a ramp (a step between two flat inks does not)
-    if (f.rms < Math.max(1.5, 0.25 * d) && f.rms <= 1.5 * Math.max(fit[a].rms, fit[b].rms) + 1) {
+    // the union fits one plane about as well as the parts: a ramp (a step between two flat inks does not). The miss is
+    // measured above the parts' own noise (F29: on a grainy image the noise alone exceeded the fixed bound, so soft
+    // gradients got no hint); measured 2026-11-27: bands of a ramp ≤ 0.2 over the noise at noise σ 1–8, a step of ΔE 11.5 2.8
+    const noise = Math.max(fit[a].rms, fit[b].rms), excess = Math.sqrt(Math.max(0, f.rms * f.rms - noise * noise));
+    if (excess < Math.max(1, 0.12 * d) && f.rms <= 1.5 * noise + 1) {
       const [keep, drop] = S[a].n >= S[b].n ? [a, b] : [b, a];
       parent[drop] = keep; S[keep] = u; fit[keep] = f;
     }

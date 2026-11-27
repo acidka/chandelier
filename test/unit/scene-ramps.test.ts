@@ -36,7 +36,10 @@ describe('ramps', () => {
     expect(s.photo).toBe(false);
     const g = s.rampGroups[0];
     expect(g.ids.length).toBeGreaterThan(2);
-    expect(summary(s)).toMatch(/hints: .*ramp r\d+ r\d+/);
+    expect(summary(s)).toMatch(/hints: .*ramp r\d+[- ]r\d+/);
+    // every band in the hint (F22: only the first 6 were listed), as ranges
+    const listed = summary(s).match(/ramp ([r0-9 -]+?) \(/)![1].split(' ').flatMap((x) => { const m = x.match(/^r(\d+)(?:-r(\d+))?$/)!; const a = +m[1], b = m[2] ? +m[2] : a; return Array.from({ length: b - a + 1 }, (_, k) => a + k); });
+    expect(new Set(listed)).toEqual(new Set(g.ids));
     const before = s.estRmse;
     applyEdits(s, ['ramp ' + g.ids.map((i) => 'r' + i).join(' ')]);
     const rp = s.ramps[g.ids[0]]!;

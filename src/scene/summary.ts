@@ -9,11 +9,19 @@ export interface SummaryOpts { show?: number[]; showColour?: number; limit?: num
 const pct = (v: number) => (v >= 1 ? v.toFixed(1) : v >= 0.1 ? v.toFixed(2) : v.toFixed(3));
 const pad = (s: string, n: number) => (s.length >= n ? s + ' ' : s + ' '.repeat(n - s.length));
 
+/** ids as "r1-r4 r7": consecutive ids joined, in id order */
+export function idRanges(ids: number[]): string {
+  const v = [...new Set(ids)].sort((a, b) => a - b), out: string[] = [];
+  for (let i = 0; i < v.length; i++) { let j = i; while (j + 1 < v.length && v[j + 1] === v[j] + 1) j++; out.push(j > i ? `r${v[i]}-r${v[j]}` : `r${v[i]}`); i = j; }
+  return out.join(' ');
+}
+
 export const alive = (s: Scene) => s.seg.regions.filter((r) => r.area > 0);
 
 export function kindOf(s: Scene, id: number): string {
   const m = s.meta[id];
   const p = s.prims[id], shape = p ? (p.kind === 'polygon' ? `poly${p.n}` : p.kind) : '';
+  if (m.stroke && !m.drop && !m.text) { const st = s.shapes.find((sh) => sh.region === id)?.stroke; return st ? `stroke ${st.width}` : 'stroke?'; }
   const k = m.drop ? (s.fillers.has(id) ? `drop→r${s.fillers.get(id)}` : 'drop') : m.text ? 'text' : m.placeholder ? 'box' : m.logo ? 'logo' : m.ramp ? (shape ? shape + '+ramp' : 'ramp') : shape || 'flat';
   return m.multiply ? k + '×' : k;
 }
@@ -61,7 +69,8 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   for (const g of s.rampGroups) {
     const live = g.ids.filter((i) => s.seg.regions[i].area > 0);
     if (g.merged) { if (live.length && !s.meta[live[0]].ramp) hints.push(`r${live[0]}: lighting flattened (ΔL ${g.dL}; "ramp r${live[0]}" keeps it as a gradient)`); }
-    else if (live.length > 1) hints.push(`ramp ${live.slice(0, 6).map((i) => 'r' + i).join(' ')} (ΔL ${g.dL}: one gradient? or merge = flat)`);
+    // every band, as ranges (F22: the first 6 of 12 bands were listed, the rest stayed flat stripes in the gradient)
+    else if (live.length > 1) hints.push(`ramp ${idRanges(live)} (ΔL ${g.dL}: one gradient? or merge = flat)`);
   }
   hints.splice(4);
   findOverlaps(s).filter((o) => !s.meta[o.a].multiply && !s.meta[o.x].drop).slice(0, 3).forEach((o) => hints.push(`r${o.x} ≈ r${o.a} × r${o.b} over r${o.s} (ΔE ${o.de}: layers r${o.a} r${o.b})`));

@@ -1,9 +1,9 @@
 // scene build: the scene → ordinary batch steps (one Apple event = one undo step): clear the layer, global swatches,
 // then one path per drawn region, bottom to top (new items go in front, so order is z). Coordinates stay in working
 // px; create_path's scale and x, y place them on the target rect.
-import { segsToD, type Seg } from '../fitcurve.js';
+import { segsToD, bez, type Seg } from '../fitcurve.js';
 import { labHex, de76 } from './color.js';
-import { live } from './primitives.js';
+import { live, primSegs } from './primitives.js';
 import type { Scene } from './types.js';
 
 export interface BuildOpts {
@@ -19,6 +19,8 @@ export interface BuildOpts {
   /** what the build replaces: the whole layer (default), only these items (a rebuild: hand-added items stay), or
    * nothing (a new layer) */
   clear?: 'layer' | 'none' | string[];
+  /** points per session unit (stroke widths are in pt): mm 2.835, in 72; default 1 */
+  ptPerUnit?: number;
 }
 
 export interface BatchStep { tool: string; args: Record<string, unknown>; artboard?: number }
@@ -47,13 +49,11 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
     { tool: 'layers', args: { action: 'add', name: layer, ...(o.position ? { position: o.position } : {}) } },
     // hex, not lab(): Illustrator refuses a Lab colour in a global swatch (MRAP, quirk C34); it converts hex through the document profile
     ...used.filter((ci) => !s.colours[ci].swatch).map((ci) => ({ tool: 'swatches', args: { action: 'add', kind: 'global', name: swatchName(s, ci, layer), color: labHex(s.colours[ci].L, s.colours[ci].a, s.colours[ci].b) } })),
-    // a ramp: its own gradient swatch; stops placed where Illustrator's default span (the item's width, centred,
+    // a ramp: its own gradient swatch; stops placed where Illustrator's default span (the item's box extent along the
     // turned to the angle) meets our projection range
     ...ramps.map((sh) => {
-      const rp = s.ramps[sh.region]!, b = bbox(sh.loops), span = Math.max(1, b[2] - b[0]);
-      // projection t is from the ramp's centroid; Illustrator's span is centred on the item's box
-      const off = (rp.cx - (b[0] + b[2]) / 2) * rp.ux + (rp.cy - (b[1] + b[3]) / 2) * rp.uy;
-      const at = (t: number) => Math.max(0, Math.min(100, Math.round((50 + (100 * (t + off)) / span) * 10) / 10));
+      const rp = s.ramps[sh.region]!, g = rampGeom(s, sh, sx, sy, bx, by), qc = rp.ux * rp.cx + rp.uy * rp.cy;
+      const at = (t: number) => Math.max(0, Math.min(100, Math.round(((100 * (qc + t - g.q0)) / (g.q1 - g.q0)) * 10) / 10));
       return { tool: 'swatches', args: { action: 'add', kind: 'gradient', name: `${layer} r${sh.region} ramp`, type: 'linear', stops: [{ color: labHex(rp.c0[0], rp.c0[1], rp.c0[2]), at: at(rp.t0) }, { color: labHex(rp.c1[0], rp.c1[1], rp.c1[2]), at: at(rp.t1) }] } };
     }),
   ];
@@ -62,9 +62,14 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
   const bleedSegs = (loop: Seg[]): Seg[] => (bx || by ? loop.map((c) => c.map(push) as Seg) : loop);
   const r2 = (v: number) => Math.round(v * 1000) / 1000;
   const items = shapes.map((sh) => {
-    const rp = s.ramps[sh.region], angle = rp ? Math.round((Math.atan2(-rp.uy * sy, rp.ux * sx) * 180) / Math.PI * 10) / 10 : 0;
+    const rp = s.ramps[sh.region], angle = rp ? rampGeom(s, sh, sx, sy, bx, by).angle : 0;
     const common = { fill: rp ? `gradient:${layer} r${sh.region} ramp@${angle}` : `swatch:${swatchName(s, s.meta[sh.region].colour, layer)}`, name: s.meta[sh.region].name ?? `${layer} r${sh.region}`, note: `scene ${s.id} r${sh.region}` };
     const pr = s.prims[sh.region];
+    if (sh.stroke) {
+      // a centreline stroke (F18): no fill, the measured width; open bands butt-capped, corners mitred
+      const sw = r2(sh.stroke.width * ((sx + sy) / 2) * (o.ptPerUnit ?? 1));
+      return { tool: 'create_path', item: { d: segsToD([sh.stroke.segs], sh.stroke.closed), fill: 'none', stroke: common.fill, stroke_width: sw, join: 'miter', cap: 'butt', name: common.name, note: common.note } };
+    }
     if (pr && live(pr)) {
       // a live shape in session units; a side on the image border runs into the bleed
       let x0 = pr.cx - pr.a, x1 = pr.cx + pr.a, y0 = pr.cy - pr.b, y1 = pr.cy + pr.b;
@@ -136,6 +141,31 @@ export function textInk(s: Scene, ids: number[]): { colour: number; cap: number 
   const hs = ids.filter((i) => R[i]?.area && s.meta[i].colour === colour).map((i) => R[i].bbox[3] - R[i].bbox[1] + 1).sort((a, b) => a - b);
   const cap = hs.length ? hs[Math.min(hs.length - 1, Math.floor(hs.length * 0.75))] : 0;
   return { colour, cap };
+}
+
+/** Where a ramp's gradient sits in Illustrator (F22). Measured live (2026-11-27, 29.1): a linear fill's default span is
+ * the extent of the item's own outline along the gradient's direction, centred on it (a rectangle: |w·cos a| + |h·sin a|;
+ * an ellipse 2·√((rx·cos a)² + (ry·sin a)²)). It was taken as the box width: angled ramps came out compressed and flat
+ * at both ends. Iso-lines are perpendicular to u in working px; after scaling by sx, sy their normal is (ux/sx, uy/sy),
+ * the gradient's direction. Projections onto it are proportional to q = ux·x + uy·y in working px, so the stops are
+ * fractions of the outline's q range. */
+function rampGeom(s: Scene, sh: { region: number; loops: Seg[][] }, sx: number, sy: number, bx: number, by: number): { angle: number; q0: number; q1: number } {
+  const rp = s.ramps[sh.region]!, pr = s.prims[sh.region], { w, h } = s.work;
+  const nx = rp.ux / sx, ny = rp.uy / sy, a = Math.atan2(-ny, nx);
+  const push = (p: number[]) => [p[0] <= 1e-6 ? -bx : p[0] >= w - 1e-6 ? w + bx : p[0], p[1] <= 1e-6 ? -by : p[1] >= h - 1e-6 ? h + by : p[1]];
+  let q0 = Infinity, q1 = -Infinity;
+  const take = (x: number, y: number) => { const q = rp.ux * x + rp.uy * y; if (q < q0) q0 = q; if (q > q1) q1 = q; };
+  if (pr && live(pr) && pr.kind === 'rect') {
+    // a live rectangle whose side is on the image border runs into the bleed (as the item does)
+    let x0 = pr.cx - pr.a, x1 = pr.cx + pr.a, y0 = pr.cy - pr.b, y1 = pr.cy + pr.b;
+    if (x0 < 0.75) x0 = -bx; if (y0 < 0.75) y0 = -by; if (x1 > w - 0.75) x1 = w + bx; if (y1 > h - 0.75) y1 = h + by;
+    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) take(x, y);
+  } else {
+    const loops = pr && live(pr) ? [primSegs(pr)] : sh.loops.map((l) => l.map((c) => c.map(push) as Seg));
+    for (const l of loops) for (const c of l) for (let i = 0; i <= 16; i++) { const p = bez(c, i / 16); take(p[0], p[1]); }
+  }
+  if (!(q1 > q0)) q1 = q0 + 1;
+  return { angle: Math.round((a * 180) / Math.PI * 10) / 10, q0, q1 };
 }
 
 /** bounding box of loops (working px): width (the gradient's default span) and centre */

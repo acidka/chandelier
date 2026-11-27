@@ -123,6 +123,9 @@ export interface FitOpts {
    * the points: a junction shared with another edge, the seam of a closed loop (scene tool) */
   t0?: number[];
   t1?: number[];
+  /** points that must be anchors (the nearest measured point is used): two paths fitted apart that share a stretch
+   * get the same anchors there */
+  anchors?: number[][];
 }
 
 /** Points (in order, ≥ 2) → Bézier segments. Anchors at extremes with horizontal / vertical handles, then split where
@@ -154,8 +157,15 @@ export function fitCurve(pts: number[][], o: FitOpts = {}): Seg[] {
   const nearGap = (i: number) => len(sub(p[i], p[i - 1])) > gapAt || len(sub(p[i + 1], p[i])) > gapAt;
   for (const e of extremes(s, 1, prom)) { const i = exact(e, 1), dx = p[i + 1][0] - p[i - 1][0]; if (Math.abs(dx) > 1e-9 && !nearGap(i)) cuts.set(i, [Math.sign(dx), 0]); }
   for (const e of extremes(s, 0, prom)) { const i = exact(e, 0), dy = p[i + 1][1] - p[i - 1][1]; if (Math.abs(dy) > 1e-9 && !cuts.has(i) && !nearGap(i)) cuts.set(i, [0, Math.sign(dy)]); }
-  // two extremes a couple of points apart (a corner-ish turn) → keep the first
-  const idx = [...cuts.keys()].sort((a, b) => a - b).filter((i, n, a) => n === 0 || i - a[n - 1] >= 3);
+  // forced anchors: the nearest inner point, tangent from the smoothed points
+  const forced = new Set<number>();
+  for (const q of o.anchors ?? []) {
+    let bi = -1, bd = Infinity;
+    for (let i = 1; i < p.length - 1; i++) { const d = len(sub(p[i], q as P)); if (d < bd) { bd = d; bi = i; } }
+    if (bi > 0) { forced.add(bi); cuts.set(bi, tangentAt(s, bi)); }
+  }
+  // two extremes a couple of points apart (a corner-ish turn) → keep the first (a forced anchor always stays)
+  const idx = [...cuts.keys()].sort((a, b) => a - b).filter((i, n, a) => n === 0 || i - a[n - 1] >= 3 || forced.has(i));
   const out: Seg[] = [];
   let from = 0, t1 = T0 ?? endTangent(p, tol);
   for (const i of [...idx, p.length - 1]) {
@@ -167,7 +177,73 @@ export function fitCurve(pts: number[][], o: FitOpts = {}): Seg[] {
     if (!last) t1 = T!;
     from = i;
   }
+  matchCurvature(out, p, tol);
   return extendSegs(out, o.extend);
+}
+
+/** signed curvature of a cubic at its start (end = false) or end */
+function curvEnd(c: Seg, end: boolean): number {
+  const [a, b, q] = end ? [c[3], c[2], c[1]] : [c[0], c[1], c[2]];
+  const d1 = sub(b, a), d2 = sub(q, b), L = len(d1);
+  if (L < 1e-9) return 0;
+  return ((end ? -1 : 1) * (2 / 3) * (d1[0] * d2[1] - d1[1] * d2[0])) / (L * L * L);
+}
+
+/** Curvature continuity (G2) at smooth joints: the two handle lengths at each joint are scaled so the
+ * curvature is the same on both sides, where that keeps the curve within tolerance of its points — a designer's
+ * curve has no sudden change of bend at an anchor (roadmap "Curve fit, rest"). Tangents and anchors stay. */
+export function matchCurvature(out: Seg[], p: P[], tol: number): void {
+  if (out.length < 2) return;
+  // the points each segment was fitted to: segments start and end on measured points, in order
+  const ends: number[] = [0];
+  for (let k = 0, i = 0; k < out.length; k++) {
+    const e = out[k][3];
+    let j = i;
+    while (j < p.length - 1 && len(sub(p[j], e)) > 1e-6) j++;
+    ends.push(j); i = j;
+  }
+  const S = 24;
+  // a point's miss: nearest of samples ~1 unit apart, refined by a ternary search around it (a coarse sampling alone
+  // would read as a miss); points are in curve order, so the search for the next one starts where this one ended
+  const err = (c: Seg, k: number) => {
+    const n = Math.max(S, Math.ceil(len(sub(c[1], c[0])) + len(sub(c[2], c[1])) + len(sub(c[3], c[2])))), pts = Array.from({ length: n + 1 }, (_, j) => bez(c, j / n));
+    let m = 0, j0 = 0;
+    for (let i = ends[k]; i <= ends[k + 1]; i++) {
+      let bj = j0, bd = Infinity;
+      for (let j = j0; j <= n; j++) { const d = len(sub(pts[j], p[i])); if (d < bd) { bd = d; bj = j; } else if (d > bd + 4) break; }
+      j0 = Math.max(0, bj - 2);
+      let lo = Math.max(0, bj - 1) / n, hi = Math.min(n, bj + 1) / n;
+      for (let it = 0; it < 6; it++) { const a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3; if (len(sub(bez(c, a), p[i])) < len(sub(bez(c, b), p[i]))) hi = b; else lo = a; }
+      m = Math.max(m, Math.min(bd, len(sub(bez(c, (lo + hi) / 2), p[i]))));
+    }
+    return m;
+  };
+  // also near the old curve everywhere (a long gap has no points to check against)
+  const moved = (x: Seg, y: Seg) => { let m = 0; for (let i = 1; i < S; i++) m = Math.max(m, len(sub(bez(x, i / S), bez(y, i / S)))); return m; };
+  const gap = (x: number, y: number) => Math.abs(x - y) / (Math.abs(x) + Math.abs(y));
+  for (let k = 0; k + 1 < out.length; k++) {
+    const A = out[k], B = out[k + 1], ta = sub(A[3], A[2]), tb = sub(B[1], B[0]), la = len(ta), lb = len(tb);
+    if (la < 1e-9 || lb < 1e-9 || Math.abs(ta[0] * tb[1] - ta[1] * tb[0]) > 1e-3 * la * lb || dot(ta, tb) <= 0) continue; // not a smooth joint
+    const ka = curvEnd(A, true), kb = curvEnd(B, false);
+    if (ka * kb <= 0) continue; // an inflection at the joint: nothing to match
+    const g0 = gap(ka, kb);
+    if (g0 < 0.05) continue;
+    const ua = norm(sub(A[2], A[3])), ub = norm(tb), cand: { g: number; A: Seg; B: Seg }[] = [];
+    for (let ia = 0; ia <= 18; ia++) for (let ib = 0; ib <= 18; ib++) {
+      const fa = 0.8 + ia * 0.025, fb = 0.8 + ib * 0.025;
+      const A2: Seg = [A[0], A[1], add(A[3], mul(ua, la * fa)), A[3]], B2: Seg = [B[0], add(B[0], mul(ub, lb * fb)), B[2], B[3]];
+      const g = gap(curvEnd(A2, true), curvEnd(B2, false));
+      if (g < g0 - 1e-6) cand.push({ g, A: A2, B: B2 });
+    }
+    if (!cand.length) continue;
+    cand.sort((x, y) => x.g - y.g);
+    const lim = Math.max(tol, err(A, k), err(B, k + 1));
+    // the best match that keeps the fit: candidates in order, the error checked only for the few tried
+    for (const c of cand.slice(0, 12)) {
+      if (moved(c.A, A) > tol / 2 || moved(c.B, B) > tol / 2) continue;
+      if (err(c.A, k) <= lim && err(c.B, k + 1) <= lim) { out[k] = c.A; out[k + 1] = c.B; break; }
+    }
+  }
 }
 
 /** Straight continuation along the end directions (handles on the line: no kink), for shapes that must run past the

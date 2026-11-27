@@ -69,7 +69,7 @@ export function measure(s: Scene, render: Img): Measure {
     regions.push({ r: id, de: Math.round(de76(got[0], got[1], got[2], want[0], want[1], want[2]) * 10) / 10, iou: s.iou[id], got, ref: want });
   });
   // only edges between drawn regions: a dropped or text region's edges are not in the build
-  const drawn = (r: number) => r >= 0 && !s.meta[r].drop && !s.meta[r].text && !s.meta[r].placeholder;
+  const drawn = (r: number) => r >= 0 && !s.meta[r].drop && !s.meta[r].text && !s.meta[r].placeholder && !s.meta[r].stroke;
   const edges: EdgeError[] = s.pm.edges.filter((e) => drawn(e.left) && drawn(e.right)).map((e) => ({ e: e.id, left: e.left, right: e.right, dev: edgeDeviation(s, e.id) }));
   let sq = 0;
   for (let i = 0; i < render.rgb.length; i++) { const d = render.rgb[i] - s.work.rgb[i]; sq += d * d; }
