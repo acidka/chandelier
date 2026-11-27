@@ -11,6 +11,7 @@
   <img alt="macOS and Windows" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows-0F1B2D">
   <img alt="Adobe Illustrator 2025+" src="https://img.shields.io/badge/Illustrator-2025%2B-0F1B2D">
   <img alt="MCP server" src="https://img.shields.io/badge/MCP-server-0F1B2D">
+  <a href="https://glama.ai/mcp/servers/acidka/chandelier"><img alt="Chandelier MCP server on Glama" src="https://glama.ai/mcp/servers/acidka/chandelier/badges/score.svg"></a>
   <a href="https://ko-fi.com/acidka"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=kofi&logoColor=white"></a>
 </p>
 
