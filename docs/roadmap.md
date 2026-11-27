@@ -482,7 +482,7 @@ Carried over from 0.5.2 when it was released.
   - [ ] Calls: scene runs used more calls than the manual method on flat art (F23) — fewer edits needed after one analyze (better defaults, clearer hints)
   - [ ] Speed: 1.6 s on a 1000 × 700 test image (2026-11-27; curvature matching +3 % after optimisation, 12× before it); profile `regionStats` / fitting again on the suite images ([scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27))
 - [ ] 🧊 Scene speed and quality ideas (2026-11-27: analyze ≤ 2.3 s of 5–11 min runs, so fewer calls first; GPU / gpu.js not now; region-step and fitting ideas, ramp hints, render-and-compare) — [scene-plan § 10](research/scene-plan.md#10-future-ideas-speed-and-quality-2026-11-27)
-- [ ] **Smaller replies** (branch `future/mcp-tokens`, plan D16; merged into `feature/scene` 2026-11-27): only the fields a call needs
+- [x] ✅ **Smaller replies** (branch `future/mcp-tokens`, plan D16; merged into `feature/scene` 2026-11-27): only the fields a call needs
   - [x] ✅ `configure {reply: "full" | "brief"}` (Node only) and `fields` on `get_items` / `document_info`; brief: created
     items as the first 20 `{uuid, box}`, `get_items` head (runs and anchors not computed), `document_info` head;
     `full` byte-identical; `scripts/reply-size.mjs` ([benchmarks § Reply size](research/benchmarks.md#reply-size))
