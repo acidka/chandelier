@@ -458,9 +458,9 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F14 | ✅ | 04 v9 | `layers rA rB` suggested for inks that can't be multiply (gave a red ink) |
 | F15 | ✅ | 08 v2 | no way to remove lost transparency: now `drop … fill none` leaves the area empty |
 | F16 | ✅ | 08 v2 | `edit {overlay: true}` showed the analyzed labels: the overlay now outlines what is drawn after the edits and labels only drawn regions |
-| F17 | ⏳ | 08 v2 | refine's tightened tolerances (0.4) follow JPEG noise; its rmse never moved in run 2 |
+| F17 | ✅ | 08 v2 | refine's tightened tolerances (0.4) follow JPEG noise; its rmse never moved in run 2 → fixed 2026-11-27: refine re-measures each tightened edge and keeps its tolerance when the tighter fit doesn't come ≥ 15 % closer (reported "tolerance kept") |
 | F18 | ⏳ | 08 v1, v2 | thin constant-width outlines come out as lumpy filled bands (both runs redrew them as stroked centrelines) |
-| F19 | ⏳ | 08 v2 | forcing `circle` on a disc whose outline is only partly round throws the fit 5 mm off |
+| F19 | ✅ | 08 v2 | forcing `circle` on a disc whose outline is only partly round throws the fit 5 mm off → fixed 2026-11-27: a forced circle is fitted to the round stretch only (trimmed least squares) |
 | F20 | ✅ | 04 v10 | `create_path {map}` is projective, the scene maps bilinear: hand-built parts sat ~40 px off until the agent wrote its own map → fixed 2026-11-27: `create_path {map: {from, to, bilinear: true}}` maps like the scene (inverse bilinear); guide § 1 says when |
 | F21 | ✅ | 04 v9, v10 | first build to a new layer warned "Nothing found for layer:…": a new layer gets no delete step |
 | F22 | ⏳ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show |
@@ -476,7 +476,7 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F33 | ✅ | 06 v3 | build failed on a degenerate tiny region ("item 106: The path has no drawable segments") and rolled back: one-segment loops are now left out, a region with nothing drawable is skipped |
 | F34 | ✅ | 06 v3 | dark counters inside a `text` box (D, A, R, O) were drawn white (no filler: their only neighbour, the letter, was skipped too): a skipped region takes the filler of the skipped one it sits on |
 | F35 | ✅ | 06 v3 | no edit to drop every region inside a box: `drop in x y w h [fill …]` |
-| F36 | ⏳ | 06 v3 | crown leaves touching a dropped frame line belong to the line's region and go with it (no split edit) |
+| F36 | ✅ | 06 v3 | crown leaves touching a dropped frame line belong to the line's region and go with it (no split edit) → fixed 2026-11-27: `split rN in x y w h`: the part of rN in the box becomes a new region with the same ink |
 | F37 | ✅ | 06 v3 | `max_px` doesn't upscale a small crop: `detail: high` can't add resolution → fixed 2026-11-27: `max_px` given: a smaller crop or face is upscaled to it (default unchanged: never above the source pixels, so ids stay) |
 | F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` |
 | F39 | ⏳ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) |
@@ -492,7 +492,7 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F49 | ✅ | 09 v6, v7 | the summary has no region positions: agents map overlay labels back to px to pick ramp / drop ids (a `where` box column, or ids by point) → fixed 2026-11-27: summary column `where` = region box in analyzed px; guide § 5.0 step 1 |
 | F50 | ✅ | 09 v7 | `text_boxes` `cap` equals the box height (10.16 / 24.19 mm), not a cap height (as F44) → fixed 2026-11-27: as F44 |
 | F51 | ⏳ | 09 v7 | a part scene's crop edge shows as a square seam where its hair meets the main scene's black |
-| F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
+| F32 | ✅ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points → fixed 2026-11-27: an edge of ≤ 5 points that bows ≥ 0.5 px is fitted as a curve with the junction tangents |
 
 Other tools: bugs.md #16 (`path_ops` box frame in batch steps; not reproduced), #17 (preflight lists every shade step; fixed 2026-11-27); `fonts` found
 no family match for "Myriad Pro Bold" when only Myriad Variable Concept is installed (no suggestion) — fixed 2026-11-27: a font that is not found lists up to 6 installed faces whose family starts with the same word.

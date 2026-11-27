@@ -107,7 +107,7 @@ const ok = (pr: Prim, sc: { mean: number; p95: number }, size: number, area: num
 export function detectPrimitive(pts: number[][], force?: PrimKind | 'polygon'): Prim | null {
   if (pts.length < 8) return null;
   if (force === 'circle') {
-    const c = fitCircle(pts), pr: Prim = { kind: 'circle', cx: c[0], cy: c[1], a: c[2], b: c[2], angle: 0, err: 0 };
+    const c = fitCircleRobust(pts), pr: Prim = { kind: 'circle', cx: c[0], cy: c[1], a: c[2], b: c[2], angle: 0, err: 0 };
     return { ...pr, err: Math.round(score(pr, pts).mean * 100) / 100 };
   }
   const m = moments(pts), cands: { pr: Prim; sc: { mean: number; p95: number }; size: number }[] = [];
@@ -205,4 +205,19 @@ export function fitCircle(p: number[][]): number[] {
   const D = det(M), [a, b, c] = [0, 1, 2].map((j) => det(M.map((row, i) => row.map((x, k) => (k === j ? v[i] : x)))) / D);
   const cx = -a / 2, cy = -b / 2;
   return [cx + mx, cy + my, Math.sqrt(Math.max(0, cx * cx + cy * cy - c))];
+}
+
+/** A circle fitted to the round stretch of an outline only (F19: forcing circle on a disc with a lobe put it 5 mm
+ * off): least squares, then repeatedly refitted to the points within max(1 px, 2.5 × the median miss) — a lobe or a
+ * flat side misses by far more and drops out. At least half the points stay. */
+export function fitCircleRobust(p: number[][]): number[] {
+  let c = fitCircle(p), use = p;
+  for (let it = 0; it < 8; it++) {
+    const res = p.map((q) => Math.abs(Math.hypot(q[0] - c[0], q[1] - c[1]) - c[2]));
+    const med = [...res].sort((a, b) => a - b)[res.length >> 1], lim = Math.max(1, 2.5 * med);
+    const keep = p.filter((_, i) => res[i] <= lim);
+    if (keep.length < p.length / 2 || keep.length === use.length) break;
+    use = keep; c = fitCircle(use);
+  }
+  return c;
 }

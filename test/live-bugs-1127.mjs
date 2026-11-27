@@ -48,6 +48,13 @@ await call('preview', { artboard: 1, width: 400, reference: ref }, { check: (v) 
   }
 } });
 
+// preview {reference, sample}: the same points in both images, with ΔE (the shape moved 100 pt: at x 20 it is gone)
+await call('preview', { artboard: 1, width: 400, reference: ref, sample: [[20, 20], [5, 90]] }, { check: (v) => {
+  const [moved, paper] = v.samples ?? [];
+  assert(moved?.reference !== '#ffffff' && moved?.preview === '#ffffff' && moved.de > 20, 'sample where the shape left: ' + JSON.stringify(moved));
+  assert(paper?.de < 2, 'paper sample equal in both: ' + JSON.stringify(paper));
+} });
+
 // #20: grid and samples on a render
 await call('preview', { artboard: 1, width: 400, grid: true, sample: [[120, 20], [5, 90]] }, { check: (v) => {
   assert(typeof v.grid === 'number', '#20 grid step reported: ' + v.grid);

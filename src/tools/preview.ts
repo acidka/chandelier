@@ -8,7 +8,8 @@ import { runStep, respond } from './respond.js';
 import { refSchema } from './common.js';
 import { errorText } from './respond.js';
 import { decodePng, encodePng, compare, crop, cropPad, resize, readImage, shrinkPngFile, diffRegions } from '../image.js';
-import { view, type Frame } from '../imageview.js';
+import { view, sampleAt, type Frame } from '../imageview.js';
+import { rgbLab } from '../scene/color.js';
 import { imageColorMode, imagePpi } from '../imagefile.js';
 import { pdfInfo } from '../pdf.js';
 import { edgeTracks } from '../edges.js';
@@ -27,7 +28,7 @@ export const preview: ToolDef = {
   description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it); with artboard, rect and differences are from its top-left. max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
 reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
 more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
-image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step (also on a render); sample [[x,y]|[x,y,w,h]] (image: anywhere, not only in region) → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
+image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step (also on a render); sample [[x,y]|[x,y,w,h]] (image: anywhere, not only in region; with reference: both, + ΔE) → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
   shape: {
     artboard: z.number().min(0).optional(),
     refs: refSchema.optional(),
@@ -51,7 +52,7 @@ image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, pag
   async run(a, ctx) {
     if (a.image) return imagePreview(a, ctx);
     if (a.page || a.profile) return fail('page and profile work with image (a file to look at).');
-    if ((a.grid || a.sample) && (a.reference || a.more?.length)) return fail('grid and sample work on one render without reference (or with image).');
+    if ((a.grid && a.reference) || ((a.grid || a.sample) && a.more?.length)) return fail('grid works on one render without reference; sample on one render (with reference: both images) or with image.');
     const { more, preflight, info, ...main } = a;
     const res = await render(main, ctx);
     if (res.isError) return res;
@@ -141,6 +142,16 @@ async function render(a: any, { rt, tmp }: Ctx): Promise<CallToolResult> {
   if (c.ink) {
     const R = toRect(c.ink.reference), P = toRect(c.ink.preview);
     stats.content_box = contentBoxStats(R, P);
+  }
+  if (a.sample?.length) {
+    // the same points in both images (roadmap: every recreate run wrote its own sampling script): session units, ΔE76
+    const fr = (img: typeof prev) => ({ img, ox: rx, oy: ry, k: img.w / rw });
+    stats.samples = (a.sample as number[][]).map((at) => {
+      const p = sampleAt(fr(prev), at), q = sampleAt(fr(ref), at);
+      if (p.outside || !p.rgb || !q.rgb) return { at, outside: true };
+      const lp = rgbLab(p.rgb[0], p.rgb[1], p.rgb[2]), lq = rgbLab(q.rgb[0], q.rgb[1], q.rgb[2]);
+      return { at, preview: p.hex, reference: q.hex, de: Math.round(Math.hypot(lp[0] - lq[0], lp[1] - lq[1], lp[2] - lq[2]) * 10) / 10 };
+    });
   }
   const composite = encodePng(c.composite);
   if (a.save_to) {

@@ -30,9 +30,15 @@ function send(obj) {
 var NOT_RUNNING = 'not running';
 // The app id is a VARIABLE on purpose: with a literal `tell application id "…"` AppleScript resolves the app when the
 // script is COMPILED, which launches Illustrator even inside "if … is running" (seen 2026-11-22, quirk C11).
-var APP = 'set aiaId to "' + BUNDLE_ID + '"\n';
+// CHANDELIER_APP=/Applications/Adobe Illustrator 2025/Adobe Illustrator.app targets one install when several are
+// there (every version has the same bundle id); default: the bundle id (whichever version macOS picks)
+var APP_PATH = ObjC.unwrap($.NSProcessInfo.processInfo.environment.objectForKey('CHANDELIER_APP')) || '';
+var APP = APP_PATH
+  ? 'set aiaId to (POSIX file "' + APP_PATH.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '") as text\n'
+  : 'set aiaId to "' + BUNDLE_ID + '"\n';
+var TARGET = APP_PATH ? 'application aiaId' : 'application id aiaId';
 function ifRunning(body) {
-  return APP + 'if application id aiaId is running then\n' + body + '\nelse\n' +
+  return APP + 'if ' + TARGET + ' is running then\n' + body + '\nelse\n' +
     'return "' + '\u0001AIA_ERR\u0001' + '-600|' + NOT_RUNNING + '"\nend if';
 }
 
@@ -61,19 +67,23 @@ function runAppleScript(body) {
   return { ok: true, result: out };
 }
 
+// a path that doesn't exist would make AppleScript ask "Where is …?" (a dialog nobody answers): refuse instead
+var APP_MISSING = APP_PATH && !$.NSFileManager.defaultManager.fileExistsAtPath(APP_PATH);
+
 function handle(req) {
+  if (APP_MISSING) return { ok: false, error: 'CHANDELIER_APP: no application at ' + APP_PATH + ' (give the path of "Adobe Illustrator.app")', errno: -600 };
   if (req.op === 'running') {
-    return runAppleScript(APP + 'if application id aiaId is running then\nreturn "yes"\nelse\nreturn "no"\nend if');
+    return runAppleScript(APP + 'if ' + TARGET + ' is running then\nreturn "yes"\nelse\nreturn "no"\nend if');
   }
   if (req.op === 'activate') {
-    return runAppleScript(ifRunning('tell application id aiaId to activate\nreturn "ok"'));
+    return runAppleScript(ifRunning('tell ' + TARGET + ' to activate\nreturn "ok"'));
   }
   if (req.op === 'launch') {
-    return runAppleScript(APP + 'tell application id aiaId to launch\nreturn "ok"');
+    return runAppleScript(APP + 'tell ' + TARGET + ' to launch\nreturn "ok"');
   }
   if (req.op === 'quit') {
     // status {restart}: sent only when no document has unsaved changes, so Illustrator asks nothing
-    return runAppleScript(ifRunning('tell application id aiaId to quit\nreturn "ok"'));
+    return runAppleScript(ifRunning('tell ' + TARGET + ' to quit\nreturn "ok"'));
   }
   if (req.op === 'js') {
     // Never auto-launch Illustrator by accident: a bare `tell application` would start it.
@@ -81,7 +91,7 @@ function handle(req) {
     // Raw event code of "do javascript" (miscDjxM, from Illustrator's .sdef): with a variable app id there is no
     // dictionary at compile time, so the term can't be used.
     var src = 'with timeout of ' + t + ' seconds\n' +
-      'tell application id aiaId to return \u00abevent miscDjxM\u00bb ' + asString(req.code) + '\n' +
+      'tell ' + TARGET + ' to return \u00abevent miscDjxM\u00bb ' + asString(req.code) + '\n' +
       'end timeout';
     return runAppleScript(ifRunning(src));
   }

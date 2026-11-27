@@ -67,6 +67,21 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
       for (const f of from) { R[f].area = 0; s.meta[f] = { colour: s.meta[f].colour }; }
       s.zMoves = s.zMoves.filter((m) => !from.has(m.id) && !(m.ref !== undefined && from.has(m.ref)));
       res.changed = true;
+    } else if (head === 'split') {
+      // split rN in x y w h: the part of rN inside the box becomes a new region (same ink) — F36: leaves touching a
+      // frame line belonged to the line's region and went with it when the line was dropped
+      const k = t[2] === 'in' ? 3 : 2, id = region(t[1]), v = t.slice(k, k + 4).map(Number);
+      if (t.length !== k + 4 || v.some((x) => !isFinite(x)) || v[2] <= 0 || v[3] <= 0) fail('split rN in x y w h (image px of the analyzed image)');
+      const nid = R.length, x0 = Math.max(0, Math.floor(v[0])), y0 = Math.max(0, Math.floor(v[1])), x1 = Math.min(s.work.w, Math.ceil(v[0] + v[2])), y1 = Math.min(s.work.h, Math.ceil(v[1] + v[3]));
+      let n = 0;
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const q = y * s.work.w + x; if (s.seg.map[q] === id) { s.seg.map[q] = nid; n++; } }
+      if (!n) fail(`r${id} has no pixels in the box`);
+      if (n === R[id].area) fail(`r${id} lies wholly inside the box: nothing to split off`);
+      s.meta.push({ colour: s.meta[id].colour });
+      const fresh = regionStats(s.seg.map, s.work.w, s.work.h, nid + 1, s.lab, s.quant.labels);
+      R.length = 0; R.push(...fresh);
+      res.show = [...(res.show ?? []), id, nid];
+      res.changed = true;
     } else if (head === 'ramp') {
       // ramp rA [rB …]: one region (merged) with a linear gradient from its pixels
       if (t.length < 2) fail('needs a region');
@@ -209,7 +224,7 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
         for (const r of R) if (r.area && s.z[r.id] >= s.z[id] && inside(r.bbox, R[id].bbox)) s.meta[r.id].tol = s.meta[r.id].tol ?? Math.max(0.3, s.tol / 2);
       }
       res.changed = true;
-    } else fail('unknown edit (undo [n], reset, merge, ramp, rN flat, layers rA rB, rN logo, rN placeholder, text x y w h, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
+    } else fail('unknown edit (undo [n], reset, merge, split rN in x y w h, ramp, rN flat, layers rA rB, rN logo, rN placeholder, text x y w h, drop, keep, rN = colour, cN = colour, name, rN over|under rM, rN top|bottom, rN ellipse|circle|rect|rounded|polygon|free|auto, tolerance, show, stack on|off, rN text)');
   });
   s.edits.push(...edits);
   if (res.changed) recompute(s);
@@ -223,7 +238,8 @@ function restore(s: Scene): void {
   const i = s.initial;
   if (!i) throw new Error('undo / reset: this scene has no saved analyze state (analyze again)');
   s.seg.map.set(i.map);
-  s.seg.regions = regionStats(s.seg.map, s.work.w, s.work.h, s.seg.regions.length, s.lab, s.quant.labels);
+  // regions split off by edits (ids past the analyzed ones) go; replaying the edits makes them again with the same ids
+  s.seg.regions = regionStats(s.seg.map, s.work.w, s.work.h, i.meta.length, s.lab, s.quant.labels);
   s.colours = JSON.parse(JSON.stringify(i.colours));
   s.meta = JSON.parse(JSON.stringify(i.meta));
   s.tol = i.tol;

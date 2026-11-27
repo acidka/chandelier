@@ -118,14 +118,30 @@ export function refine(s: Scene, m: Measure, threshold = 6): RefineReport {
   // edges: tighter tolerance where the fit misses the image edge (a tolerance set by an edit is left alone)
   s.edgeTol = s.edgeTol ?? {};
   const edgeFixes: RefineReport['fixed'] = [];
+  const tightened = new Map<string, { prev: number | undefined; dev: number; fix: RefineReport['fixed'][number] }>();
   for (const e of m.edges) {
     if (s.meta[e.left].tol !== undefined || s.meta[e.right].tol !== undefined) continue;
     if (e.dev <= Math.max(1, s.tol)) continue; // misses the image edge by more than its own tolerance
     const key = e.left < e.right ? `${e.left},${e.right}` : `${e.right},${e.left}`;
+    if (tightened.has(key)) { tightened.get(key)!.dev = Math.max(tightened.get(key)!.dev, e.dev); continue; } // one pair, several edges: halve once
     const now = s.edgeTol[key] ?? s.tol;
     if (now <= 0.4) { left.push({ r: e.left, why: `edge r${e.left}|r${e.right} ${e.dev} px off at tolerance ${now}` }); continue; }
+    tightened.set(key, { prev: s.edgeTol[key], dev: e.dev, fix: { what: `edge r${e.left}|r${e.right}`, why: '' } });
     s.edgeTol[key] = Math.max(0.4, now / 2);
-    edgeFixes.push({ what: `edge r${e.left}|r${e.right}`, why: `${e.dev} px off → tolerance ${s.edgeTol[key]}` });
+    tightened.get(key)!.fix.why = `${e.dev} px off → tolerance ${s.edgeTol[key]}`;
+  }
+  // a tighter fit must bring the edge closer to the image's edge; on a noisy (JPEG) image it only follows the noise
+  // (F17: rmse never moved): such edges keep their tolerance and are reported
+  if (tightened.size) {
+    recompute(s);
+    const devOf = (key: string) => Math.max(0, ...s.pm.edges.filter((x) => (x.left < x.right ? `${x.left},${x.right}` : `${x.right},${x.left}`) === key).map((x) => edgeDeviation(s, x.id)));
+    for (const [key, t] of tightened) {
+      const d = devOf(key);
+      if (d <= 0.85 * t.dev) { edgeFixes.push(t.fix); continue; }
+      if (t.prev === undefined) delete s.edgeTol[key]; else s.edgeTol[key] = t.prev;
+      const [l, r] = key.split(',');
+      left.push({ r: +l, why: `edge r${l}|r${r} ${t.dev} px off; a tighter fit doesn't come closer (${d} px: noise or a soft edge) — tolerance kept` });
+    }
   }
   fixed.push(...edgeFixes.slice(0, 8));
   const more = Math.max(0, edgeFixes.length - 8);

@@ -236,7 +236,9 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
    logo): analyze a `crop` of just that part (with `detail: "high"` for fine detail) and build it with `rect` (where it
    goes, session units) and its own `layer`. The crop cuts every shape crossing its edge square: make it reach past
    every free end of the part (tips, tails, swooshes), or put its edge where the part really ends. Frame lines of
-   other parts that run through the crop: drop them in the scene and draw them by hand (§ 4).
+   other parts that run through the crop: drop them in the scene and draw them by hand (§ 4); a leaf or tip that
+   touches such a line is in the line's region — `split r5 in x y w h` makes the part in the box its own region
+   first, so it stays when the line is dropped.
    A part built **over** the main scene shows its crop edge as a square seam, and removing its background exposes
    regions of the main scene that run under it: build the part under the main layer, or clip it to the part's
    silhouette.
@@ -421,7 +423,8 @@ nothing just before `to`, inside a clip group masked by a copy of the shape, so 
 - **Don't steer by rmse alone.** Photo areas inside the crop (side faces, curls, light) can outweigh the artwork, and a
   bug that darkens where the photo is dark *lowers* rmse. Use it as a trend between rounds with the same crop **and the same render size** (keep `max_px` fixed: one artboard
   gave 0.153 at 1024 px and 0.134 at 400 px); decide
-  tone questions by samples and profiles at fixed points. `content_box` gives a `note` instead of a shift when the
+  tone questions by samples and profiles at fixed points (`preview {reference, sample: [[x, y], …]}` gives both
+  colours and their ΔE at each point, in session units). `content_box` gives a `note` instead of a shift when the
   two boxes differ in shape (a side face in the photo).
 - **A tapered face mapped onto a rectangle:** the reference crop is the face's bounding box, your art fills the
   artboard, so the shapes can't line up and rmse stays high (`content_box` only notes that the shapes differ). Compare

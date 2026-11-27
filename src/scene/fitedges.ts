@@ -144,7 +144,9 @@ function sharpen(p: number[][], i: number, closed: boolean, k = 6): number[] {
 
 function fitEdge(e: Edge, tol: number, minDeg: number, T0?: number[], T1?: number[]): Seg[] {
   let p = e.pts;
-  if (!e.closed && p.length <= 5) return fitCurve([p[0], p[p.length - 1]], {});
+  // a short edge (≤ 5 points: a small feature's outline is cut into many between junctions, F32) is straight only when
+  // it is: one that bows by half a pixel or more gets a curve through its points, with the junction tangents
+  if (!e.closed && p.length <= 5) return p.length > 2 && deviation(p, 0, p.length - 1) >= 0.5 ? fitCurve(p, { tolerance: Math.max(0.3, tol / 2), t0: T0, t1: T1 }) : fitCurve([p[0], p[p.length - 1]], {});
   // corners found on lightly smoothed points: a 1-px jagged edge (anti-aliasing decided pixel by pixel) has no straight
   // arms otherwise; a real corner turns as much after smoothing
   const c = corners(relax(p, 2, e.closed, new Set()), e.closed, 4, minDeg);
