@@ -6,14 +6,14 @@
 // Windows: run it in the desktop session (scripts/windows/run-interactive.ps1).
 //   npm run build && node test/live-restart.mjs
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const client = new Client({ name: 'aia-restart', version: '0' });
-await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
+await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full' } }));
 let failures = 0;
 async function call(name, args, expect) {
   const t = performance.now();

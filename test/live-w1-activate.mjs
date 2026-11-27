@@ -8,7 +8,7 @@
 // Windows only, desktop session (scripts/windows/run-interactive.ps1).
 //   npm run build && node test/live-w1-activate.mjs
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, statSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -20,7 +20,7 @@ if (process.platform !== 'win32') { console.error('Windows only'); process.exit(
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dir = mkdtempSync(join(tmpdir(), 'aia-activate-'));
 const client = new Client({ name: 'aia-activate', version: '0' });
-await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
+await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full' } }));
 guard(client); // abort if a document this test didn't create becomes active
 
 let failures = 0;

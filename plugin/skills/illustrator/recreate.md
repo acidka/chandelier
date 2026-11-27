@@ -172,7 +172,7 @@ no scene). Layout jobs (calendars, cards, panels) don't need it.
 1. **Analyze.** `scene {action: "analyze", image, map: [TL, TR, BR, BL]}` for a photographed face (corners from
    `preview {image, grid}`; `bilinear: true` for a tapered face; on a box with rounded or wrapped edges put each side
    where the bands start to bend, not at the silhouette), or `crop` for a flat file; `size` = the artboard's aspect.
-   Read the table and the overlay (ids on the image | flat render). `photo: true` means lighting was flattened (§ 1:
+   Read the table (the 15 largest regions; `show r40-r80` lists others) and the overlay (ids on the image | flat render). `photo: true` means lighting was flattened (§ 1:
    light is not artwork). Choose crop, map and `max_px` once: analyzing again with other values gives new region ids.
    **Flat inks rendered with a material** (gold foil, emboss, print on textured paper, a mockup's lighting): give
    `colors` = the number of flat inks in the artwork (`colors: 2` for one foil ink on paper). The default splits the

@@ -96,6 +96,10 @@ Then ask your agent for something (see [what you can ask](#what-you-can-ask)).
   16.2 k ([benchmarks](docs/research/benchmarks.md#tool-list-size)). A design-from-image run with it scored 10 of 10
   with no extra tool calls ([run](docs/research/benchmarks.md#m2-with-the-lean-tool-profile--2026-11-24-arm-c2-1-run-040)).
   A comma-separated list of tool names works too.
+- **Short replies:** every tool result is re-read on each later request, so replies are brief by default. A create
+  step lists its first 20 items (2 178 → 271 tokens for 100), `get_items` and `document_info` return a short head, and
+  `fields` asks for more ([benchmarks](docs/research/benchmarks.md#reply-size)). `configure {reply: "full"}` or
+  `CHANDELIER_REPLY=full` brings back every key.
 - **Debug log:** `CHANDELIER_LOG=debug` writes one JSON line per tool call (tool, time, result) to stderr;
   `CHANDELIER_LOG_FILE=/path/to/file` appends them to a file.
 - **From source:**

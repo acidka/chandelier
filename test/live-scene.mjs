@@ -2,14 +2,14 @@
 // Live checks for the scene tool (0.6, S1; needs a running Illustrator; works only in a document it creates):
 // analyze a synthetic image, build it as one undo step, compare with the image, re-build without duplicates, edit +
 // rebuild. Prints build time and payload.
-//   npm run build && node test/live-scene.mjs
+//   npm run build && node test/live-scene.mjs   (REPLY=brief: the agents' default reply mode, plan D16)
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { connect, assert } from './live-lib.mjs';
 import { encodePng, resize } from '../dist/image.js';
 
-const { call, done } = await connect('live-scene');
+const { call, done } = await connect('live-scene', process.env.REPLY ? { env: { CHANDELIER_REPLY: process.env.REPLY } } : {});
 const tmp = mkdtempSync(join(tmpdir(), 'chandelier-scene-'));
 
 // a poster at 4× then averaged down: paper, two wave bands, a box, a ring (hole), a dot
@@ -40,7 +40,7 @@ await call('scene', { action: 'analyze', image: png }, { check: (v, r) => {
 } });
 let built;
 await call('scene', { action: 'build', id }, { check: (v) => { built = v; assert(v.items === 7 && v.undo === 'one step', JSON.stringify(v)); } });
-console.log(`build: ${built.ms} ms, ${built.bytes} bytes, ${built.anchors} segments`);
+if (built.ms !== undefined) console.log(`build: ${built.ms} ms, ${built.bytes} bytes, ${built.anchors} segments`);
 // one undo step removes the whole build; redo brings it back
 await call('history', { action: 'undo' });
 await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(!v.total, 'undo removed the build: ' + JSON.stringify(v).slice(0, 120)) });

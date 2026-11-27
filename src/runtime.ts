@@ -76,7 +76,7 @@ export class Runtime {
   /** Run a runtime command. Never throws for Illustrator-side errors: check env.ok. */
   async cmd<T = any>(cmd: string, args: object = {}, opt: number | CmdOptions = {}): Promise<Envelope<T>> {
     const o = typeof opt === 'number' ? { timeout: opt } : opt;
-    const { timeout: defTimeout, ...settings } = { ...this.settings, ...o.settings };
+    const { timeout: defTimeout, reply: _reply, ...settings } = { ...this.settings, ...o.settings };
     const timeout = o.timeout;
     const call = ++this.calls;
     const src = Runtime.wrap({ cmd, args: scriptPaths(args), settings, call });

@@ -22,7 +22,7 @@ let tmpN = 0;
 export const scene: ToolDef = {
   name: 'scene',
   description: `Image → editable vector scene; the pixel work happens here, Illustrator only at build. Image px until build.
-"analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high → id, a 1-page summary (regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
+"analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high → id, a 1-page summary (15 largest regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
 "edit": id, edits ["merge r3 r4" (r3 keeps its ink), "drop r12 r20-r40" (the region it sits on fills it; "… fill r0" to choose, "… fill none" = left empty), "drop < 0.05" (all under 0.05 %), "drop in x y w h" (all inside the box), "keep r12", "undo", "undo 3", "reset", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "ramp r3 r4 r5" (one region, linear gradient), "r3 flat", "layers r3 r5" (translucent: their overlap drawn by both, multiply), "r10 logo" (grouped, finer), "r4 placeholder", "text x y w h" (regions in the box left for live text; build returns text_boxes), "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
 "build": id; rect (default the artboard), artboard, bleed, layer ("Scene"), position (new layer: "top" default; "bottom", "below:Name"; an existing layer stays put unless given) → one undo step: global swatches + one path (or live rect/ellipse for clean primitives) per region, bottom to top; a re-build replaces its own items (regions you deleted stay dropped, items you added stay).
 "refine": id; threshold (ΔE, 6) → measures the build (Illustrator render; own render before a build) per region and edge against the image, corrects shifted inks and re-fits edges that miss, rebuilds once → report + heat map | new render.
@@ -54,17 +54,21 @@ dir: where scene.json is kept (default a temp folder; id may be its path).`,
       if (a.action === 'analyze') return await doAnalyze(a, ctx);
       if (!a.id) return fail(`${a.action} needs id (from analyze) or a scene.json path`);
       const s = await get(a.id, join(ctx.tmp, `scene-src${++tmpN}.png`));
-      if (a.action === 'edit') return doEdit(s, a);
+      if (a.action === 'edit') return doEdit(s, a, ctx);
       if (a.action === 'build') return await doBuild(s, a, ctx);
       return await doRefine(s, a, ctx);
     } catch (e) { return fail((e as Error).message); }
   },
 };
 
-const page = (s: Scene, o: Parameters<typeof summary>[1] = {}, image = true): CallToolResult => ({
+/** reply "brief" (plan D16, the default): the region table lists the 15 largest regions ("show" lists any others) */
+const brief = (ctx: Ctx) => ctx.settings.reply === 'brief';
+const limitOf = (ctx: Ctx) => (brief(ctx) ? 15 : 40);
+
+const page = (s: Scene, ctx: Ctx, o: Parameters<typeof summary>[1] = {}, image = true): CallToolResult => ({
   content: [
     ...(image ? [{ type: 'image' as const, data: encodePng(overlay(s)).toString('base64'), mimeType: 'image/png' }] : []),
-    { type: 'text' as const, text: summary(s, { ...o, file: fileOf(s) }) },
+    { type: 'text' as const, text: summary(s, { limit: limitOf(ctx), ...o, file: fileOf(s) }) },
   ],
 });
 
@@ -77,14 +81,14 @@ async function doAnalyze(a: any, ctx: Ctx): Promise<CallToolResult> {
   const p: Params = { image: path, crop: a.crop, map: a.map, bilinear: a.bilinear, size: a.size, colors: a.colors ?? 16, minDe: a.min_de ?? 6, detail: a.detail ?? 'normal', maxPx: a.max_px ?? 1000 };
   const s = analyze(src, p, { dir: a.dir ? resolve(a.dir) : join(ctx.tmp, 'scenes'), path, bytes: readFileSync(path) });
   put(s); save(s);
-  return page(s);
+  return page(s, ctx);
 }
 
-function doEdit(s: Scene, a: any): CallToolResult {
-  if (!a.edits?.length) return { content: [{ type: 'text', text: summary(s, { file: fileOf(s) }) }] };
+function doEdit(s: Scene, a: any, ctx: Ctx): CallToolResult {
+  if (!a.edits?.length) return page(s, ctx, {}, !!a.overlay);
   const r = applyEdits(s, a.edits);
   save(s);
-  return page(s, { show: r.show, showColour: r.showColour }, !!a.overlay);
+  return page(s, ctx, { show: r.show, showColour: r.showColour }, !!a.overlay);
 }
 
 async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
@@ -116,9 +120,11 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
   }
   const plan = buildSteps(s, { rect, bleed: a.bleed, layer, artboard: a.artboard, position: a.position ?? (present ? undefined : 'top'), clear });
   const batch = ctx.tools.get('batch')!;
+  // every created uuid is needed to record the build, so the inner batches reply in full (brief lists 20 per step)
+  const inner: Ctx = { ...ctx, settings: { ...ctx.settings, reply: 'full' } };
   const items: Record<string, string> = {}, warnings: string[] = [];
   for (const steps of plan.batches) {
-    const res = await batch.run!({ steps, rollback: true, stop_on_error: true }, ctx);
+    const res = await batch.run!({ steps, rollback: true, stop_on_error: true }, inner);
     const body = (res.content[0] as { text: string }).text;
     if (res.isError) return fail('build failed: ' + body);
     for (const c of res.content.slice(1)) warnings.push((c as { text: string }).text);
@@ -134,16 +140,17 @@ async function doBuild(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
   }
   s.built = { layer, rect, artboard: a.artboard, bleed: a.bleed, units: ctx.settings.units, items };
   save(s);
+  // brief (D16): the counts and timings an agent does not act on are left out
   const out = {
-    id: s.id, layer, items: plan.items, swatches: plan.swatches, anchors: plan.anchors, bytes: plan.bytes, rect, units: ctx.settings.units,
+    id: s.id, layer, items: plan.items, swatches: plan.swatches, ...(brief(ctx) ? {} : { anchors: plan.anchors, bytes: plan.bytes }), rect, units: ctx.settings.units,
     ...(plan.textBoxes.length ? { text_boxes: plan.textBoxes } : {}),
     ...(kept.length ? { dropped_deleted: kept.join(' ') } : {}),
-    undo: plan.batches.length === 1 ? 'one step' : `${plan.batches.length} steps (scene too large for one call: detail low or merge)`, calls: plan.batches.length, ms: Math.round(performance.now() - t0),
+    undo: plan.batches.length === 1 ? 'one step' : `${plan.batches.length} steps (scene too large for one call: detail low or merge)`,
+    ...(brief(ctx) ? {} : { calls: plan.batches.length, ms: Math.round(performance.now() - t0) }),
   };
   return { content: [{ type: 'text', text: J(out) }, ...warnings.map((t) => ({ type: 'text' as const, text: t }))] };
 }
 
-/** uuids of the items on a layer (all depths), or null when the layer doesn't exist */
 /** uuid → name of the top-level items on a layer, or null when the layer doesn't exist */
 async function layerItems(ctx: Ctx, layer: string): Promise<Map<string, string> | null> {
   const out = new Map<string, string>();

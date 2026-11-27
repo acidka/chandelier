@@ -4,7 +4,7 @@
 // layers (C22), preview {reference, save_to} also saves the plain render.
 //   npm run build && node test/live-layout.mjs
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { guard } from './live-lib.mjs';
@@ -14,7 +14,7 @@ import { decodePng } from '../dist/image.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const c = new Client({ name: 'live-layout', version: '0' });
-await c.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit' }));
+await c.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full' } }));
 guard(c); // abort if another document becomes active mid-run
 const call = async (name, args = {}) => {
   const r = await c.callTool({ name, arguments: args });

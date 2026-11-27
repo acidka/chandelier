@@ -82,6 +82,30 @@ describe('scene tool', () => {
     expect((await scene.run!({ action: 'build' }, ctx)).isError).toBe(true);
     expect((await scene.run!({ action: 'analyze', image: join(dir, 'nope.png') }, ctx)).content[0]).toMatchObject({ text: expect.stringMatching(/not found/) });
   });
+
+  it('reply brief (D16): inner batches stay full, the summary lists 15 regions, the build reply drops counts and timings', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'scene-brief-')), png = join(dir, 'in.png');
+    const spots = Array.from({ length: 30 }, (_, i) => rect(8 + (i % 6) * 32, 6 + Math.floor(i / 6) * 19, 20, 12, i % 2 ? ORANGE : DARK));
+    writeFileSync(png, encodePng(paint(200, 100, spots, { bg: BG, noise: 1 })));
+    const seen: any[] = [];
+    const ctx: any = {
+      tmp: dir, settings: { units: 'pt', reply: 'brief' },
+      rt: { cmd: async (name: string) => (name === 'artboards' ? { ok: true, data: { active: 0, artboards: [{ i: 0, rect: [0, 0, 200, 100] }] } } : { ok: false }) },
+      tools: new Map([['batch', { run: async (a: any, c: any) => { seen.push(c.settings.reply); return { content: [{ type: 'text', text: JSON.stringify({ results: a.steps.map((st: any) => ({ ok: true, data: Array.isArray(st.args.items) ? { items: st.args.items.map((_: unknown, i: number) => ({ uuid: 'u' + i })) } : {} })) }) }] }; } }]]),
+    };
+    const r1 = await scene.run!({ action: 'analyze', image: png, dir }, ctx);
+    const text = (r1.content[1] as any).text as string, head = JSON.parse(text.split('\n')[0]);
+    const rows = text.split('\n').filter((l) => /^r\d+ /.test(l)).length;
+    expect(head.regions).toBeGreaterThan(15);
+    expect(rows).toBe(15);
+    expect(text).toMatch(/\+\d+ regions ≤/);
+    const out = JSON.parse(((await scene.run!({ action: 'build', id: head.id }, ctx)).content[0] as any).text);
+    expect(seen.every((r) => r === 'full')).toBe(true);
+    expect(ctx.settings.reply).toBe('brief');
+    expect(out).not.toHaveProperty('bytes');
+    expect(out).not.toHaveProperty('ms');
+    expect(out).toMatchObject({ layer: 'Scene', undo: 'one step' });
+  });
 });
 
 describe('buildSteps degenerate loops', () => {

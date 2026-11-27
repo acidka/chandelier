@@ -2,6 +2,7 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { Envelope } from '../runtime.js';
 import { J, type ToolDef, type Ctx } from './types.js';
+import { project } from './brief.js';
 
 export const BUDGET = 20_000;
 
@@ -30,6 +31,6 @@ export async function runStep(tool: ToolDef, args: any, ctx: Ctx): Promise<Envel
   const s = await tool.step!(args, ctx);
   if (s.activate) await ctx.T.call('activate');
   const env = await ctx.rt.cmd(s.cmd, s.args, { settings: s.settings as any });
-  if (env.ok) tool.after?.(env.data, args, ctx);
+  if (env.ok) { tool.after?.(env.data, args, ctx); env.data = project(tool.name, env.data, args, ctx.settings); }
   return env;
 }

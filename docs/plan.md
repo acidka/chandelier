@@ -229,12 +229,35 @@ stored once) → one fit per edge → stacked shapes → batch build. Plan and s
 | **Edits as strings** (chosen) vs a typed edit schema | ~1.5 KB less schema per request; precise errors per edit | Parsed in Node, not validated by the MCP client |
 | **Build through `batch` + `create_path`** (chosen) vs an ES3 scene builder | No new runtime code; one undo step, rollback; same paths as every other tool | Each shared edge's text is written twice (≈ 150–250 KB for 150 regions); a runtime builder is the fallback if live timings are bad |
 | **State in memory + scene.json / labels.png** (chosen) | Survives a reconnect with `dir`; pixels re-derived (deterministic) | Reload re-runs ~1 s of analysis and needs the source image unchanged (sha1) |
-| **Behind `CHANDELIER_SCENE=1`** until it ships (lifted 2026-11-27) | Users paid no schema bytes while S1–S3 were proven | Full-list budget raised to 59.5 KB (58.9 KB with `scene`, 3.1 KB) |
+| **Behind `CHANDELIER_SCENE=1`** until it ships (lifted 2026-11-27) | Users paid no schema bytes while S1–S3 were proven | Full-list budget raised to 59.5 KB (58.9 KB with `scene`, 3.1 KB); 60 KB after the D16 merge (59.5 KB) |
 
 **Purpose (decided 2026-11-27, owner delegated; revisit after more cases):** `scene` builds organic, irregular artwork
 (illustrations, detailed silhouettes, many flat-colour shapes), whole or from a crop of one part; geometry, text and
 layouts stay constructed by the agent, photos use it for the flat substrate at most. Evidence: suite cases 04, 06, 08,
 09 ([benchmarks § 2i](research/benchmarks.md)); guide: recreate.md § 5.0.
+
+### D16 — Smaller replies: field projection, brief by default ✅ decided (2026-11-27)
+
+Every tool result stays in the conversation and is re-read on each later request, so a reply's size is paid once per
+remaining turn. Sizes: [benchmarks § Reply size](research/benchmarks.md#reply-size).
+
+| Option | Pros | Cons |
+|--------|------|------|
+| Another encoding (TOON: field names once per array) | Lossless; ~25–35 % off uniform lists vs minified JSON | Can be larger than minified JSON on nested replies; a format note in every request; hosts and tests parse JSON (owner: dropped) |
+| Opt-in projection (first version, same day): `configure {reply: "brief"}` | Nothing changes for anyone who doesn't ask | Agents never asked: neither calendar run switched it on |
+| **Brief by default** (chosen, owner): `reply: "brief"` unless `configure {reply: "full"}` / `CHANDELIER_REPLY=full`; `fields` on `get_items` / `document_info` | Drops data, not punctuation: created lists 2 178 → 271 tokens, a 500-anchor read 5 469 → 31, a 4-step create batch stops being clipped; runs and anchors aren't computed; `full` is byte-identical to before | A missing field costs a turn, so the `get_items` and `document_info` descriptions name the default keys and how to widen them; +505 chars of tool list (~145 tokens per request) |
+
+Brief shapes (`src/tools/brief.ts`): created/changed items → the first 20 `{uuid, box}` + `count` + `more` (`@n` still sees
+every item); `get_items` → `uuid, type, name, box, geo` (+ `path` with `points`, `runs` with `runs: true`);
+`document_info` → `name, colorSpace, units, bleed, artboardCount, counts, issues` (+ the `fields` sections). `find_items`,
+`selection`, `get_tree`, `run_script`, `fonts`, `swatches` and `preflight` keep their replies (already capped, or the next
+step needs the values). `reply` stays in Node; the runtime never sees it. `CHANDELIER_REPLY=full` starts a server's
+sessions full; the live tests, `bench/score-calendar.mjs`, `verify-assumptions` and `test/mcp-call.mjs` use it, since
+they check every key.
+
+`scene` (0.6) follows the same mode: brief summaries list the 15 largest regions (full: 40; `show` for the rest), a
+brief `build` reply leaves out `anchors`, `bytes`, `calls`, `ms`. Its inner `batch` calls always run `full`, since the
+build records every created uuid (a brief create step lists 20). Sizes: [benchmarks § Reply size](research/benchmarks.md#reply-size).
 
 ## 6. Tool catalogue
 
@@ -246,13 +269,13 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | # | Tool | Actions / what it does | Phase |
 |---|------|------------------------|-------|
 | 1 | `status` | Bridge + Illustrator state, version, open docs, settings, latency; `launch: true`; `restart: true` (quit + relaunch + reopen, refused while any document is unsaved) | 1 |
-| 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate; one server is shared by every agent in a session, so positional results say a pinned frame (`frame: artboard 2, mm …`, 0.5.2) | 1 |
+| 2 | `configure` | Session: `units`, `origin`, default `artboard`, timeouts, auto-activate; one server is shared by every agent in a session, so positional results say a pinned frame (`frame: artboard 2, mm …`, 0.5.2); `reply: "brief"` (default) `\| "full"` (D16) | 1 |
 | 3 | `run_script` | Run ExtendScript `code` or a `.jsx` `file` with `args`; helpers available as `AIA.*` (`AIA.at(k, fn)` = coordinates from artboard k); returns JSON; `recipe`: ready builders shipped in `src/recipes/` (calendar-month, labels-sheet, business-card, style-guide, color-chips; `recipe: "list"`; 0.2.1) | 1 |
 | 4 | `batch` | Many tool steps in one call; `@n` refs; per-step `artboard` (coordinates from that artboard); `stop_on_error`; `rollback` of created items; `files` (0.3): the steps over many files — open → steps → save a copy into `out_dir` (or `in_place` / `none`) → `export` (`{name}` = file stem) → close; files already open are skipped; `dry_run` | 1 |
 | 5 | `documents` | `list`, `new` (preset, size, colour mode, **bleed**, artboard grid; `spacing` = gap between trim edges), `open`, `activate`, `save`, `save_as` (ai/pdf/svg/eps; `export: [...]` + `close: true` finish a build in one call), `close`; `new {units}` sets the session units | 1 |
-| 6 | `document_info` | Compact summary: size, colour mode, artboards, layers, counts by type, swatches, fonts, selection | 1 |
+| 6 | `document_info` | Compact summary: size, colour mode, artboards, layers, counts by type, swatches, fonts, selection; by default a short head (name, colour space, units, bleed, counts, issues), `fields` adds sections (D16) | 1 |
 | 7 | `find_items` | Query by type, name (pattern), layer, artboard, text, font, size range, fill/stroke colour, bounds, state; `fields`, `limit` | 1 |
-| 8 | `get_items` | Full detail by refs: geometry, appearance, text runs and styles, path points (opt-in) | 1 |
+| 8 | `get_items` | Full detail by refs: geometry, appearance, text runs and styles, path points (opt-in); by default `uuid, type, name, box, geo`, `fields` = exactly those keys (D16) | 1 |
 | 9 | `get_tree` | Layers → groups → items outline with depth/limit | 1 |
 | 10 | `selection` | `get`, `set`, `add`, `clear`, `all` (optionally per artboard/layer) | 1 |
 | 11 | `preview` | PNG of an artboard, items or region returned as an image (what prints: non-printing layers hidden); `max_px`, background; `reference` comparison (also for a region or items: the same part of the reference, 0.5.2) (`save_to` = the render, `<name>.compare.png` = the comparison; `content_box` against each image's own background, a `note` when the boxes differ in shape) with `differences` (0.4: blobs classified shifted — with the measured shift — / missing / extra / changed, and the items in each); one check call: `more` (other artboards), `preflight: true`, `info: true`; `image` (0.5.2): look at a file instead — PNG/JPEG (pure JS, no Illustrator needed) or a .pdf/.ai/.eps/.svg page (rendered by Illustrator, opened and closed unsaved): px, ppi, content box, background; `region` crops and zooms (≤ 8×), `grid` labelled lines, `sample` colours (hex, RGB, naive CMYK); `profile` (0.5.3): edge tracks from tone profiles (points, tone step, colours either side; run on to the sides, broken at sharp turns, short side tracks kept) drawn on the image | 1 |
@@ -282,7 +305,7 @@ MVP-0's `inspect` became `document_info`. Create tools also take `items:[…]` f
 | 35 | `tools` | Only in a tool profile (`CHANDELIER_TOOLS=lean` or a list): catalog, `query`, full schema by `name`, `call` + `args` for the tools left out of the list ([D13](#d13--tool-profiles-full-by-default-lean-on-request--decided-03)) | 0.3 |
 | 36 | `effects` | Live effects (0.4) through LiveEffect XML: drop shadow, outer / inner glow (colours), round corners, feather, blur, offset, roughen, zigzag, pucker & bloat, transform (copies), raw XML; `clear` ([D14](#d14--live-effects-through-liveeffect-xml--decided-04)) | 0.4 |
 | 37 | `events` | Experimental (0.5), only with `CHANDELIER_TRANSPORT=panel`: what the designer does, pushed by the Chandelier panel — `selection`, `document`, `saved`, `edited`, `message` (the designer wrote to the agent in the panel), `panel`, `paused`/`resumed`; `since` cursor, `wait` long poll, `types`; `say` shows the agent's answer in the panel; unread messages are never skipped; returns the current `state`. With `CHANDELIER_CHANNEL=1` panel messages are pushed into the session instead (Claude Code channels) ([panel plan](panel-plan.md)) | 8 |
-| 38 | `scene` | Image → editable vector scene (0.6; organic, irregular artwork — see D15 purpose): `analyze` (crop or 4-point map, inks, regions, shared fitted edges → id, 1-page summary + overlay), `edit` (merge, drop, recolour to swatches / hex / inks, z moves, names, tolerance, primitives, `ramp` → linear gradient, `layers rA rB` → two multiply shapes over their overlap, `text x y w h` (→ `text_boxes` at build), `rN logo`, `rN placeholder`, stack on/off); photos (noise) get their lighting ramps flattened, `build` (one undo step: global swatches + stacked paths on a layer, clean primitives — rect, rounded rect, ellipse, circle — as live shapes, rotated ones and regular polygons as paths; rect, artboard, bleed), `refine` (renders the build in Illustrator, measures tone per region and each edge against the image's sub-pixel edge, corrects shifted inks, re-fits missing edges tighter, rebuilds once; heat map) ([D15](#d15--image--scene-node-side-pipeline-stacked-shapes-batch-build--decided-06-owner-2026-11-26)) | 0.6 |
+| 38 | `scene` | Image → editable vector scene (0.6; organic, irregular artwork — see D15 purpose): `analyze` (crop or 4-point map, inks, regions, shared fitted edges → id, 1-page summary — the 15 largest regions, 40 with `reply: "full"` (D16) — + overlay), `edit` (merge, drop, recolour to swatches / hex / inks, z moves, names, tolerance, primitives, `ramp` → linear gradient, `layers rA rB` → two multiply shapes over their overlap, `text x y w h` (→ `text_boxes` at build), `rN logo`, `rN placeholder`, stack on/off); photos (noise) get their lighting ramps flattened, `build` (one undo step: global swatches + stacked paths on a layer, clean primitives — rect, rounded rect, ellipse, circle — as live shapes, rotated ones and regular polygons as paths; rect, artboard, bleed), `refine` (renders the build in Illustrator, measures tone per region and each edge against the image's sub-pixel edge, corrects shifted inks, re-fits missing edges tighter, rebuilds once; heat map) ([D15](#d15--image--scene-node-side-pipeline-stacked-shapes-batch-build--decided-06-owner-2026-11-26)) | 0.6 |
 
 Tool descriptions are kept short; the conventions (refs, colours, coordinates) live in the MCP server
 `instructions`, sent once per session instead of being repeated in 33 schemas.

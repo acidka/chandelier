@@ -43,7 +43,7 @@ export function guard(client) {
 /** env: extra environment for the server (e.g. a feature flag); the SDK passes only a safe subset by default */
 export async function connect(name, { env } = {}) {
   const client = new Client({ name, version: '0' });
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', ...(env ? { env: { ...getDefaultEnvironment(), ...env } } : {}) }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(ROOT, 'dist/index.js')], stderr: 'inherit', env: { ...getDefaultEnvironment(), CHANDELIER_REPLY: 'full', ...(env || {}) } }));
   guard(client);
   let failures = 0;
   /** call a tool; check(value, raw) may throw or return false. Errors are expected only with expectError.
