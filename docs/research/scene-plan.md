@@ -552,6 +552,10 @@ no family match for "Myriad Pro Bold" when only Myriad Variable Concept is insta
 | G56 | ⏳ | 09 v7 | the case-09 paragraph should repeat that refine changes hand-set inks (hair, lips) unless they are swatches |
 | G57 | ⏳ | 09 v6, v7 | non-Latin text: a shortlist of installed faces with the script (AvenirNext-UltraLight showed tofu; Helvetica Neue Light, Montserrat Light worked) |
 | G58 | ⏳ | 09 v7 | `size` with a non-square image (620 × 617 → 620 × 620): pad or stretch, and where — text placed from px was 1–2 mm off |
+| G59 | ⏳ | 01 Run 2, Run 3 | font size from cap height (§ 3): measure each large text on its own (one header word gave 59 pt for both, they needed 61 and 54 pt) and check a display line's box width against the measured width (Run 3's title ~10 % narrow at the right cap height) |
+| G60 | ⏳ | 01 Run 2, Run 3 | § 8: rmse is comparable only at the same render size as well as the same crop (0.153 at 1024 px vs 0.134 at 400 px for one artboard); keep `max_px` fixed between rounds |
+| G61 | ⏳ | 01 Run 2 | moving a set of items by an offset is not mentioned: `transform_items {refs: "name:R2 Mini*", dx, dy}` |
+| G62 | ⏳ | 01 Run 2, Run 3 | reading `preview {image, region, grid}`: labels are image px, positions read off the shown picture are ÷ zoom; small regions or `sample` for exact points. G51 is ticked but its text is not in recreate.md |
 | G46 | ✅ | 05 v1, v2 | test fonts in one batch (same line in 4–6 candidates, compare box widths with the measured width, one render); the x-height : cap-height ratio points to the family |
 | G47 | ✅ | 05 v1, v2 | `content_box` is [x, y, w, h]; on a panel with a white area the whole-page box can be wrong — judge with region compares |
 | G48 | ✅ | 05 v1, v2 | a geometric lowercase wordmark: construct it (circles/ellipses + stems, unite, minus_front the counters) instead of chasing fonts |

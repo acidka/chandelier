@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-26 (bugs #7–#15 fixed; #16–#21 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-27 (bugs #7–#15 fixed; #16–#26 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -19,6 +19,11 @@ Illustrator-side issues seen on Windows are quirks C30, C31.
 | 19 | 🟡 | 2026-11-26, recreate suite case 06 | `preview {reference}` `differences` | `items` lists items on hidden layers (not yet reproduced) | Ignore names from hidden layers | Skip hidden items / layers when naming differences |
 | 20 | 🟡 | 2026-11-26, recreate suite case 06 | `preview {grid}` | `grid` works only with `image`, not on artboard renders | Save the render (`save_to`) and preview it as an image | Draw the grid on artboard renders too |
 | 21 | 🟠 | 2026-11-26, recreate suite case 09 | `swatches update` on a gradient | Giving only `stops` turned a radial gradient linear (not yet reproduced) | Pass `type: "radial"` again | Keep the gradient's type when it isn't given |
+| 22 | 🟡 | 2026-11-27, recreate suite case 01 (reply-mode runs) | the positional note on replies | Every reply ends "frame: artboard 0, mm" even when the call or batch step gave another `artboard`; the step's own coordinates were right, the note misleads | Trust the step's `artboard` | Name the frame the reply's boxes are in (the step's artboard when given) |
+| 23 | 🟡 | 2026-11-27, cases 01 and 09 | `transform_items`, `modify_items`, `get_items` boxes, `preview` `differences` rects | Returned in the session frame (artboard 0: x 660 and up on artboard 3) while create calls with an `artboard` return boxes relative to that artboard (as #16) | Subtract the artboard's x / y | Same frame in every reply of a call or step with `artboard` |
+| 24 | 🟡 | 2026-11-27, case 01 | `document_info` issues | Issues are counts only (`unnamedText: 115`, `unstyledText: 4`), so agents call `find_items` to learn whose they are; `unnamedText` counts `create_text {grid}` cells, which can't be named there (noise for calendars) | `find_items` by layer / artboard | A few refs (or names) per issue; don't flag grid cells, or let `grid` take a name pattern |
+| 25 | 🟡 | 2026-11-27, case 01 | `documents save` | The reply has name and path only, no saved flag or time | `documents list` (`saved`) | Add `saved: true` |
+| 26 | 🟡 | 2026-11-27, case 09 | `preflight` | In a shared test document it lists items of every artboard (other versions' transparency items); there is no artboard filter | Ignore names from other layers | `artboard` / `refs` option to limit the checks |
 
 ## To verify
 
