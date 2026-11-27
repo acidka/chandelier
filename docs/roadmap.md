@@ -1,6 +1,6 @@
 # Roadmap
 
-Last updated: 2026-11-26 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
+Last updated: 2026-11-27 · Legend: ✅ done · 🔄 in progress · ⏳ to do · ❓ needs decision · 🧊 later · ❌ rejected
 
 Known bugs and unverified parts: [bugs.md](bugs.md).
 
@@ -307,7 +307,7 @@ MCP round trip p50 < 10 ms is a **goal, not a requirement** (owner, 2026-11-24):
 - [ ] 🧊 Variables/datasets (data merge), graphs, symbols editing
 - [x] ✅ Visual diff: compare a preview with a reference image and report misaligned regions — done in 0.4 (`preview` `differences`)
 - [ ] 🧊 Recording: turn a session's tool calls into a reproducible `.jsx` build script
-- [ ] 🧊 Plan-then-run approval mode: the agent sends a whole job as one plan (`batch {plan: true}`), the designer approves it once (panel, MCP elicitation or chat), it runs as one undo step; server-enforced while `configure {approve: "plan"}`; drift check, expiry, one run per plan — [proposal](research/plan-then-run.md)
+- [ ] 🔄 Plan-then-run approval mode: the agent sends a whole job as one plan (`batch {plan: true}`), the designer approves it once (panel, MCP elicitation or chat), it runs as one undo step; server-enforced while `configure {approve: "plan"}`; drift check, expiry, one run per plan — [proposal](research/plan-then-run.md) · [implementation plan](research/plan-then-run-plan.md) (2026-11-27, branch `future/plan-then-run`): phases R0 spike (undo after a failed call, elicitation clients) → R1 gate → R2 plan card → R3 run → R4 elicitation → R5 panel → R6 files → R7 rehearse → R8 ship, ~7 days; owner decisions P-A…P-G open
 
 ## Milestone 🎯 0.2.1 — quick wins ✅ (released 2026-11-24)
 
@@ -733,3 +733,4 @@ Full analysis, pros and cons: [research/feature-gaps.md](research/feature-gaps.m
 | 2026-11-27 | Fewer turns and leftovers: `preview {region: [list]}` (up to 6 zooms per call), `run_script {recipe: "help"}` (generated helper reference), `create_path {fit: [list, {onto}]}` (a list's end lands on another curve), `CHANDELIER_APP` on Windows (versioned ProgID; VM: 31.0.0 attached, wrong path refused, default unchanged). The unknown-argument check found 3 test bugs that had passed silently (`get_items {props}`, `find_items {refs}` ×3): fixed. Unit + all macOS live suites pass; tool list 59.92 KB after trimming `scene` / `preview` / `create_text` descriptions |
 | 2026-11-27 | M2 and calendar re-run after the fewer-turns changes (one run each, [benchmarks](research/benchmarks.md#m2-and-calendar-on-the-06-build--2026-11-27-arm-c2-1-run-each-token-use)): M2 1.01 → 0.84 M, 18 → 15 requests; calendar 2.02 → 1.10 M, 31 → 18 requests, 4.8 → 3.4 min, quality kept (January rmse 0.115, K1/K2/K9/K10 ✅). `preview {region: [list], reference}` now allowed (each region compared with its part of the reference) |
 | 2026-11-27 | **Release 0.6.0**: scene tool, smaller replies, fewer turns, curve fitting, bugs #16–#26, `CHANDELIER_APP`, split recreate guide. Checks: unit 321 (macOS) / 327 (Windows VM), every macOS live suite; Windows live, live-release, live-layout, live-look, live-scene, live-bugs-1127 pass, live-edit fails on its undo check (quirk C31: Illustrator merged two calls into one undo step; the same probe on 0.5.3 does it too, 3/5 vs 1/5 — not a regression) |
+| 2026-11-27 | Plan-then-run started (🔄, branch `future/plan-then-run`): [implementation plan](research/plan-then-run-plan.md) — gate in Node and runtime, plan probe + card, run with drift check and undo on failure, elicitation and panel channels; R0 spike first |

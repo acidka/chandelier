@@ -36,6 +36,7 @@ tools aren't enough. The [README](../README.md) is the short tour; this folder i
 | [research/feature-gaps.md](research/feature-gaps.md) | Missing tools, user needs, all known competitors with pros and cons, proposed order for 0.1.x–0.4 (2026-11-23) |
 | [research/competitors.md](research/competitors.md) | `ie3jp/illustrator-mcp-server` and Adobe's official MCP (beta): what they do, tool parity map |
 | [research/plan-then-run.md](research/plan-then-run.md) | Proposal (phase 8 candidate): an opt-in mode where the designer approves a whole job once, then it runs at full speed |
+| [research/plan-then-run-plan.md](research/plan-then-run-plan.md) | Implementation plan for plan-then-run: owner decisions, gate, plan card, run and undo, phases R0–R8 |
 | [research/scene-tool.md](research/scene-tool.md) | 0.6: the `scene` tool, image → editable vector scene, so free-form recreation needs fewer agent rounds (built, live-tested, evaluated on the real-job suite; in the tool list from 0.6) |
 | [research/scene-plan.md](research/scene-plan.md) | The `scene` tool's implementation plan, owner decisions and task status |
 | [../bench/README.md](../bench/README.md) | How to run the benchmarks (scripts and saved results) |
