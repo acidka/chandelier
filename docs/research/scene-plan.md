@@ -464,7 +464,7 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F20 | ✅ | 04 v10 | `create_path {map}` is projective, the scene maps bilinear: hand-built parts sat ~40 px off until the agent wrote its own map → fixed 2026-11-27: `create_path {map: {from, to, bilinear: true}}` maps like the scene (inverse bilinear); guide § 1 says when |
 | F21 | ✅ | 04 v9, v10 | first build to a new layer warned "Nothing found for layer:…": a new layer gets no delete step |
 | F22 | ✅ | 04 v9 | ramps rendered with jagged bits in Illustrator that the own render didn't show → fixed 2026-11-27: two causes, both fixed: the ramp hint listed only the first 6 bands (the rest stayed flat stripes) — now every band as ranges; and the gradient stops assumed Illustrator spans the box width, while it spans the outline's own extent along the angle (measured live: ellipse 300 × 200 at 30° → 278.5) — angled ramps had flat ends; error inside a 70° ramp 5–11 → 2–5 (of 255) |
-| F23 | ⏳ | 08 v2 | `scene` used far more calls than the baseline on flat art (16 scene + 34 other vs 19 in total) |
+| F23 | ⏳ | 08 v2 | `scene` used far more calls than the baseline on flat art (16 scene + 34 other vs 19 in total) — 2026-11-27: edits the runs made by hand now come from analyze (F52 inks, F25 crop tips, F39 lost detail named); `merge` / `sliver` hints leave out regions under 0.05 % (on 08 seven of the ten hints were ΔE 1–2 merges of 0.01–0.03 % specks, which `drop < 0.05` covers). A `stroke?` hint was tried and dropped: on 08 the outline it should name branches, so `rN stroke` refuses it, and on the other cases it found nothing. Needs suite runs to measure |
 | F24 | ✅ | 06 v2 | `refine` / rebuild replaced the whole layer: now only its own items (hand-added items stay), and regions whose items were deleted stay dropped (`dropped_deleted`) |
 | F25 | ✅ | 06 v2 | a part crop cuts every shape crossing the crop edge square (the ground swoosh's ends; tips added by hand) → fixed 2026-11-27: analyze reads a margin around a `crop` (20 % of its longer side, inside the image); per region, each connected piece outside the crop that touches it and ends inside the margin is kept whole, pieces reaching the margin's outer edge are cut at the crop, pieces only in the margin go (`cutToCrop`). The crop keeps its own resolution; `build {rect}` still places the crop; `crop_at` in the summary. 06 tree crop: the swoosh's right tip whole (its left end joins the triangle's leg, which runs on: cut); est. rmse inside the crop 0.097 → 0.095 |
 | F26 | ✅ | 06 v2 | the default analyze of one flat ink rendered as foil: 12 inks, 817 regions: hint "photo with N inks: … colors = that number" |
@@ -478,7 +478,7 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F35 | ✅ | 06 v3 | no edit to drop every region inside a box: `drop in x y w h [fill …]` |
 | F36 | ✅ | 06 v3 | crown leaves touching a dropped frame line belong to the line's region and go with it (no split edit) → fixed 2026-11-27: `split rN in x y w h`: the part of rN in the box becomes a new region with the same ink |
 | F37 | ✅ | 06 v3 | `max_px` doesn't upscale a small crop: `detail: high` can't add resolution → fixed 2026-11-27: `max_px` given: a smaller crop or face is upscaled to it (default unchanged: never above the source pixels, so ids stay) |
-| F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` |
+| F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` — tried 2026-11-27 (§ 10 Soft shading): telling soft band borders from outlines works (slope 2–4 px beside a border ÷ slope across it, on the unsmoothed image: outlines 0.04–0.27, bands of one hue 0.5–1.1, petal creases 0.3–0.45), but the colour bands cut across the petals, so merging them gives one gradient for the whole hat; needs a segmentation that follows the creases |
 | F39 | ✅ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) → fixed 2026-11-27: a size drop names the clusters it took (5+ small regions with gaps under 1 % of the image) in a `dropped:` line with their box — wide flat ones as `text x y w h`, the rest as `keep in x y w h` (09 detail high: the bracelet first, 41 regions; 06: the tree's 122 holes and both caption lines). Not spared automatically: small text is a cluster too |
 | F40 | ✅ | 09 v4 | analyze overlays of small crops too small to read: enlarged up to 4× |
 | F41 | ✅ | 09 v5 | a rebuild left items from the first build (r143–r151): the runtime lists 100 created items per step, the build recorded only those — steps now hold ≤ 100 items, leftovers found by name are cleared; live test with 170 items |
@@ -665,6 +665,14 @@ v3 and v4 worse than v2).
 - **Soft shading:** suggest `ramp` for a run of bands whose tones change steadily (v2's manual `ramp` on the hat brim
   was what made 09 work, F29); radial ramps for round shading (petals, pearls); a switch for photo mode on a crop that
   is artwork (F28).
+- **Soft shading, measured 2026-11-27 (F38):** a border inside a smooth gradient has the same slope beside it as
+  across it; an outline's slope peaks at the border. Measured on 09's hat (median per border of the slope 2–4 px
+  inside each side ÷ the step across it, unsmoothed Lab — the bilateral filter turns gradients into stairs, so on
+  the smoothed image every border looks like a step): outlines 0.04–0.27, bands of one hue 0.5–1.1, dark petal creases
+  0.3–0.45. Merging across borders above 0.5 joins the whole hat into one region (one gradient), because the colour
+  bands cross the petals and no region border runs along a crease. Next step if taken up: segment soft-shaded areas
+  by their creases (valleys of L, or watershed on the gradient magnitude) and give each piece its own ramp; the
+  border measure then decides which pieces are one shape.
 - **Parts and crops:** upsample a small crop so `detail: "high"` adds real resolution (F37); `split` a region at a
   frame line so leaves touching it survive (F36); build a part under the main layer or clipped to its silhouette.
 - **Render-and-compare optimisation** (research): move anchors and gradient stops to minimise the difference between

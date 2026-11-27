@@ -76,7 +76,8 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
   const pairs: [number, number, number][] = [];
   for (const r of regs) for (const n of r.nbrs.keys()) {
     const q = s.seg.regions[n];
-    if (n > r.id && q.area > 0) { const d = de76(r.L, r.a, r.b, q.L, q.a, q.b); if (d < minDe * 1.5) pairs.push([d, r.id, n]); }
+    // tiny regions are the drop hint's (F23: ΔE 1–2 merges of 0.01 % specks filled the hint line on 08)
+    if (n > r.id && q.area >= total * 5e-4 && r.area >= total * 5e-4) { const d = de76(r.L, r.a, r.b, q.L, q.a, q.b); if (d < minDe * 1.5) pairs.push([d, r.id, n]); }
   }
   pairs.sort((a, b) => a[0] - b[0]).slice(0, 4).forEach(([d, a, b]) => hints.push(`merge r${a} r${b} (ΔE ${d.toFixed(1)})`));
   // the scene's inks, not the quantizer's: analyze adds inks for regions of their own colour (ownInks)
@@ -86,7 +87,7 @@ export function summary(s: Scene, o: SummaryOpts = {}): string {
     if (de < minDe * 1.5) near.push({ a: Math.min(a, b), b: Math.max(a, b), de });
   }
   near.sort((x, y) => x.de - y.de).slice(0, 3).forEach((p) => hints.push(`c${p.b} = c${p.a}? (ΔE ${p.de.toFixed(1)})`));
-  regs.filter((r) => r.area > 20 && (2 * r.area) / r.perim < 2.5).slice(0, 3).forEach((r) => hints.push(`r${r.id} sliver ${((2 * r.area) / r.perim).toFixed(1)} px`));
+  regs.filter((r) => r.area >= Math.max(20, total * 5e-4) && (2 * r.area) / r.perim < 2.5).slice(0, 3).forEach((r) => hints.push(`r${r.id} sliver ${((2 * r.area) / r.perim).toFixed(1)} px`));
   regs.filter((r) => !['drop', 'text', 'box'].includes(kindOf(s, r.id)) && r.area > total * 0.002 && conf(s, r.id) < 0.8).slice(0, 3).forEach((r) => hints.push(`r${r.id} conf ${conf(s, r.id).toFixed(2)} (merge? tolerance r${r.id} ${(s.tol / 2).toFixed(1)}?)`));
   if (o.notes?.length) lines.push('dropped: ' + o.notes.join(' · '));
   if (hints.length) lines.push('hints: ' + hints.slice(0, 10).join(' · ') + (hints.length > 10 ? ` (+${hints.length - 10})` : ''));
