@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { analyze, cutToCrop } from '../../src/scene/analyze.js';
+import { analyze, cutToCrop, ownInks, recompute } from '../../src/scene/analyze.js';
 import { summary } from '../../src/scene/summary.js';
+import { applyEdits } from '../../src/scene/edits.js';
 import { overlay } from '../../src/scene/overlay.js';
 import { paint, rect, ellipse, below, type RGB } from './scene-fixtures.js';
 import type { Params } from '../../src/scene/types.js';
@@ -48,18 +49,26 @@ describe('analyze', () => {
     expect(s.seg.regions.filter((r) => r.area > 0).length).toBe(51);
   }, 60000);
 
-  it('a small region of its own colour gets its own ink; the others keep theirs (ownInks)', { timeout: 20_000 }, () => {
-    // four inks allowed: background, skin, dark and brown win; the small red patch (lips) gets brown, the nearest
+  it('a small region of its own colour gets its own ink, within the colors cap; the others keep theirs (ownInks, #29)', { timeout: 20_000 }, () => {
+    // the quantizer gets 4 inks: background, skin, dark and brown win; the small red patch (lips) gets brown, the nearest
     const img = paint(400, 300, [rect(40, 40, 200, 200, [233, 190, 160]), rect(260, 40, 120, 100, DARK), rect(260, 150, 120, 90, [130, 75, 50]), rect(110, 150, 40, 18, [190, 30, 40])], { bg: BG, noise: 2 });
-    const s = analyze(img, P({ colors: 4 }), { dir: '/tmp/x', path: 'x.png' });
-    const at = (x: number, y: number) => s.seg.map[y * 400 + x], col = (x: number, y: number) => s.colours[s.meta[at(x, y)].colour];
-    expect(s.quant.k).toBe(4);
-    expect(col(130, 159).a).toBeGreaterThan(50); // red, not brown
-    expect(s.colours.length).toBe(5);
-    expect(s.meta[at(300, 200)].colour).toBeLessThan(4); // brown keeps its own ink
-    const off = analyze(img, P({ colors: 4, ownInks: false }), { dir: '/tmp/x', path: 'x.png' });
-    expect(off.colours[off.meta[off.seg.map[159 * 400 + 130]].colour].a).toBeLessThan(35);
-    expect(s.estRmse).toBeLessThan(off.estRmse);
+    const fresh = () => analyze(img, P({ colors: 4, ownInks: false }), { dir: '/tmp/x', path: 'x.png' });
+    const lips = (s: ReturnType<typeof fresh>) => s.colours[s.meta[s.seg.map[159 * 400 + 130]].colour];
+    // at the cap (colors 4, 4 inks): no new ink, red stays brown
+    const capped = fresh();
+    expect(capped.quant.k).toBe(4);
+    expect(ownInks(capped, 20)).toBe(0);
+    expect(capped.colours).toHaveLength(4);
+    expect(lips(capped).a).toBeLessThan(35);
+    // room for more (colors 16): the red patch gets its own ink, brown keeps its own
+    const open = fresh();
+    open.params.colors = 16;
+    expect(ownInks(open, 20)).toBe(1);
+    expect(open.colours).toHaveLength(5);
+    expect(lips(open).a).toBeGreaterThan(50);
+    expect(open.meta[open.seg.map[200 * 400 + 300]].colour).toBeLessThan(4);
+    recompute(open);
+    expect(open.estRmse).toBeLessThan(capped.estRmse);
   });
 
   it('cutToCrop: a piece that ends in the margin stays whole, one that runs to the margin edge is cut, one only in the margin goes', () => {
@@ -73,6 +82,17 @@ describe('analyze', () => {
     expect(row(1)).toEqual([-1, 1, 1, 1, 1, 1, 1, -1, -1, -1]);
     expect(row(3)).toEqual([-1, -1, -1, 2, 2, 2, 2, -1, -1, -1]);
     expect(row(5)).toEqual([-1, -1, -1, 0, 0, 0, 0, -1, -1, -1]);
+  });
+
+  it('a part crop: a dropped region leaves its pieces outside the crop empty, so nothing is drawn past the crop (#30)', () => {
+    // a blue box crossing the crop's left edge (x 50) and ending in the margin (x 30) on paper
+    const img = paint(300, 200, [rect(30, 60, 100, 50, BLUE)], { bg: BG, noise: 1 });
+    const s = analyze(img, P({ crop: [50, 20, 140, 120] }), { dir: '/tmp/x', path: 'x.png' });
+    const [ix] = s.inner!, box = s.seg.map[(s.inner![1] + 60) * s.work.w + ix + 10];
+    const minX = () => Math.min(...s.shapes.flatMap((sh) => sh.loops.flat(2).map((p) => p[0])));
+    expect(minX()).toBeLessThan(ix - 5); // the box runs into the margin
+    applyEdits(s, ['drop r' + box]);
+    expect(minX()).toBeGreaterThan(ix - 1.5); // the paper filling its place stops at the crop
   });
 });
 

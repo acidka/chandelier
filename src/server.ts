@@ -13,6 +13,7 @@ import { fail, ArgError, type Ctx, type ToolDef } from './tools/types.js';
 import { respond, runStep } from './tools/respond.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { VERSION } from './version.js';
+import { decodePng, encodePng, resize } from './image.js';
 import { defaultSettings } from './settings.js';
 import { profile, toolsTool } from './tools/tools_meta.js';
 
@@ -36,12 +37,39 @@ export async function callTool(tool: ToolDef, args: any, ctx: Ctx): Promise<Call
   // when it isn't the default one
   const note = !r.isError && POSITIONAL.has(tool.name) && !(tool.name === 'preview' && args?.image) ? frameNote(ctx.settings, callFrames(tool.name, args)) ?? `units: ${ctx.settings.units}` : null;
   if (note) r.content.push({ type: 'text', text: note });
+  fitImages(r);
   if (LOG) {
     // reply size: what the agent re-reads on every later request (text chars; images counted, not sized)
     const chars = r.content.reduce((n, c) => n + (c.type === 'text' ? c.text.length : 0), 0), images = r.content.filter((c) => c.type === 'image').length;
     log({ tool: tool.name, ...(typeof args?.action === 'string' ? { action: args.action } : {}), ms: Math.round((performance.now() - t) * 10) / 10, ok: !r.isError, chars, ...(images ? { images } : {}), reply: ctx.settings.reply, error: r.isError ? firstText(r).slice(0, 300) : undefined });
   }
   return r;
+}
+
+/** Image budget of one reply (base64 characters). Claude Code drops a server that writes 16 MB without a message
+ * boundary (bug #28: preview with 5 regions at 1400 px + a reference), and the API takes images up to 5 MB each. */
+export const REPLY_IMAGES = { total: 6_000_000, each: 3_700_000 };
+
+/** Shrink a reply's PNG images, all by one factor, when they pass the budget; say so in a note. */
+export function fitImages(r: CallToolResult, budget = REPLY_IMAGES): void {
+  const imgs = r.content.filter((c) => c.type === 'image' && c.mimeType === 'image/png') as { type: 'image'; data: string; mimeType: string }[];
+  const total = imgs.reduce((n, c) => n + c.data.length, 0), biggest = Math.max(0, ...imgs.map((c) => c.data.length));
+  if (!imgs.length || (total <= budget.total && biggest <= budget.each)) return;
+  // PNG size goes roughly with the pixel count: scale sides by the square root, with a margin; recheck once
+  let k = 0.95 * Math.sqrt(Math.min(budget.total / total, budget.each / biggest));
+  for (let pass = 0; pass < 6; pass++) {
+    const out = imgs.map((c) => {
+      const im = decodePng(Buffer.from(c.data, 'base64'));
+      return encodePng(resize(im, Math.max(16, Math.round(im.w * k)), Math.max(16, Math.round(im.h * k)))).toString('base64');
+    });
+    const t2 = out.reduce((n, d) => n + d.length, 0), b2 = Math.max(...out.map((d) => d.length));
+    if ((t2 <= budget.total && b2 <= budget.each) || pass === 5) {
+      imgs.forEach((c, i) => { c.data = out[i]; });
+      r.content.push({ type: 'text', text: `images shrunk ×${k.toFixed(2)} to fit one reply (${(total / 1e6).toFixed(1)} M base64 chars over the ${(budget.total / 1e6).toFixed(0)} M budget): fewer regions or a smaller max_px per call for full size` });
+      return;
+    }
+    k *= 0.75;
+  }
 }
 
 // Tools whose arguments or results are positions in the session frame.

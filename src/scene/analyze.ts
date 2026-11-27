@@ -175,8 +175,9 @@ export function ownInks(s: Scene, minInner: number): number {
     const m = inner[i];
     let best = -1, bd = Infinity;
     s.colours.forEach((c, ci) => { const d = de76(m.L, m.a, m.b, c.L, c.a, c.b); if (d < bd) { bd = d; best = ci; } });
-    if (bd > (best >= first ? s.params.minDe * 1.5 : T)) {
-      if (s.colours.length >= 64) continue;
+    // a new ink only while the scene has fewer than `colors` (bug #29: colors 2 came back with 11 inks); at the cap the
+    // region still moves to an existing ink nearer than its own
+    if (bd > (best >= first ? s.params.minDe * 1.5 : T) && s.colours.length < Math.min(64, s.params.colors)) {
       s.colours.push({ L: m.L, a: m.a, b: m.b }); best = s.colours.length - 1;
     }
     if (best !== s.meta[i].colour) { s.meta[i].colour = best; moved++; }
@@ -213,11 +214,29 @@ export const skipped = (s: Scene) => new Set(s.meta.map((m, i) => (m.drop || m.t
 /** regions not filled: skipped ones and strokes (drawn on top as a centreline; what lies under them fills their place) */
 const unfilled = (s: Scene) => { const k = skipped(s); s.meta.forEach((m, i) => { if (m.stroke && s.seg.regions[i]?.area) k.add(i); }); return k; };
 
+/** the label map the shapes are built from. A crop read with a margin (F25): a region not drawn (dropped, text, a
+ * placeholder) without a fill given leaves its pieces outside the crop empty — otherwise what it sits on would be
+ * stretched over them, out past the build rect (bug #30: frame lines through a part crop came back as background-
+ * coloured bars outside it) */
+function geometryMap(s: Scene): Int32Array {
+  if (!s.inner) return s.seg.map;
+  const skip = skipped(s), [ix, iy, iw, ih] = s.inner, { w, h } = s.work;
+  if (![...skip].some((r) => s.meta[r].fill === undefined)) return s.seg.map;
+  const gm = new Int32Array(s.seg.map);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (x >= ix && x < ix + iw && y >= iy && y < iy + ih) continue;
+    const i = y * w + x, r = gm[i];
+    if (r >= 0 && skip.has(r) && s.meta[r].fill === undefined) gm[i] = -1;
+  }
+  return gm;
+}
+
 /** geometry and checks from the current labels and meta */
 export function recompute(s: Scene): void {
   const { w, h } = s.work;
   s.seg.regions = regionStats(s.seg.map, w, h, s.seg.regions.length, s.lab, s.quant.labels);
-  s.pm = planarMap(s.seg.map, w, h);
+  const gm = geometryMap(s);
+  s.pm = planarMap(gm, w, h);
   const tolOf = (e: { left: number; right: number }) => s.edgeTol?.[e.left < e.right ? `${e.left},${e.right}` : `${e.right},${e.left}`] ?? Math.min(...[e.left, e.right].map((r) => (r >= 0 ? s.meta[r].tol ?? s.tol : s.tol)));
   s.fits = fitEdges(s.pm, { tolOf });
   s.z = applyZ(s, zOrder(s.pm, s.seg.regions));
@@ -228,7 +247,7 @@ export function recompute(s: Scene): void {
   // strokes (F18): one centreline each, slotted into the stack at the region's z
   for (const [i, m] of s.meta.entries()) {
     if (!m.stroke || !s.seg.regions[i]?.area || skipped(s).has(i)) continue;
-    const st = centreline(s.seg.map, w, h, i, s.seg.regions[i].bbox, m.tol ?? s.tol);
+    const st = centreline(gm, w, h, i, s.seg.regions[i].bbox, m.tol ?? s.tol);
     if (!st) continue;
     const at = shapes.findIndex((sh) => s.z[sh.region] > s.z[i]);
     shapes.splice(at < 0 ? shapes.length : at, 0, { region: i, loops: strokeOutline(st), raw: [], holes: st.closed, stroke: st });

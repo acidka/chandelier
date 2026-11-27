@@ -1,6 +1,6 @@
 # Bug list
 
-Last updated: 2026-11-27 (bugs #1–#26 fixed or closed; #28–#30 open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
+Last updated: 2026-11-27 (bugs #1–#26, #28–#30 fixed or closed; none open) · Legend: ⏳ open · 🔍 to verify (not seen failing, not tested either) · ✅ fixed ·
 Severity: 🔴 breaks a job · 🟠 wrong result with a workaround · 🟡 annoyance / limitation
 
 Chandelier's own bugs and gaps, to fix later. **Illustrator's** quirks (crashes on certain API calls, renumbered
@@ -9,13 +9,10 @@ them. When a bug is fixed: tick it here, move it to "Fixed", add a [roadmap](roa
 
 ## Open
 
-Illustrator-side issues seen on Windows are quirks C30, C31. (#27 is on branch `future/plan-then-run`.)
+Illustrator-side issues seen on Windows are quirks C30, C31. No open bugs (#27 is on branch `future/plan-then-run`).
 
 | # | Sev. | Found | Where | Bug | Workaround | Fix idea |
 |---|---|---|---|---|---|---|
-| 28 | 🔴 | 2026-11-27, suite 08 v4 | `preview` with several `region`s, large `max_px` and a `reference` | One reply carried > 16 MB of images; Claude Code disconnects a server that writes 16 MB without a message boundary ("wrote >16MB to stdout…"), so the server dropped mid-run: scenes in its temp folder gone, session units back to pt | Fewer regions or a smaller `max_px` per call | Cap a reply's image bytes (shrink every image of the call to fit ~4 MB in total; say so in the reply) |
-| 29 | 🟠 | 2026-11-27, suite 06 v4 (branch `feature/scene-analyze`) | `scene analyze`, own-colour inks (F52) | `colors: 2` came back with 11 inks: the own-colour pass adds inks past the `colors` cap | `cN = c0` merges in the edit | Add own inks only while the scene has fewer than `colors` inks |
-| 30 | 🟡 | 2026-11-27, suite 06 v4 (branch `feature/scene-analyze`) | `scene` part crop with margin (F25) | Frame lines crossing the crop were kept whole into the margin; dropped, their area was repainted with the background ink outside the build rect (hidden only because the background was the same navy) | `drop … fill none` | A dropped region's pieces outside the crop are left empty, not filled |
 
 ## To verify
 
@@ -31,6 +28,9 @@ Recent fixes found during work (older ones are in the roadmap change log):
 
 | Fixed | Bug | Where it is recorded |
 |-------|-----|----------------------|
+| 2026-11-27 | #28 🔴 one `preview` reply (5 regions at 1400 px + a reference) passed 16 MB and Claude Code dropped the server (suite 08 v4): every reply's PNGs now fit 6 M base64 chars in total and 3.7 M each — shrunk by one factor, with a note (`fitImages` in `src/server.ts`, any tool) | roadmap change log; `test/unit/reply-images.test.ts` |
+| 2026-11-27 | #29 🟠 `scene analyze {colors: 2}` came back with 11 inks (suite 06 v4): own-colour inks (F52) are added only while the scene has fewer than `colors` | roadmap change log; scene-analyze test |
+| 2026-11-27 | #30 🟡 frame lines crossing a part crop, dropped, were repainted with the background ink outside the build rect (suite 06 v4): a dropped region's pieces outside the crop are left empty (`fill rF` still fills them) | roadmap change log; scene-analyze test |
 | 2026-11-27 | #16 (suite 08) `path_ops` box in a batch step with `artboard` "in the artboard-0 frame": not reproduced — the box comes back in the step's frame (checked live with a pinned `configure {artboard: 0}` as in the run); the misleading frame note (#22) is the likely cause | `test/live-bugs-1127.mjs` |
 | 2026-11-27 | #17 (suite 04) `preflight` listed every transparent item: transparency is now one line per layer + blend + opacity with a `count` (30 shade items → 1 line) | `test/live-bugs-1127.mjs` |
 | 2026-11-27 | #18 (suite 06) `layers {add/reorder, position: "below:<locked layer>"}` failed: the neighbour is unlocked (and shown) for the move, then restored | `test/live-bugs-1127.mjs` |
