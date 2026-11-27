@@ -82,6 +82,16 @@ if (-not $loaded) {
 
 $FAKE = $env:CHANDELIER_FAKE_COM -eq '1'
 $PROGID = 'Illustrator.Application'
+# CHANDELIER_APP = the path of one install's Illustrator.exe when several are there: its version's ProgID
+# (Illustrator.Application.<major>), only that executable's process, and launch starts that one
+$APP_EXE = $env:CHANDELIER_APP
+$APP_MISSING = $false
+if ($APP_EXE) {
+  if (Test-Path -LiteralPath $APP_EXE -PathType Leaf) {
+    $major = (Get-Item -LiteralPath $APP_EXE).VersionInfo.FileMajorPart
+    if ($major) { $PROGID = "Illustrator.Application.$major" }
+  } else { $APP_MISSING = $true }
+}
 $HR_NOT_RUNNING = [Convert]::ToInt32('800401E3', 16)   # MK_E_UNAVAILABLE
 $HR_NOT_INSTALLED = [Convert]::ToInt32('800401F3', 16) # CO_E_CLASSSTRING
 $HR_UNREACHABLE = [Convert]::ToInt32('80080005', 16)   # CO_E_SERVER_EXEC_FAILURE: a process exists, COM has no Illustrator
@@ -97,7 +107,11 @@ function Fail([int]$hr, [string]$msg) {
   throw [System.Runtime.InteropServices.COMException]::new($msg, $hr)
 }
 
-function Get-IllustratorProcess { Get-Process -Name 'Illustrator' -ErrorAction SilentlyContinue | Select-Object -First 1 }
+function Get-IllustratorProcess {
+  $ps = Get-Process -Name 'Illustrator' -ErrorAction SilentlyContinue
+  if ($APP_EXE) { $ps = $ps | Where-Object { $_.Path -and ($_.Path -ieq (Resolve-Path -LiteralPath $APP_EXE).Path) } }
+  $ps | Select-Object -First 1
+}
 
 function Is-Running {
   if ($FAKE) { return $env:CHANDELIER_FAKE_RUNNING -ne 'no' }
@@ -154,6 +168,7 @@ function Find-Illustrator {
 }
 
 function Handle($req) {
+  if ($APP_MISSING) { Fail $HR_NOT_RUNNING "CHANDELIER_APP: no file at $APP_EXE (give the path of Illustrator.exe)" }
   switch ([string]$req.op) {
     'running' { if (Is-Running) { return 'yes' } else { return 'no' } }
     'activate' {
@@ -167,7 +182,7 @@ function Handle($req) {
     }
     'launch' {
       if ($FAKE -or (Is-Running)) { return 'ok' }
-      $exe = Find-Illustrator
+      $exe = if ($APP_EXE) { $APP_EXE } else { Find-Illustrator }
       if (-not $exe) { Fail $HR_NOT_INSTALLED 'Illustrator.exe not found (App Paths registry key or Program Files\Adobe)' }
       Start-Process -FilePath $exe | Out-Null
       return 'ok'

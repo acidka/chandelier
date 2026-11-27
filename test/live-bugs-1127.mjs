@@ -133,6 +133,17 @@ await call('delete_items', { refs: 'name:cp' });
   await call('delete_items', { refs: 'layer:Ring' });
 }
 
+// fewer turns: two zooms of a render in one call; a fitted edge that ends exactly on another curve
+await call('preview', { artboard: 1, region: [[0, 0, 100, 50], [100, 50, 100, 50]], width: 200 }, { check: (v, r) => {
+  assert(r.content.filter((c) => c.type === 'image').length === 2, 'two images');
+  assert(/^region 1 \[100, 50, 100, 50\]: /.test(r.content.filter((c) => c.type === 'text')[1].text), 'second labelled');
+} });
+await call('create_path', { fit: [[[0, 40], [30, 41], [60, 40], [80, 40]], { onto: [[100, 0], [101, 20], [100.5, 50], [100, 80]] }], stroke: '#000000', name: 'snapped', layer: 'Under' });
+await call('get_items', { refs: 'name:snapped', points: true }, { check: (v) => {
+  const p = v.items[0].path, last = p[p.length - 1], end = Array.isArray(last) ? last : last.a;
+  assert(Math.abs(end[0] - 100.8) < 0.8 && Math.abs(end[1] - 40) < 0.5, 'end on the other curve: ' + JSON.stringify(end));
+} });
+
 // #25: save says saved
 await call('documents', { action: 'save', path: join(tmp, 'bugs.ai') }, { check: (v) => { assert(v.saved === true, '#25 saved flag: ' + JSON.stringify(v)); } });
 await call('documents', { action: 'save' }, { check: (v) => { assert(v.saved === true, '#25 plain save'); } });

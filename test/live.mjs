@@ -20,6 +20,8 @@ guard(client); // abort if another document becomes active mid-run
 
 let failures = 0;
 const txt = (r) => r.content.filter((c) => c.type === 'text').map((c) => c.text).join(' ');
+// the reply's JSON is its first text block (notes such as "units: pt" follow as their own blocks)
+const json1 = (r) => JSON.parse(r.content.find((c) => c.type === 'text')?.text ?? '');
 async function call(name, args = {}, { expectError = false, check } = {}) {
   const t = performance.now();
   const r = await client.callTool({ name, arguments: args });
@@ -27,7 +29,7 @@ async function call(name, args = {}, { expectError = false, check } = {}) {
   const img = r.content.find((c) => c.type === 'image');
   let ok = !!r.isError === expectError;
   let note = '';
-  if (ok && check) { try { const v = check(r.isError ? txt(r) : JSON.parse(txt(r)), r); if (v === false) ok = false; } catch (e) { ok = false; note = ' ✗ ' + e.message; } }
+  if (ok && check) { try { const v = check(r.isError ? txt(r) : json1(r), r); if (v === false) ok = false; } catch (e) { ok = false; note = ' ✗ ' + e.message; } }
   if (!ok) failures++;
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name.padEnd(12)} ${ms.padStart(7)} ms  ${txt(r).slice(0, 220)}${img ? `  [image ${Math.round(img.data.length * 0.75 / 1024)} KB]` : ''}${note}`);
   return r;
@@ -74,8 +76,8 @@ await call('batch', { steps: [
 await call('selection', { action: 'clear' });
 const hasImage = (_v, r) => assert(r.content.some((c) => c.type === 'image'), 'image');
 await call('preview', { max_px: 400 }, { check: hasImage });
-await call('preview', { refs: 'name:Title block', max_px: 300 }, { check: (_v, r) => { hasImage(_v, r); const v = JSON.parse(txt(r)); assert(v.of === '1 item(s)' && Math.max(...v.px) <= 300, 'items preview'); } });
-await call('preview', { region: [0, 0, 100, 100], max_px: 50, background: 'transparent' }, { check: (_v, r) => { const v = JSON.parse(txt(r)); assert(v.px[0] === 50, 'region downscaled to 50 px'); } });
+await call('preview', { refs: 'name:Title block', max_px: 300 }, { check: (_v, r) => { hasImage(_v, r); const v = json1(r); assert(v.of === '1 item(s)' && Math.max(...v.px) <= 300, 'items preview'); } });
+await call('preview', { region: [0, 0, 100, 100], max_px: 50, background: 'transparent' }, { check: (_v, r) => { const v = json1(r); assert(v.px[0] === 50, 'region downscaled to 50 px'); } });
 await call('document_info', {}, { check: (v) => assert(v.globalSwatches.some((s) => s.startsWith('Navy')) && v.paragraphStyles.includes('Title'), 'swatch + style') });
 await call('documents', { action: 'save', path: join(dir, 'live.ai') }, { check: (v) => { docName = v.name; } });
 await call('documents', { action: 'close', name: docName });

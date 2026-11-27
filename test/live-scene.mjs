@@ -43,9 +43,9 @@ await call('scene', { action: 'build', id }, { check: (v) => { built = v; assert
 if (built.ms !== undefined) console.log(`build: ${built.ms} ms, ${built.bytes} bytes, ${built.anchors} segments`);
 // one undo step removes the whole build; redo brings it back
 await call('history', { action: 'undo' });
-await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(!v.total, 'undo removed the build: ' + JSON.stringify(v).slice(0, 120)) });
+await call('find_items', { name: 'Scene r*', top_level: true }, { check: (v) => assert(!v.total, 'undo removed the build: ' + JSON.stringify(v).slice(0, 120)) });
 await call('history', { action: 'redo' });
-await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(v.total === 7, 'redo: ' + v.total) });
+await call('find_items', { name: 'Scene r*', top_level: true }, { check: (v) => assert(v.total === 7, 'redo: ' + v.total) });
 await call('layers', { action: 'list' }, { check: (v) => assert(JSON.stringify(v).includes('"Scene"'), 'layer Scene') });
 await call('swatches', { action: 'list', kind: 'global' }, { check: (v) => assert(JSON.stringify(v).includes('Scene c0'), 'global swatches') });
 await call('preview', { reference: png, width: 400 }, { check: (v) => assert(v.rmse < 0.05, 'rmse vs the image ' + v.rmse) });
@@ -53,7 +53,7 @@ await call('preview', { reference: png, width: 400 }, { check: (v) => assert(v.r
 await call('preview', { region: [150, 160, 100, 100], width: 400 }, { check: (v, r) => assert(r.content[0].type === 'image', 'close-up') });
 // re-build: the layer is replaced, no duplicates
 await call('scene', { action: 'build', id }, { check: (v) => assert(v.items === 7, 'rebuild items ' + v.items) });
-await call('find_items', { refs: 'layer:Scene' }, { check: (v) => assert(v.total === 7, 'items on the layer after rebuild: ' + v.total) });
+await call('find_items', { name: 'Scene r*', top_level: true }, { check: (v) => assert(v.total === 7, 'items on the layer after rebuild: ' + v.total) });
 // edit: drop the dot, the band below fills its place
 await call('scene', { action: 'edit', id, edits: ['drop r6', 'name c0 Paper'] });
 await call('scene', { action: 'build', id }, { check: (v) => assert(v.items === 6, 'after drop ' + v.items) });

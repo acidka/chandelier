@@ -25,11 +25,13 @@ guard(client); // abort if a document this test didn't create becomes active
 
 let failures = 0;
 const txt = (r) => r.content.filter((c) => c.type === 'text').map((c) => c.text).join(' ');
+// the reply's JSON is its first text block (notes such as "units: pt" follow as their own blocks)
+const json1 = (r) => JSON.parse(r.content.find((c) => c.type === 'text')?.text ?? '');
 async function call(name, args, check) {
   const t = performance.now();
   const r = await client.callTool({ name, arguments: args });
   let ok = !r.isError, note = '';
-  if (ok && check) { try { check(JSON.parse(txt(r))); } catch (e) { ok = false; note = ' ✗ ' + e.message; } }
+  if (ok && check) { try { check(json1(r)); } catch (e) { ok = false; note = ' ✗ ' + e.message; } }
   if (!ok) failures++;
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name.padEnd(10)} ${(performance.now() - t).toFixed(0).padStart(6)} ms  ${txt(r).slice(0, 160)}${note}`);
   return r;
@@ -44,7 +46,7 @@ const fileOk = (p, magic) => { const b = readFileSync(p); if (!b.length || !b.su
 
 await call('configure', { activate: false });
 const r = await call('documents', { action: 'new', width: 200, height: 120, units: 'pt', title: 'activate-test' });
-const name = JSON.parse(txt(r)).name;
+const name = json1(r).name;
 await call('create_shape', { shape: 'rect', x: 20, y: 20, w: 160, h: 80, fill: '#1e2a44' });
 
 for (const round of ['background', 'minimized']) {

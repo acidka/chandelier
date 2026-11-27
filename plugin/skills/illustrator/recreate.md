@@ -41,6 +41,8 @@ Skip what already exists (a document, a reference artboard): reuse it.
 
 - `preview {image, grid: true}` (no Python/PIL/Swift/sips): pixel size, ppi, `content_box` (the page in a scan or
   photo). `region` zooms a part (up to 8×), `sample` reads colours, `page` renders a PDF or .ai page.
+- **Measure in few calls:** one `preview {image, region: [[…], […]], sample: [[x, y], …]}` gives up to 6 zooms and
+  24 colour samples at once; plan the parts to look at, then ask for them together.
 - **Reading a zoomed preview:** grid labels are **image px**; a position you read off the shown picture is
   `region.x + shown px ÷ zoom` (the reply gives `zoom`). For exact points use a small region (high zoom) around the
   point, or `sample` (its `at` is image px), instead of estimating from a wide view.

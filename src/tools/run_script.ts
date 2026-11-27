@@ -30,6 +30,44 @@ export function recipeList(): { name: string; does: string; args: string }[] {
   });
 }
 
+/** run_script {recipe: "help"}: every AIA.* helper with its arguments, the option keys its body reads and the comment
+ * above it — read from the runtime itself, so it never goes stale (token use: a calendar builder read core.jsx through
+ * the shell to learn AIA.text and AIA.pstyle options). */
+export function helperReference(): string {
+  const dir = asset('runtime'), out: string[] = [];
+  const files = readdirSync(dir).filter((x) => x.endsWith('.jsx')).sort().map((f) => readFileSync(join(dir, f), 'utf8').split('\n'));
+  // a function's body: from its line to the closing brace at its own indent
+  const body = (lines: string[], i: number) => { const ind = lines[i].match(/^ */)![0].length, b: string[] = []; for (let k = i; k < lines.length; k++) { b.push(lines[k]); if (k > i && new RegExp(`^ {${ind}}\\};?\\s*$`).test(lines[k])) break; } return b; };
+  // every function that takes options (o, opts, a): name → its body and the name of that argument
+  const fns = new Map<string, { body: string[]; arg: string }>();
+  for (const lines of files) lines.forEach((l, i) => {
+    const m = l.match(/^\s*(?:function (\w+)|A\.(\w+) = function|var (\w+) = function)\s*\(([^)]*)\)/);
+    if (!m) return;
+    const arg = m[4].split(',').map((x) => x.trim()).find((x) => /^(o|opts|a|s)$/.test(x));
+    if (arg) fns.set(m[1] ?? m[2] ?? m[3], { body: body(lines, i), arg });
+  });
+  // option keys a function reads, following the options object into the functions it is passed to
+  const keysOf = (name: string, seen = new Set<string>()): Set<string> => {
+    const f = fns.get(name), keys = new Set<string>();
+    if (!f || seen.has(name)) return keys;
+    seen.add(name);
+    for (const l of f.body) {
+      for (const km of l.matchAll(new RegExp(`\\b${f.arg}\\.([a-z_]\\w*)`, 'g'))) keys.add(km[1]);
+      for (const cm of l.matchAll(new RegExp(`\\b(?:A\\.)?(\\w+)\\(([^()]*\\b${f.arg}\\b[^()]*)\\)`, 'g'))) if (cm[1] !== name) for (const k of keysOf(cm[1], seen)) keys.add(k);
+    }
+    return keys;
+  };
+  for (const lines of files) lines.forEach((l, i) => {
+    const m = l.match(/^ {2}A\.([a-zA-Z]\w*) = function \(([^)]*)\)/);
+    if (!m) return;
+    const doc: string[] = [];
+    for (let k = i - 1; k >= 0 && /^\s*\/\//.test(lines[k]); k--) doc.unshift(lines[k].replace(/^\s*\/\/\s?/, ''));
+    const keys = keysOf(m[1]);
+    out.push(`AIA.${m[1]}(${m[2]})${keys.size ? ` {${[...keys].join(', ')}}` : ''}${doc.length ? ' — ' + doc.join(' ') : ''}`);
+  });
+  return out.join('\n');
+}
+
 function codeOf(a: { code?: string; file?: string; recipe?: string }): string {
   let body = a.code;
   if (a.file) body = readFileSync(resolve(a.file), 'utf8').replace(/^\ufeff/, '');
@@ -48,7 +86,7 @@ export const run_script: ToolDef = {
 Give "code" (a function BODY: use \`return\` to get a value back as JSON; Illustrator objects come back as {type, uuid, name, box}) or "file" (a UTF-8 .jsx file with the same body; "args" are arguments[0..]). Non-ASCII text is safe in both.
 ExtendScript is ES3: var only, no let/const/arrow functions/template strings, no Array.indexOf/map/forEach, no JSON object (use AIA.json / AIA.parse).
 Errors return the message and the line number in your code. retries:n re-runs on MRAP or a "RETRY" result.
-recipe: a built-in builder instead of code, options in args[0] (recipe:"list" names them).
+recipe: a built-in builder instead of code, options in args[0] (recipe:"list" names them; "help": every AIA helper with its options).
 ${HELPERS}`,
   shape: {
     code: z.string().optional(), file: z.string().optional(), recipe: z.string().optional(),
@@ -57,6 +95,7 @@ ${HELPERS}`,
   },
   step: (a) => ({ cmd: 'script', args: { code: codeOf(a), args: a.args ?? [] } }),
   async run(a, { rt }) {
+    if (a.recipe === 'help') return text('AIA helpers (the runtime\'s own list; positions in session units, options last as an object):\n' + helperReference());
     if (a.recipe === 'list') return text(J({ recipes: recipeList(), how: 'run_script {recipe: name, args: [{...options}]} - positions and sizes in session units, type sizes in pt' }));
     const body = codeOf(a);
     const t = performance.now();

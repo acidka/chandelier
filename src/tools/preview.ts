@@ -30,11 +30,11 @@ export const preview: ToolDef = {
   description: `Render the active document to a PNG image. One of: artboard (default active), refs (framed by pad, default 5%), region ([x,y,w,h] from the artboard's top-left; may lie off it); with artboard, rect and differences are from its top-left. max_px = longest side (default 1024) or width in px; background white|transparent; save_to copies the PNG (with reference also <name>.compare.png).
 reference: image (PNG/JPEG) of the page to compare → [reference | preview | red difference] + rmse (0 = same), content_box (shift/scale) and up to 6 differences {rect, kind shifted (shift = preview − reference) | missing | extra | changed, items}; reference_crop [x,y,w,h] px = the page in it. With region/refs the same part of the reference is compared.
 more [artboards] → extra renders (500 px); preflight, info (document_info) → those results too.
-image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background, no Python/Swift needed; region (px; pages: session units) crops and zooms; grid: true|step (also on a render); sample [[x,y]|[x,y,w,h]] (image: anywhere, not only in region; with reference: both, + ΔE) → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
+image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, page) → px, ppi, content_box, background; region (px; pages: session units; a list of up to 6: one zoom each) crops and zooms; grid: true|step (also on a render); sample [[x,y]|[x,y,w,h]] (image: anywhere, not only in region; with reference: both, + ΔE) → hex, rgb, cmyk; profile: true|{step,min,rows} → edge tracks {id, tone, above, below, pts} for create_path fit.`,
   shape: {
     artboard: z.number().min(0).optional(),
     refs: refSchema.optional(),
-    region: z.array(z.number()).length(4).optional(),
+    region: z.union([z.array(z.number()).length(4), z.array(z.array(z.number()).length(4)).min(1).max(6)]).optional(),
     pad: z.number().min(0).optional(),
     max_px: z.number().min(16).max(4096).optional(),
     width: z.number().min(16).max(8192).optional(),
@@ -52,6 +52,17 @@ image: a file instead (PNG/JPEG…; .pdf/.ai/.eps/.svg page via Illustrator, pag
     profile: z.union([z.boolean(), z.object({ step: z.number().positive().optional(), min: z.number().positive().optional(), rows: z.boolean().optional() })]).optional(),
   },
   async run(a, ctx) {
+    // several regions: one zoom each, in one call (token use: measuring a page took one call per part)
+    if (Array.isArray(a.region?.[0])) {
+      if (a.save_to || a.reference || a.more?.length) return fail('several regions: one zoom each; save_to, reference and more go with one region.');
+      const res: CallToolResult = { content: [] };
+      for (const [k, r] of (a.region as number[][]).entries()) {
+        const one = await preview.run!({ ...a, region: r, ...(k ? { sample: undefined, preflight: undefined, info: undefined } : {}) }, ctx);
+        if (one.isError) return one;
+        for (const c of one.content) res.content.push(c.type === 'text' ? { type: 'text', text: `region ${k} [${r.join(', ')}]: ` + c.text } : c);
+      }
+      return res;
+    }
     if (a.image) return imagePreview(a, ctx);
     if (a.page || a.profile) return fail('page and profile work with image (a file to look at).');
     if ((a.grid && a.reference) || ((a.grid || a.sample) && a.more?.length)) return fail('grid works on one render without reference; sample on one render (with reference: both images) or with image.');

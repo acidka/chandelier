@@ -14,7 +14,7 @@ const poster = (w = 400, h = 300, noise = 2) => paint(w, h, [
 ], { bg: BG, noise });
 
 describe('analyze', () => {
-  it('poster: exact region count, low error, summary and overlay in budget', () => {
+  it('poster: exact region count, low error, summary and overlay in budget', { timeout: 20_000 }, () => { // ~1.5 s alone; the full suite runs files in parallel
     const s = analyze(poster(), P(), { dir: '/tmp/x', path: 'x.png' });
     expect(s.seg.regions.filter((r) => r.area > 0)).toHaveLength(7); // bg, 3 bands, rect, disc, dot
     expect(s.estRmse).toBeLessThan(0.02);

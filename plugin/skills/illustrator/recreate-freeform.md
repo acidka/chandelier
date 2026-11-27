@@ -84,7 +84,9 @@ points' units after `map` (with a px→mm map, 0.3–0.4 mm); without `map`, bef
 - **Shared stretches:** each list in `fit: [...]` is fitted on its own, so split an edge at the merge point and pass the
   *same* sub-list (same points, same tolerance) in every shape that uses it: identical curves, no slivers. Two paths
   fitted from different point lists that must meet: give both the same `anchors: [[x, y], …]` (the nearest measured
-  point becomes an anchor). Joints get matching curvature on both sides automatically (within the tolerance). End
+  point becomes an anchor). A list that must **end on** another curve (a band edge meeting a wave): put `{onto: [the
+  other curve's points]}` right after it in `fit` — its end lands exactly on that curve (no boolean cutter). Joints get
+  matching curvature on both sides automatically (within the tolerance). End
   sub-lists where both run the same direction, or the joint shows a slight bend.
 - **Joining pieces from different tracks into one edge** (an edge read partly from one track, partly from another):
   leave out the few points on each side of a steep join and let the fit bridge the gap; joining them point to point

@@ -60,7 +60,7 @@ await call('swatches', { action: 'add', kind: 'gradient', name: 'LiveG', type: '
 await call('create_shape', { x: 10, y: 10, w: 40, h: 40, fill: 'gradient:LiveG@90', name: 'grad' });
 for (const [spec, want] of [['gradient:LiveG@-45', 'gradient:LiveG@-45'], ['gradient:LiveG@180', 'gradient:LiveG@180'], ['gradient:LiveG', 'gradient:LiveG']]) {
   await call('modify_items', { refs: 'name:grad', fill: spec });
-  await call('get_items', { refs: 'name:grad', props: ['fill'] }, { check: (v) => assert(v.items[0].fill === want, `gradient angle: ${spec} → ${v.items[0].fill}`) });
+  await call('get_items', { refs: 'name:grad', fields: ['fill'] }, { check: (v) => assert(v.items[0].fill === want, `gradient angle: ${spec} → ${v.items[0].fill}`) });
 }
 await call('delete_items', { refs: 'name:grad' });
 

@@ -28,7 +28,8 @@ The server's own instructions carry the conventions; this skill is how to use th
    `create_text {grid}` for tables and calendars; every text gets its `paragraph_style`; per-step `artboard: k` for
    other pages. Or a ready **recipe** (`run_script {recipe: "list"}`: calendar month, labels sheet, business card, style
    guide, colour chips), or **one `run_script` builder** (`file` + `args`) when logic is easier in code; start it with
-   `AIA.fresh("Layer")` so a re-run replaces instead of adding.
+   `AIA.fresh("Layer")` so a re-run replaces instead of adding. `run_script {recipe: "help"}` lists every `AIA.*` helper
+   with the options it takes — no need to read the runtime's source.
 4. **One check call:** `preview {reference?, more: [other artboards], preflight: true}`. Fix what it shows (one
    batch), check once more.
 5. **One finish call:** `documents save {path, export: [{format: "pdf", path}, {format: "png", path, artboards: [0]}]}`. Leave the document open
@@ -53,7 +54,8 @@ constructed), [recreate-freeform.md](recreate-freeform.md) (free-form shapes by 
    the structure, not artwork: no photos or other people's logos — leave a named placeholder. Fix obvious mistakes and
    say so (recreate.md § 1–2).
 3. Measure in pixels: `preview {image, region: [x, y, w, h], grid: 10}` zooms a part (up to 8×) with labelled lines;
-   `sample: [[x, y], [x, y, w, h]]` returns hex, RGB and naive CMYK. A PDF or .ai page (a die-cut template, an
+   **several parts in one call:** `region: [[…], […], …]` (up to 6, one zoom each); `sample: [[x, y], [x, y, w, h], …]`
+   (up to 24 points anywhere in the image) returns hex, RGB and naive CMYK — measure a page in 1–2 calls, not one per part. A PDF or .ai page (a die-cut template, an
    exported proof) works the same with `page` (rendered by Illustrator, in session units). One factor `S = page width in pt ÷ page width in px`; font size ≈ cap height px ÷ 0.7 × S (recreate-type.md § 3).
 4. Build with the loop above, then `preview {reference: "<image>", reference_crop: [x, y, w, h]}`: fix what
    `content_box` (shift/scale) and `differences` show (a `shifted` one has its `shift` and `items`: move them back by it); repeat until full-size close-ups of every corner are clean (recreate.md § 8).
