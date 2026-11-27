@@ -1,0 +1,25 @@
+{
+  "label": "M2-C2v6-2",
+  "file": "/Users/acidka/.claude-personal/projects/-Users-acidka-PhpstormProjects-illustrator-agent/5ec9abb5-919d-4436-8959-5fa3f5159c95.jsonl",
+  "window": {
+    "from": "2026-11-27T09:22:57.359Z",
+    "to": "2026-11-27T09:25:18.832Z"
+  },
+  "wallMinutes": 2.4,
+  "modelRequests": 15,
+  "inputTokensTotal": 840448,
+  "inputTokens": {
+    "uncached": 34,
+    "cacheWrite": 62976,
+    "cacheRead": 777438
+  },
+  "outputTokens": 12911,
+  "toolCalls": 17,
+  "toolCallsByFamily": {
+    "other": 5,
+    "C our MCP": 12
+  },
+  "toolErrorsByFamily": {
+    "other": 1
+  }
+}
