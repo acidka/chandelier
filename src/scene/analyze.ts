@@ -31,13 +31,13 @@ function sortInks(q: Quant): Quant {
 /** the deterministic part before regions: working image, Lab, inks (a saved scene reloads through this) */
 export function prepare(src: Img, p: Params) {
   const d = DETAIL[p.detail];
-  const r = rectify(src, { crop: p.crop, map: p.map, bilinear: p.bilinear, size: p.size, maxPx: p.maxPx });
+  const r = rectify(src, { crop: p.crop, map: p.map, bilinear: p.bilinear, size: p.size, maxPx: p.maxPx, upscale: p.upscale });
   const work = r.img, raw = rgbToLab(work), lab = bilateral(raw, { passes: d.passes });
   const skip = work.a ? work.a.map((v) => (v < 128 ? 1 : 0)) : undefined;
   const quant = sortInks(quantize(lab, { colors: p.colors, minDe: p.minDe, skip }));
   // noise measured at ≤ 600 px: a full-resolution JPEG of flat art has pixel noise too, a photo keeps its grain
   const small = fitLongest(work, 600), sl = rgbToLab(small);
-  return { work, toSource: r.toSource, lab, quant, photo: isPhoto(sl, bilateral(sl)) };
+  return { work, toSource: r.toSource, lab, quant, photo: p.photo ?? isPhoto(sl, bilateral(sl)) };
 }
 
 export function analyze(src: Img, p: Params, o: { id?: string; dir: string; path: string; bytes?: Buffer }): Scene {

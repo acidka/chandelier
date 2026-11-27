@@ -21,6 +21,10 @@ export interface Params {
   minDe: number;
   detail: Detail;
   maxPx: number;
+  /** maxPx was given: a smaller crop or face is upscaled to it (F37); default: never above the source's own px */
+  upscale?: boolean;
+  /** photo mode forced on / off (F28); default: detected from the image's noise */
+  photo?: boolean;
 }
 
 /** an ink: one global swatch at build */

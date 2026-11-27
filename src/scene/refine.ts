@@ -82,9 +82,10 @@ export interface RefineReport {
   /** more fixes of the same kind, counted */
   more?: number;
   left: { r: number; why: string }[];
-  /** the fixes made our own estimate worse: undone, nothing to rebuild */
-  reverted?: boolean;
-  checks: { darkest: { ref: number; scene: number }; lightest: { ref: number; scene: number }; max_segments: { r: number; n: number } };
+  /** the fixes made our own estimate worse: undone, nothing to rebuild ("inks" / "edges": only that kind was undone) */
+  reverted?: boolean | 'inks' | 'edges';
+  /** darkest / lightest are left out when the part has one ink (they would be the same region, F45) */
+  checks: { darkest?: { ref: number; scene: number }; lightest?: { ref: number; scene: number }; max_segments: { r: number; n: number } };
 }
 
 /** apply the fixes for one measurement; recomputes the scene. Undoes them when our own estimate gets worse. */
@@ -107,9 +108,13 @@ export function refine(s: Scene, m: Measure, threshold = 6): RefineReport {
     if (col.swatch) continue; // swatches the user chose stay
     if (list.length > 1 && spread > threshold) { left.push({ r: list[0].r, why: `c${c} misses ΔE ${size.toFixed(1)} but its regions disagree (ΔE ${spread.toFixed(0)} apart: shading?) — give them their own ink (rN = #hex) or ramp` }); continue; }
     if (size <= threshold) continue;
+    // one region far off its ink is shading or a mis-assigned patch, not a colour-conversion shift (F42: a skin shadow
+    // "corrected" by ΔE 26.8 into a dark brown patch): reported, not moved
+    if (list.length === 1 && size > 2.5 * threshold) { left.push({ r: list[0].r, why: `c${c} misses ΔE ${size.toFixed(1)} on its only region: too far for a conversion shift — set rN = #hex or ramp it if the image's colour is wanted` }); continue; }
     s.colours[c] = { ...col, L: col.L + mean[0], a: col.a + mean[1], b: col.b + mean[2] };
     fixed.push({ what: `c${c}`, why: `tone ΔE ${size.toFixed(1)} → corrected` });
   }
+  const inkFixes = fixed.length, inkColours = JSON.parse(JSON.stringify(s.colours));
   // edges: tighter tolerance where the fit misses the image edge (a tolerance set by an edit is left alone)
   s.edgeTol = s.edgeTol ?? {};
   const edgeFixes: RefineReport['fixed'] = [];
@@ -130,16 +135,32 @@ export function refine(s: Scene, m: Measure, threshold = 6): RefineReport {
   const by = (f: (a: number, b: number) => boolean) => live.reduce((p, x) => (f(rl[x.r].L, rl[p.r].L) ? x : p), live[0]);
   const dk = live.length ? by((a, b) => a < b) : null, lt = live.length ? by((a, b) => a > b) : null;
   const L = (id: number) => Math.round(s.colours[s.meta[id].colour].L);
-  let reverted = false;
+  // keep what helps: all fixes, else only the ink fixes or only the edge fixes, else none (F31: one bad kind of fix
+  // reverted everything on a 426-region scene)
+  let reverted: RefineReport['reverted'] = false;
   if (fixed.length) {
+    const edgeTol = { ...s.edgeTol }, worse = () => s.estRmse > before.est + 0.002;
     recompute(s);
-    if (s.estRmse > before.est + 0.002) { s.colours = before.colours; s.edgeTol = before.edgeTol; recompute(s); reverted = true; }
+    if (worse()) {
+      const tries: { kind: 'inks' | 'edges'; colours: typeof before.colours; tol: typeof edgeTol }[] = [];
+      if (inkFixes && edgeFixes.length) tries.push({ kind: 'edges', colours: inkColours, tol: before.edgeTol }, { kind: 'inks', colours: before.colours, tol: edgeTol });
+      let best: (typeof tries)[number] | null = null, bestEst = Infinity;
+      for (const t of tries) {
+        s.colours = JSON.parse(JSON.stringify(t.colours)); s.edgeTol = { ...t.tol }; recompute(s);
+        if (!worse() && s.estRmse < bestEst) { best = t; bestEst = s.estRmse; }
+      }
+      if (best) {
+        s.colours = JSON.parse(JSON.stringify(best.colours)); s.edgeTol = { ...best.tol }; recompute(s);
+        reverted = best.kind;
+        if (best.kind === 'inks') fixed.splice(0, inkFixes); else fixed.splice(inkFixes);
+      } else { s.colours = before.colours; s.edgeTol = before.edgeTol; recompute(s); reverted = true; }
+    }
   }
   let maxSeg = { r: -1, n: 0 };
   for (const sh of s.shapes) { const n = sh.loops.reduce((a, l) => a + l.length, 0); if (n > maxSeg.n) maxSeg = { r: sh.region, n }; }
   return {
-    rmse_before: m.rmse, fixed: reverted ? [] : fixed, ...(more && !reverted ? { more } : {}), left: left.slice(0, 8), ...(reverted ? { reverted } : {}),
-    checks: { darkest: dk ? { ref: Math.round(rl[dk.r].L), scene: L(dk.r) } : { ref: 0, scene: 0 }, lightest: lt ? { ref: Math.round(rl[lt.r].L), scene: L(lt.r) } : { ref: 0, scene: 0 }, max_segments: maxSeg },
+    rmse_before: m.rmse, fixed: reverted === true ? [] : fixed, ...(more && (!reverted || reverted === 'inks') ? { more } : {}), left: left.slice(0, 8), ...(reverted ? { reverted } : {}),
+    checks: { ...(dk && lt && s.meta[dk.r].colour !== s.meta[lt.r].colour ? { darkest: { ref: Math.round(rl[dk.r].L), scene: L(dk.r) }, lightest: { ref: Math.round(rl[lt.r].L), scene: L(lt.r) } } : {}), max_segments: maxSeg },
   };
 }
 

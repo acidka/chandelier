@@ -34,7 +34,7 @@ describe('refine', () => {
     const rep = refine(s, measure(s, s.render));
     expect(rep.fixed.some((f) => f.what === `c${c}`)).toBe(true);
     expect(Math.abs(s.colours[c].L - true0.L)).toBeLessThan(2);
-    expect(rep.checks.darkest.ref).toBeLessThan(rep.checks.lightest.ref);
+    expect(rep.checks.darkest!.ref).toBeLessThan(rep.checks.lightest!.ref);
   });
   it('nothing to do on a good scene', () => {
     const s = analyze(img(), P, { dir: '/tmp', path: 'x' });

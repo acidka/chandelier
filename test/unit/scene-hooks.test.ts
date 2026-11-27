@@ -21,7 +21,7 @@ describe('scene S4 hooks', () => {
     const b = buildSteps(s, { rect: [0, 0, 150, 100] });
     expect(b.regions.some((r) => s.meta[r].text)).toBe(false);
     expect(b.textBoxes).toHaveLength(1);
-    expect(b.textBoxes[0]).toMatchObject({ rect: [7.5, 12.5, 32.5, 20], cap: 20 });
+    expect(b.textBoxes[0]).toMatchObject({ rect: [7.5, 12.5, 32.5, 20], cap: 15 }); // the letters' height (30 px × 0.5), not the box's (F44, F50)
     expect(b.textBoxes[0].colour).toMatch(/^#1e1e1e|#1f1f1f|#1d1d1d/);
     expect(() => applyEdits(s, ['text 290 190 5 5'])).toThrow(/no region/);
   });

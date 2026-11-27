@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Live checks for bugs #16–#26 (docs/bugs.md, found in the reply-mode runs 2026-11-26/27). Needs a running
+// Live checks for bugs #16–#26 and scene finding F46 (docs/bugs.md, found in the reply-mode runs 2026-11-26/27). Needs a running
 // Illustrator; works only in a document it creates, which it closes without saving at the end.
 //   npm run build && node test/live-bugs-1127.mjs
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -94,6 +94,14 @@ await call('document_info', {}, { check: (v) => {
   assert(v.issues.unnamedText === 1, '#24 only the stray text unnamed: ' + JSON.stringify(v.issues));
   assert(v.issueItems?.unnamedText?.[0]?.text === 'stray', '#24 issueItems names it: ' + JSON.stringify(v.issueItems));
 } });
+
+// scene F46: get_items {points} on a compound path gives each sub-path's points
+await call('create_path', { d: 'M0 0 L50 0 L50 50 L0 50 Z M10 10 L40 10 L40 40 L10 40 Z', fill_rule: 'evenodd', name: 'cp', x: 120, y: 40, layer: 'Under' });
+await call('get_items', { refs: 'name:cp', points: true }, { check: (v) => {
+  const sp = v.items[0].subpaths;
+  assert(sp?.length === 2 && sp.every((p) => p.closed && p.path.length === 4), 'F46 subpaths: ' + JSON.stringify(sp));
+} });
+await call('delete_items', { refs: 'name:cp' });
 
 // #25: save says saved
 await call('documents', { action: 'save', path: join(tmp, 'bugs.ai') }, { check: (v) => { assert(v.saved === true, '#25 saved flag: ' + JSON.stringify(v)); } });

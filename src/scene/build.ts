@@ -2,7 +2,7 @@
 // then one path per drawn region, bottom to top (new items go in front, so order is z). Coordinates stay in working
 // px; create_path's scale and x, y place them on the target rect.
 import { segsToD, type Seg } from '../fitcurve.js';
-import { labHex } from './color.js';
+import { labHex, de76 } from './color.js';
 import { live } from './primitives.js';
 import type { Scene } from './types.js';
 
@@ -104,12 +104,38 @@ export function buildSteps(s: Scene, o: BuildOpts): { batches: BatchStep[][]; it
     const b = s.seg.regions[id].bbox;
     last.push({ tool: 'create_shape', args: { layer, shape: 'rect', x: r2(rx + b[0] * sx), y: r2(ry + b[1] * sy), w: r2((b[2] - b[0] + 1) * sx), h: r2((b[3] - b[1] + 1) * sy), fill: 'none', stroke: '#999999', stroke_width: 0.5, dash: [2, 2], name: m.name ?? `Placeholder r${id}` } });
   });
-  // text boxes for the agent's create_text: session units, the ink of the largest region, cap height ≈ box height
+  // text boxes for the agent's create_text: session units, the text's ink and cap height
   const textBoxes = s.textBoxes.filter((tb) => tb.ids.some((i) => s.meta[i].text)).map((tb) => {
-    const big = tb.ids.reduce((p, i) => (s.seg.regions[i].area > s.seg.regions[p].area ? i : p), tb.ids[0]), c = s.colours[s.meta[big].colour];
-    return { rect: [r2(rx + tb.rect[0] * sx), r2(ry + tb.rect[1] * sy), r2(tb.rect[2] * sx), r2(tb.rect[3] * sy)], colour: c.swatch ? `swatch:${c.swatch}` : labHex(c.L, c.a, c.b), cap: r2(tb.rect[3] * sy), regions: tb.ids.map((i) => 'r' + i).join(' ') };
+    const ink = textInk(s, tb.ids), c = s.colours[ink.colour];
+    return { rect: [r2(rx + tb.rect[0] * sx), r2(ry + tb.rect[1] * sy), r2(tb.rect[2] * sx), r2(tb.rect[3] * sy)], colour: c.swatch ? `swatch:${c.swatch}` : labHex(c.L, c.a, c.b), cap: r2(ink.cap * sy), regions: tb.ids.map((i) => 'r' + i).join(' ') };
   });
   return { textBoxes, batches, items: items.length, swatches: swatchSteps, anchors: shapes.reduce((a, sh) => a + sh.loops.reduce((x, l) => x + l.length, 0), 0), bytes, regions: shapes.map((sh) => sh.region) };
+}
+
+/** The text in a box: the ink that stands out from what it sits on (F47: the largest region was the paper around the
+ * letters, so the caption came back #ffffff), and its cap height from the letters' heights (F44, F50: the box height
+ * was given as cap). Counters sit on their letter, whose filler is the paper: same ink as the paper, not chosen. */
+export function textInk(s: Scene, ids: number[]): { colour: number; cap: number } {
+  const R = s.seg.regions, col = (i: number) => s.colours[s.meta[i].colour];
+  const contrast = (i: number) => { const f = s.fillers.get(i); if (f === undefined || f < 0 || !R[f]) return 0; const a = col(i), b = col(f); return de76(a.L, a.a, a.b, b.L, b.a, b.b); };
+  // letters lie inside the paper around them (a label, the page between the lines): the ink whose regions lie most
+  // inside another ink's region wins; counters lie inside letters too, but they are small
+  const live = ids.filter((i) => R[i]?.area && contrast(i) > 10), inside = new Map<number, number>(), byInk = new Map<number, number>();
+  const within = (a: number[], b: number[]) => a[0] >= b[0] && a[1] >= b[1] && a[2] <= b[2] && a[3] <= b[3];
+  for (const i of live) {
+    const c = s.meta[i].colour;
+    byInk.set(c, (byInk.get(c) ?? 0) + R[i].area);
+    if (ids.some((j) => j !== i && R[j]?.area && s.meta[j].colour !== c && within(R[i].bbox, R[j].bbox))) inside.set(c, (inside.get(c) ?? 0) + R[i].area);
+  }
+  let colour: number;
+  if (inside.size) colour = [...inside].sort((a, b) => b[1] - a[1])[0][0];
+  else if (byInk.size) colour = [...byInk].sort((a, b) => b[1] - a[1])[0][0];
+  else colour = s.meta[ids.reduce((p, i) => ((R[i]?.area ?? 0) > (R[p]?.area ?? 0) ? i : p), ids[0])].colour;
+  // letters of that ink: their heights; capitals and ascenders sit at the top of the sorted list, x-height letters
+  // and stray dots below — the 75th percentile is the cap height of a mixed-case line (all of them for capitals)
+  const hs = ids.filter((i) => R[i]?.area && s.meta[i].colour === colour).map((i) => R[i].bbox[3] - R[i].bbox[1] + 1).sort((a, b) => a - b);
+  const cap = hs.length ? hs[Math.min(hs.length - 1, Math.floor(hs.length * 0.75))] : 0;
+  return { colour, cap };
 }
 
 /** bounding box of loops (working px): width (the gradient's default span) and centre */

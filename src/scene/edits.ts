@@ -106,6 +106,18 @@ export function applyEdits(s: Scene, edits: string[]): EditResult {
         if (v.length !== 4 || v.some((x) => !isFinite(x)) || v[2] <= 0 || v[3] <= 0) fail('drop in x y w h (image px of the analyzed image)');
         if (f >= 0) fillId = t[f + 1]?.toLowerCase() === 'none' ? -1 : region(t[f + 1]);
         ids = R.filter((r) => r.area && s.z[r.id] > 0 && r.bbox[0] >= v[0] && r.bbox[1] >= v[1] && r.bbox[2] < v[0] + v[2] && r.bbox[3] < v[1] + v[3]).map((r) => r.id);
+        if (!ids.length) {
+          // nothing lies wholly inside (F48: the patch is part of a large region): with fill rF the box's part of the
+          // regions crossing it is repainted rF; without it, say which regions cross instead of dropping nothing silently
+          const [x0, y0] = [Math.max(0, Math.floor(v[0])), Math.max(0, Math.floor(v[1]))], x1 = Math.min(s.work.w, Math.ceil(v[0] + v[2])), y1 = Math.min(s.work.h, Math.ceil(v[1] + v[3]));
+          const cross = new Map<number, number>();
+          for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const id = s.seg.map[y * s.work.w + x]; if (id >= 0 && id !== fillId) cross.set(id, (cross.get(id) ?? 0) + 1); }
+          if (fillId === undefined || fillId < 0) fail(`no region lies wholly inside the box; it cuts ${[...cross].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([id]) => 'r' + id).join(' ') || 'nothing'} — "drop in x y w h fill rF" repaints the box's part of them with rF`);
+          for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const p = y * s.work.w + x; if (cross.has(s.seg.map[p])) s.seg.map[p] = fillId!; }
+          res.dropped = (res.dropped ?? 0) + cross.size;
+          res.changed = true;
+          return;
+        }
       } else if (t[1] === '<' || t[1].startsWith('<')) {
         const pct = parseFloat(t[1] === '<' ? t[2] : t[1].slice(1));
         if (!(pct > 0)) fail('drop < area% (e.g. drop < 0.05)');

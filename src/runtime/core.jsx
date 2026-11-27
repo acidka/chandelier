@@ -950,6 +950,13 @@ $.global.AIA = (function () {
     else if (t === 'CompoundPathItem') {
       o.paths = it.pathItems.length;
       if (it.pathItems.length) { var sub = {}; pathDetail(sub, it.pathItems[0], false); o.fill = sub.fill; o.stroke = sub.stroke; if (sub.sw) o.sw = sub.sw; }
+      if (a.points) {
+        // points of each sub-path (F46: a compound path gave none), 500 points in all
+        var sps = [], left = 500, np = it.pathItems.length;
+        for (var si = 0; si < np && left > 0; si++) { var sd = {}; pathDetail(sd, it.pathItems[si], true); var sp = { closed: sd.closed, path: sd.path.slice(0, left) }; left -= sp.path.length; sps.push(sp); }
+        o.subpaths = sps;
+        if (np > sps.length) o.subpaths_truncated = np - sps.length;
+      }
     } else if (t === 'TextFrame') textDetail(o, it, a);
     else if (t === 'GroupItem') { o.items = it.pageItems.length; if (it.clipped) o.clipped = true; }
     else if (t === 'PlacedItem') { try { o.file = it.file.fsName; } catch (e) { o.file = null; o.missing_link = true; } }

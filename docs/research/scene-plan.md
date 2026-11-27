@@ -469,32 +469,32 @@ Runs and numbers: [benchmarks § 2i](benchmarks.md). Status: ⏳ open · ✅ fix
 | F25 | ⏳ | 06 v2 | a part crop cuts every shape crossing the crop edge square (the ground swoosh's ends; tips added by hand) |
 | F26 | ✅ | 06 v2 | the default analyze of one flat ink rendered as foil: 12 inks, 817 regions: hint "photo with N inks: … colors = that number" |
 | F27 | ✅ | 09 v3 | `cN = cM` (documented) failed "use swatch:Name, #rrggbb, lab(L,a,b) or cN": now moves every region of cN to cM |
-| F28 | ⏳ | 09 v3 | a crop of soft-shaded petals came back `photo: true` (lighting flattened); no switch to turn photo mode off |
+| F28 | ✅ | 09 v3 | a crop of soft-shaded petals came back `photo: true` (lighting flattened); no switch to turn photo mode off → fixed 2026-11-27: `analyze {photo: false}` keeps shading as ramp hints (`true` forces photo mode; default: detected) |
 | F29 | ⏳ | 09 v3 | no ramp hints on hat, skin or petals (soft gradients): all gradients built by hand |
 | F30 | ✅ | 09 v3 | every build / refine put the scene layer on top: `position` for a new layer; an existing layer stays where it is |
-| F31 | ⏳ | 09 v3 | refine on a 426-region scene reverted everything while listing 8 disagreeing inks |
+| F31 | ✅ | 09 v3 | refine on a 426-region scene reverted everything while listing 8 disagreeing inks → fixed 2026-11-27: refine keeps the kind of fix that helps (only the inks or only the edges, `reverted: "edges"|"inks"`) instead of undoing everything |
 | F33 | ✅ | 06 v3 | build failed on a degenerate tiny region ("item 106: The path has no drawable segments") and rolled back: one-segment loops are now left out, a region with nothing drawable is skipped |
 | F34 | ✅ | 06 v3 | dark counters inside a `text` box (D, A, R, O) were drawn white (no filler: their only neighbour, the letter, was skipped too): a skipped region takes the filler of the skipped one it sits on |
 | F35 | ✅ | 06 v3 | no edit to drop every region inside a box: `drop in x y w h [fill …]` |
 | F36 | ⏳ | 06 v3 | crown leaves touching a dropped frame line belong to the line's region and go with it (no split edit) |
-| F37 | ⏳ | 06 v3 | `max_px` doesn't upscale a small crop: `detail: high` can't add resolution |
+| F37 | ✅ | 06 v3 | `max_px` doesn't upscale a small crop: `detail: high` can't add resolution → fixed 2026-11-27: `max_px` given: a smaller crop or face is upscaled to it (default unchanged: never above the source pixels, so ids stay) |
 | F38 | ⏳ | 09 v4 | a crop of soft-shaded petals is a patchwork at any `colors` / `min_de` |
 | F39 | ⏳ | 09 v4 | `drop < %` threw away most of the bracelet (jewellery-scale detail) |
 | F40 | ✅ | 09 v4 | analyze overlays of small crops too small to read: enlarged up to 4× |
 | F41 | ✅ | 09 v5 | a rebuild left items from the first build (r143–r151): the runtime lists 100 created items per step, the build recorded only those — steps now hold ≤ 100 items, leftovers found by name are cleared; live test with 170 items |
-| F42 | ⏳ | 09 v5 | refine "corrected" a skin-shadow ink (ΔE 26.8) into a dark brown patch |
+| F42 | ✅ | 09 v5 | refine "corrected" a skin-shadow ink (ΔE 26.8) into a dark brown patch → fixed 2026-11-27: one region missing its ink by more than 2.5 × threshold (ΔE 15) is reported in `left`, not "corrected" |
 | F43 | ✅ | 09 v5 | the overlay of a 620 px image was shrunk to ~500 px per half: overlays up to 1600 px |
-| F44 | ⏳ | 09 v5 | `text_boxes` cap height (25.3 mm for the title) doesn't match the real caps |
-| F45 | ⏳ | 05 v2 | refine on a one-ink part reports darkest = lightest (meaningless) |
-| F46 | ⏳ | 05 v1, v2 | `get_items {points}` on a compound path fails with MRAP (twice in both runs) |
-| F47 | ⏳ | 09 v6 | `text_boxes` gave the caption's ink as `#ffffff` (the text is dark grey) |
-| F48 | ⏳ | 09 v6 | `drop in x y w h` dropped nothing when the patch is part of a large region (a black blob under the brim that belongs to the sweater's r1) |
+| F44 | ✅ | 09 v5 | `text_boxes` cap height (25.3 mm for the title) doesn't match the real caps → fixed 2026-11-27: `cap` = the text letters' height (75th percentile of their heights), not the box height |
+| F45 | ✅ | 05 v2 | refine on a one-ink part reports darkest = lightest (meaningless) → fixed 2026-11-27: `checks` leave out darkest / lightest when they are one ink |
+| F46 | ✅ | 05 v1, v2 | `get_items {points}` on a compound path fails with MRAP (twice in both runs) → fixed 2026-11-27: not reproduced (no MRAP in 3 live tries); the real gap: `points` gave no points for compound paths — now `subpaths [{closed, path}]` |
+| F47 | ✅ | 09 v6 | `text_boxes` gave the caption's ink as `#ffffff` (the text is dark grey) → fixed 2026-11-27: the text ink is the one whose regions lie inside another ink's region (letters on the paper), else the one contrasting most with what it sits on, not the largest region |
+| F48 | ✅ | 09 v6 | `drop in x y w h` dropped nothing when the patch is part of a large region (a black blob under the brim that belongs to the sweater's r1) → fixed 2026-11-27: nothing wholly inside: the error names the regions the box cuts; `drop in x y w h fill rF` repaints their part of the box with rF |
 | F49 | ⏳ | 09 v6, v7 | the summary has no region positions: agents map overlay labels back to px to pick ramp / drop ids (a `where` box column, or ids by point) |
-| F50 | ⏳ | 09 v7 | `text_boxes` `cap` equals the box height (10.16 / 24.19 mm), not a cap height (as F44) |
+| F50 | ✅ | 09 v7 | `text_boxes` `cap` equals the box height (10.16 / 24.19 mm), not a cap height (as F44) → fixed 2026-11-27: as F44 |
 | F51 | ⏳ | 09 v7 | a part scene's crop edge shows as a square seam where its hair meets the main scene's black |
 | F32 | ⏳ | 09 v3 | small features inside skin facets (lips) become straight-sided: their outline is cut into edges of ≤ 5 points |
 
-Other tools: bugs.md #16 (`path_ops` box frame in batch steps), #17 (preflight lists every shade step); `fonts` finds
+Other tools: bugs.md #16 (`path_ops` box frame in batch steps; not reproduced), #17 (preflight lists every shade step; fixed 2026-11-27); `fonts` finds
 no family match for "Myriad Pro Bold" when only Myriad Variable Concept is installed (no suggestion).
 
 ### Guide gaps (recreate.md)

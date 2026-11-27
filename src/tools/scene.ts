@@ -22,7 +22,7 @@ let tmpN = 0;
 export const scene: ToolDef = {
   name: 'scene',
   description: `Image → editable vector scene; the pixel work happens here, Illustrator only at build. Image px until build.
-"analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high → id, a 1-page summary (15 largest regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
+"analyze": image (PNG/JPEG); crop [x,y,w,h] px or map: 4 corners px (TL,TR,BR,BL) of a photographed face (bilinear: tapered face); size [w,h] target aspect; colors (max inks, 16); min_de (6: closer inks merge); detail low|normal|high; max_px (1000; upscales a smaller crop); photo (auto; false: shading → ramp hints) → id, a 1-page summary (15 largest regions: id, colour, area %, kind, z, next, conf, ink; hints) + overlay (ids on the image | flat render).
 "edit": id, edits ["merge r3 r4" (r3 keeps its ink), "drop r12 r20-r40" (the region it sits on fills it; "… fill r0" to choose, "… fill none" = left empty), "drop < 0.05" (all under 0.05 %), "drop in x y w h" (all inside the box), "keep r12", "undo", "undo 3", "reset", "r2 = swatch:Brand", "c1 = #d9822b", "r3 = c1", "r3 over r5", "r3 top", "name r3 Wave", "name c0 Kraft", "tolerance r3 0.5", "r9 ellipse|circle|rect|rounded|polygon|free|auto", "ramp r3 r4 r5" (one region, linear gradient), "r3 flat", "layers r3 r5" (translucent: their overlap drawn by both, multiply), "r10 logo" (grouped, finer), "r4 placeholder", "text x y w h" (regions in the box left for live text; build returns text_boxes), "r7 text", "stack off", "show r40-r80"] → summary (overlay: true adds the image).
 "build": id; rect (default the artboard), artboard, bleed, layer ("Scene"), position (new layer: "top" default; "bottom", "below:Name"; an existing layer stays put unless given) → one undo step: global swatches + one path (or live rect/ellipse for clean primitives) per region, bottom to top; a re-build replaces its own items (regions you deleted stay dropped, items you added stay).
 "refine": id; threshold (ΔE, 6) → measures the build (Illustrator render; own render before a build) per region and edge against the image, corrects shifted inks and re-fits edges that miss, rebuilds once → report + heat map | new render.
@@ -38,6 +38,7 @@ dir: where scene.json is kept (default a temp folder; id may be its path).`,
     min_de: z.number().min(0).optional(),
     detail: z.enum(['low', 'normal', 'high']).optional(),
     max_px: z.number().min(200).max(3000).optional(),
+    photo: z.boolean().optional(),
     id: z.string().optional(),
     edits: z.array(z.string()).max(200).optional(),
     overlay: z.boolean().optional(),
@@ -78,7 +79,8 @@ async function doAnalyze(a: any, ctx: Ctx): Promise<CallToolResult> {
   if (!existsSync(path)) return fail('image not found: ' + path);
   if (a.crop && a.map) return fail('give crop or map, not both');
   const src = await readImage(path, join(ctx.tmp, `scene-src${++tmpN}.png`));
-  const p: Params = { image: path, crop: a.crop, map: a.map, bilinear: a.bilinear, size: a.size, colors: a.colors ?? 16, minDe: a.min_de ?? 6, detail: a.detail ?? 'normal', maxPx: a.max_px ?? 1000 };
+  const p: Params = { image: path, crop: a.crop, map: a.map, bilinear: a.bilinear, size: a.size, colors: a.colors ?? 16, minDe: a.min_de ?? 6, detail: a.detail ?? 'normal', maxPx: a.max_px ?? 1000,
+    ...(a.max_px !== undefined ? { upscale: true } : {}), ...(a.photo !== undefined ? { photo: a.photo } : {}) };
   const s = analyze(src, p, { dir: a.dir ? resolve(a.dir) : join(ctx.tmp, 'scenes'), path, bytes: readFileSync(path) });
   put(s); save(s);
   return page(s, ctx);
@@ -176,7 +178,7 @@ async function doRefine(s: Scene, a: any, ctx: Ctx): Promise<CallToolResult> {
   }
   const m = measure(s, render), rep = refine(s, m, a.threshold ?? 6);
   let rebuilt: unknown = false;
-  if (s.built && rep.fixed.length && !rep.reverted) {
+  if (s.built && rep.fixed.length && rep.reverted !== true) {
     const b = await doBuild(s, { layer: s.built.layer, rect: s.built.rect, artboard: s.built.artboard, bleed: s.built.bleed }, ctx); // keeps the layer's place and hand-added items
     if (b.isError) return b;
     rebuilt = JSON.parse((b.content[0] as { text: string }).text);

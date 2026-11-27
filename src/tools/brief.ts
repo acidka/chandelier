@@ -8,9 +8,9 @@ import type { Settings } from '../settings.js';
 export const ITEM_FIELDS = ['uuid', 'type', 'name', 'box', 'geo', 'layer', 'parent', 'opacity', 'blend', 'hidden', 'locked', 'selected', 'note',
   'closed', 'points', 'area', 'clipping', 'fill', 'stroke', 'sw', 'dash', 'cap', 'join', 'path',
   'kind', 'contents', 'anchor', 'lines', 'align', 'paragraph_style', 'runs',
-  'paths', 'items', 'clipped', 'file', 'missing_link', 'embedded', 'symbol'] as const;
+  'paths', 'subpaths', 'items', 'clipped', 'file', 'missing_link', 'embedded', 'symbol'] as const;
 export const ITEM_BRIEF = ['uuid', 'type', 'name', 'box', 'geo'];
-const COMPANION: Record<string, string> = { path: 'path_truncated', runs: 'runs_truncated', contents: 'length' };
+const COMPANION: Record<string, string> = { path: 'path_truncated', subpaths: 'subpaths_truncated', runs: 'runs_truncated', contents: 'length' };
 
 /** document_info sections (each brings its keys) and the brief head */
 export const DOC_SECTIONS: Record<string, string[]> = {
@@ -45,7 +45,7 @@ function check(fields: unknown, known: readonly string[], tool: string): string[
 function itemFields(a: any, s: Settings): string[] | undefined {
   const f = check(a?.fields, ITEM_FIELDS, 'get_items');
   if (f || s.reply !== 'brief') return f;
-  return [...ITEM_BRIEF, ...(a?.points ? ['path'] : []), ...(a?.runs === true ? ['runs'] : [])];
+  return [...ITEM_BRIEF, ...(a?.points ? ['path', 'subpaths'] : []), ...(a?.runs === true ? ['runs'] : [])];
 }
 
 /** get_items runtime args: skip the text runs and anchor lists the projection would drop. */
@@ -53,7 +53,7 @@ export function getItemsArgs(a: any, s: Settings): Record<string, unknown> {
   const { fields: _fields, ...rest } = a;
   const f = itemFields(a, s);
   if (!f) return rest;
-  return { ...rest, runs: f.includes('runs'), points: f.includes('path') };
+  return { ...rest, runs: f.includes('runs'), points: f.includes('path') || f.includes('subpaths') };
 }
 
 /** Checked at step time, so a bad name fails before Illustrator runs anything. */

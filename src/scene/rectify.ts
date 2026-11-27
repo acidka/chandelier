@@ -13,6 +13,8 @@ export interface RectifyOpts {
   /** target aspect [w, h] (any units) */
   size?: number[];
   maxPx: number;
+  /** upscale a smaller crop or face to maxPx (default: never above its own pixels) */
+  upscale?: boolean;
 }
 
 export interface Rectified {
@@ -41,8 +43,11 @@ export function rectify(src: Img, o: RectifyOpts): Rectified {
     const cut = o.crop ? cropImg(src, c[0], c[1], c[2], c[3]) : src;
     let img: Img;
     if (o.size) { // stretch to the target aspect (a crop drawn by eye is rarely exact)
-      const asp = o.size[0] / o.size[1], long = Math.min(maxPx, Math.max(cut.w, cut.h));
+      const asp = o.size[0] / o.size[1], long = o.upscale ? maxPx : Math.min(maxPx, Math.max(cut.w, cut.h));
       img = resizeTo(cut, Math.max(2, Math.round(asp >= 1 ? long : long * asp)), Math.max(2, Math.round(asp >= 1 ? long / asp : long)));
+    } else if (o.upscale && Math.max(cut.w, cut.h) < maxPx) {
+      const k = maxPx / Math.max(cut.w, cut.h);
+      img = resizeTo(cut, Math.max(2, Math.round(cut.w * k)), Math.max(2, Math.round(cut.h * k)));
     } else img = fitLongest(cut, maxPx);
     const x0 = Math.max(0, Math.round(c[0])), y0 = Math.max(0, Math.round(c[1])), sx = cut.w / img.w, sy = cut.h / img.h;
     return { img, toSource: (x, y) => [x0 + x * sx, y0 + y * sy] };
@@ -55,7 +60,7 @@ export function rectify(src: Img, o: RectifyOpts): Rectified {
   const natW = (dist(TL, TR) + dist(BL, BR)) / 2, natH = (dist(TL, BL) + dist(TR, BR)) / 2;
   const aspect = o.size ? o.size[0] / o.size[1] : natW / natH;
   // never larger than the face's own pixels (no invented detail), never larger than maxPx
-  const long = Math.min(maxPx, Math.max(natW, natH));
+  const long = o.upscale ? maxPx : Math.min(maxPx, Math.max(natW, natH));
   const W = Math.max(2, Math.round(aspect >= 1 ? long : long * aspect)), H = Math.max(2, Math.round(aspect >= 1 ? long / aspect : long));
   let toSource: (x: number, y: number) => [number, number];
   if (o.bilinear) {
